@@ -14,6 +14,15 @@
 
 #include <windows.h>
 
+#ifdef DLL_EXPORT
+#ifndef CLASS_EXPORT
+#define CLASS_EXPORT   __declspec(dllexport)
+#endif
+#else  /*DLL_EXPORT*/
+#ifndef CLASS_EXPORT   __declspec(dllimport)
+#endif
+#endif  /*DLL_EXPORT*/
+
 // special defines for VC5/6 (if no actual PSDK is installed):
 #if _MSC_VER < 1300
 typedef unsigned __int64 DWORD64, *PDWORD64;
@@ -25,7 +34,7 @@ typedef unsigned long SIZE_T, *PSIZE_T;
 #endif  // _MSC_VER < 1300
 
 class StackWalkerInternal;  // forward
-class StackWalker
+class CLASS_EXPORT StackWalker
 {
 public:
   typedef enum StackWalkOptions

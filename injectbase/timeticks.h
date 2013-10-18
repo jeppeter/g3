@@ -10,7 +10,7 @@
 #endif
 #else   /*DLL_EXPORT*/
 #ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC  EXTERN_C
+#define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
 #endif
 #endif   /*DLL_EXPORT*/
 

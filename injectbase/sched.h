@@ -1,8 +1,7 @@
 
-#ifndef  __INJECT_BASE_H__
-#define  __INJECT_BASE_H__
 
-
+#ifndef __SCHED_H__
+#define __SCHED_H__
 
 #ifdef DLL_EXPORT
 #ifndef EXPORT_C_FUNC
@@ -14,11 +13,8 @@
 #endif
 #endif   /*DLL_EXPORT*/
 
-#include <detours/detours.h>
 
+int SchedOut();
 
-
-
-
-#endif /*__INJECT_BASE_H__*/
+#endif /*__SCHED_H__*/
 
