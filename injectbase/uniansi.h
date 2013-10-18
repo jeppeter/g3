@@ -2,15 +2,15 @@
 #define __UNI_ANSI_H__
 
 
-#ifdef DLL_EXPORT
+#ifdef INJECT_BASE_DLL_EXPORT
 #ifndef EXPORT_C_FUNC
 #define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)
 #endif
-#else   /*DLL_EXPORT*/
+#else   /*INJECT_BASE_DLL_EXPORT*/
 #ifndef EXPORT_C_FUNC
 #define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
 #endif
-#endif   /*DLL_EXPORT*/
+#endif   /*INJECT_BASE_DLL_EXPORT*/
 
 
 /**********************************************************

@@ -14,14 +14,15 @@
 
 #include <windows.h>
 
-#ifdef DLL_EXPORT
+#ifdef INJECT_BASE_DLL_EXPORT
 #ifndef CLASS_EXPORT
 #define CLASS_EXPORT   __declspec(dllexport)
 #endif
-#else  /*DLL_EXPORT*/
-#ifndef CLASS_EXPORT   __declspec(dllimport)
+#else  /*INJECT_BASE_DLL_EXPORT*/
+#ifndef CLASS_EXPORT
+#define CLASS_EXPORT   __declspec(dllimport)
 #endif
-#endif  /*DLL_EXPORT*/
+#endif  /*INJECT_BASE_DLL_EXPORT*/
 
 // special defines for VC5/6 (if no actual PSDK is installed):
 #if _MSC_VER < 1300

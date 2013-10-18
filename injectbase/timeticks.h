@@ -4,15 +4,15 @@
 
 #include <Windows.h>
 
-#ifdef DLL_EXPORT
+#ifdef INJECT_BASE_DLL_EXPORT
 #ifndef EXPORT_C_FUNC
 #define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)
 #endif
-#else   /*DLL_EXPORT*/
+#else   /*INJECT_BASE_DLL_EXPORT*/
 #ifndef EXPORT_C_FUNC
 #define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
 #endif
-#endif   /*DLL_EXPORT*/
+#endif   /*INJECT_BASE_DLL_EXPORT*/
 
 
 
