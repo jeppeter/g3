@@ -20,7 +20,7 @@
 #endif
 #else   /*DLL_EXPORT*/
 #ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC
+#define   EXPORT_C_FUNC   EXTERN_C
 #endif
 #endif   /*DLL_EXPORT*/
 

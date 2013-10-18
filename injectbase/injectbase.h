@@ -10,14 +10,13 @@
 #endif
 #else   /*DLL_EXPORT*/
 #ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC
+#define   EXPORT_C_FUNC  EXTERN_C
 #endif
 #endif   /*DLL_EXPORT*/
 
 #include <detours/detours.h>
 
-EXPORT_C_FUNC int Capture3DBackBuffer(const char* filetosave);
-EXPORT_C_FUNC int Capture2DBackBufferD11(const char* filetosave);
+
 
 
 
