@@ -15,8 +15,14 @@
 #endif   /*INJECT_BASE_DLL_EXPORT*/
 
 #include <detours/detours.h>
-
-
+#include <uniansi.h>
+#include <output_debug.h>
+#include <evt.h>
+#include <memshare.h>
+#include <StackWalker.h>
+#include <sched.h>
+#include <procex.h>
+#include <timeticks.h>
 
 
 
