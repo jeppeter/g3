@@ -1,7 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "injectbase", "injectbase\injectbase.vcxproj", "{487A58BC-188B-4115-9E2F-83C80E20D0D4}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{487A58BC-188B-4115-9E2F-83C80E20D0D4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{487A58BC-188B-4115-9E2F-83C80E20D0D4}.Debug|Win32.Build.0 = Debug|Win32
+		{487A58BC-188B-4115-9E2F-83C80E20D0D4}.Release|Win32.ActiveCfg = Release|Win32
+		{487A58BC-188B-4115-9E2F-83C80E20D0D4}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
