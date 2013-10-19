@@ -2,6 +2,8 @@
 #ifndef __PROC_EX_H__
 #define __PROC_EX_H__
 
+#include <Windows.h>
+
 #ifdef INJECTBASE_EXPORTS
 #ifndef EXPORT_C_FUNC
 #define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)

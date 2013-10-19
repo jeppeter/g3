@@ -1,6 +1,7 @@
 #ifndef __UNI_ANSI_H__
 #define __UNI_ANSI_H__
 
+#include <Windows.h>
 
 #ifdef INJECTBASE_EXPORTS
 #ifndef EXPORT_C_FUNC
