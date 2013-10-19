@@ -1,3 +1,5 @@
+#include <Windows.h>
+#include "detours.h"
 //////////////////////////////////////////////////////////////////////////////
 //
 //  Add DLLs to a module import table (uimports.cpp of detours.lib)

@@ -14,15 +14,15 @@
 #define DETOURS_VERSION     30000   // 3.00.00
 
 
-#ifdef DLL_EXPORT
+#ifdef INJECTBASE_EXPORTS
 #ifndef EXPORT_C_FUNC
 #define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)
 #endif
-#else   /*DLL_EXPORT*/
+#else   /*INJECTBASE_EXPORTS*/
 #ifndef EXPORT_C_FUNC
 #define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
 #endif
-#endif   /*DLL_EXPORT*/
+#endif   /*INJECTBASE_EXPORTS*/
 
 
 
@@ -427,7 +427,7 @@ BOOL WINAPI DetourProcessViaHelperW(DWORD dwTargetPid,
 #define DetourProcessViaHelper          DetourProcessViaHelperA
 #endif // !UNICODE
 
-BOOL WINAPI DetourUpdateProcessWithDll(HANDLE hProcess,
+EXPORT_C_FUNC BOOL WINAPI DetourUpdateProcessWithDll(HANDLE hProcess,
                                        LPCSTR *plpDlls,
                                        DWORD nDlls);
 
@@ -445,6 +445,7 @@ VOID CALLBACK DetourFinishHelperProcess(HWND, HINSTANCE, LPSTR, INT);
 #ifdef __cplusplus
 }
 #endif // __cplusplus
+
 
 //////////////////////////////////////////////// Detours Internal Definitions.
 //
@@ -514,6 +515,9 @@ typedef struct _DETOUR_SYM_INFO
 PDETOUR_SYM_INFO DetourLoadDbgHelp(VOID);
 
 #endif // IMAGEAPI
+
+#undef DETOUR_TRACE
+
 
 #ifndef DETOUR_TRACE
 #if DETOUR_DEBUG
