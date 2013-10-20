@@ -8,14 +8,20 @@
 
 
 #ifdef INJECTBASE_EXPORTS
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API  extern "C"  __declspec(dllexport)
 #endif
 #else   /*INJECTBASE_EXPORTS*/
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API  extern "C"  __declspec(dllimport)
 #endif
 #endif   /*INJECTBASE_EXPORTS*/
+
+
+
+INJECTBASE_API void DebugOutString(const char* file,int lineno,const char* fmt,...);
+INJECTBASE_API void DebugBuffer(const char* file,int lineno,unsigned char* pBuffer,int buflen);
+
 
 
 
@@ -34,11 +40,6 @@
 #endif
 #endif
 #define  DEBUG_BUFFER(ptr,blen) DebugBuffer(__FILE__,__LINE__,(unsigned char*)ptr,blen)
-
-
-EXPORT_C_FUNC void DebugOutString(const char* file,int lineno,const char* fmt,...);
-EXPORT_C_FUNC void DebugBuffer(const char* file,int lineno,unsigned char* pBuffer,int buflen);
-
 
 
 

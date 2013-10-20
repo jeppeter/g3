@@ -5,23 +5,23 @@
 #include <Windows.h>
 
 #ifdef INJECTBASE_EXPORTS
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API   extern "C" __declspec(dllexport)
 #endif
 #else   /*INJECTBASE_EXPORTS*/
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API  extern "C" __declspec(dllimport)
 #endif
 #endif   /*INJECTBASE_EXPORTS*/
 
 
 
-EXPORT_C_FUNC int ReadShareMem(unsigned char* pBasePtr,int offset,unsigned char* pBuffer,int bufsize);
-EXPORT_C_FUNC int WriteShareMem(unsigned char* pBasePtr,int offset,unsigned char* pBuffer,int bufsize);
-EXPORT_C_FUNC HANDLE CreateMapFile(const char* pMapFileName,int size,int create);
-EXPORT_C_FUNC unsigned char* MapFileBuffer(HANDLE hMapFile,int size);
-EXPORT_C_FUNC void UnMapFileBuffer(unsigned char** ppBuffer);
-EXPORT_C_FUNC void CloseMapFileHandle(HANDLE *pHandle);
+INJECTBASE_API int ReadShareMem(unsigned char* pBasePtr,int offset,unsigned char* pBuffer,int bufsize);
+INJECTBASE_API int WriteShareMem(unsigned char* pBasePtr,int offset,unsigned char* pBuffer,int bufsize);
+INJECTBASE_API HANDLE CreateMapFile(const char* pMapFileName,int size,int create);
+INJECTBASE_API unsigned char* MapFileBuffer(HANDLE hMapFile,int size);
+INJECTBASE_API void UnMapFileBuffer(unsigned char** ppBuffer);
+INJECTBASE_API void CloseMapFileHandle(HANDLE *pHandle);
 
 
 

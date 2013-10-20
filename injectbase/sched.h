@@ -4,17 +4,17 @@
 #define __SCHED_H__
 
 #ifdef INJECTBASE_EXPORTS
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API   extern "C" __declspec(dllexport)
 #endif
 #else   /*INJECTBASE_EXPORTS*/
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API  extern "C" __declspec(dllimport)
 #endif
 #endif   /*INJECTBASE_EXPORTS*/
 
 
-int SchedOut();
+INJECTBASE_API int SchedOut();
 
 #endif /*__SCHED_H__*/
 

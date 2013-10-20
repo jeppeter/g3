@@ -15,12 +15,12 @@
 
 
 #ifdef INJECTBASE_EXPORTS
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API   extern "C" __declspec(dllexport)
 #endif
 #else   /*INJECTBASE_EXPORTS*/
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API  extern "C" __declspec(dllimport)
 #endif
 #endif   /*INJECTBASE_EXPORTS*/
 
@@ -236,26 +236,26 @@ typedef VOID * PDETOUR_LOADED_BINARY;
 
 //////////////////////////////////////////////////////////// Transaction APIs.
 //
-EXPORT_C_FUNC LONG WINAPI DetourTransactionBegin(VOID);
-EXPORT_C_FUNC LONG WINAPI DetourTransactionAbort(VOID);
-EXPORT_C_FUNC LONG WINAPI DetourTransactionCommit(VOID);
-EXPORT_C_FUNC LONG WINAPI DetourTransactionCommitEx(PVOID **pppFailedPointer);
+INJECTBASE_API LONG WINAPI DetourTransactionBegin(VOID);
+INJECTBASE_API LONG WINAPI DetourTransactionAbort(VOID);
+INJECTBASE_API LONG WINAPI DetourTransactionCommit(VOID);
+INJECTBASE_API LONG WINAPI DetourTransactionCommitEx(PVOID **pppFailedPointer);
 
-LONG WINAPI DetourUpdateThread(HANDLE hThread);
+INJECTBASE_API LONG WINAPI DetourUpdateThread(HANDLE hThread);
 
-EXPORT_C_FUNC LONG WINAPI DetourAttach(PVOID *ppPointer,
+INJECTBASE_API LONG WINAPI DetourAttach(PVOID *ppPointer,
                          PVOID pDetour);
 
-EXPORT_C_FUNC LONG WINAPI DetourAttachEx(PVOID *ppPointer,
+INJECTBASE_API LONG WINAPI DetourAttachEx(PVOID *ppPointer,
                            PVOID pDetour,
                            PDETOUR_TRAMPOLINE *ppRealTrampoline,
                            PVOID *ppRealTarget,
                            PVOID *ppRealDetour);
 
-EXPORT_C_FUNC LONG WINAPI DetourDetach(PVOID *ppPointer,
+INJECTBASE_API LONG WINAPI DetourDetach(PVOID *ppPointer,
                          PVOID pDetour);
 
-EXPORT_C_FUNC BOOL WINAPI DetourUpdateProcessWithDll(HANDLE hProcess, LPCSTR *plpDlls, DWORD nDlls);
+INJECTBASE_API BOOL WINAPI DetourUpdateProcessWithDll(HANDLE hProcess, LPCSTR *plpDlls, DWORD nDlls);
 
 BOOL WINAPI DetourSetIgnoreTooSmall(BOOL fIgnore);
 BOOL WINAPI DetourSetRetainRegions(BOOL fRetain);
@@ -427,7 +427,7 @@ BOOL WINAPI DetourProcessViaHelperW(DWORD dwTargetPid,
 #define DetourProcessViaHelper          DetourProcessViaHelperA
 #endif // !UNICODE
 
-EXPORT_C_FUNC BOOL WINAPI DetourUpdateProcessWithDll(HANDLE hProcess,
+INJECTBASE_API BOOL WINAPI DetourUpdateProcessWithDll(HANDLE hProcess,
                                        LPCSTR *plpDlls,
                                        DWORD nDlls);
 

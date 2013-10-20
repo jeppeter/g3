@@ -4,12 +4,12 @@
 #include <Windows.h>
 
 #ifdef INJECTBASE_EXPORTS
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC   EXTERN_C __declspec(dllexport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API   extern "C" __declspec(dllexport)
 #endif
 #else   /*INJECTBASE_EXPORTS*/
-#ifndef EXPORT_C_FUNC
-#define   EXPORT_C_FUNC  EXTERN_C __declspec(dllimport)
+#ifndef INJECTBASE_API
+#define   INJECTBASE_API  extern "C" __declspec(dllimport)
 #endif
 #endif   /*INJECTBASE_EXPORTS*/
 
@@ -20,7 +20,7 @@
 *    return value success >= 0 number of bytes in *ppChar
 *    otherwise negative error code
 **********************************************************/
-EXPORT_C_FUNC int UnicodeToAnsi(wchar_t* pWideChar,char** ppChar,int*pCharSize);
+INJECTBASE_API int UnicodeToAnsi(wchar_t* pWideChar,char** ppChar,int*pCharSize);
 
 /**********************************************************
 *    if pChar==NULL  will reset *ppWideChar=NULL and free memory
@@ -28,6 +28,6 @@ EXPORT_C_FUNC int UnicodeToAnsi(wchar_t* pWideChar,char** ppChar,int*pCharSize);
 *    return value success >= 0 number of bytes in *ppWideChar
 *    otherwise negative error code
 **********************************************************/
-EXPORT_C_FUNC int AnsiToUnicode(char* pChar,wchar_t **pWideChar,int*pWideCharSize);
+INJECTBASE_API int AnsiToUnicode(char* pChar,wchar_t **pWideChar,int*pWideCharSize);
 
 #endif /*__UNI_ANSI_H__*/
