@@ -2,7 +2,7 @@
 #ifndef  __INJECT_BASE_H__
 #define  __INJECT_BASE_H__
 
-
+#include <Windows.h>
 
 #ifdef INJECTBASE_EXPORTS
 #ifndef INJECTBASE_API
@@ -24,6 +24,11 @@
 #include <procex.h>
 #include <timeticks.h>
 
+
+INJECTBASE_API int InsertModuleFileName(HMODULE hModule);
+
+int InjectBaseModuleInit(HMODULE hModule);
+void InjectBaseModuleFini(HMODULE hModule);
 
 
 #endif /*__INJECT_BASE_H__*/

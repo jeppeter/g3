@@ -9,6 +9,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imgcapinject", "imgcapinjec
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pcmcapinject", "pcmcapinject\pcmcapinject.vcxproj", "{57387B3E-9093-4DC7-9919-F4B764DA518E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{487A58BC-188B-4115-9E2F-83C80E20D0D4} = {487A58BC-188B-4115-9E2F-83C80E20D0D4}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
