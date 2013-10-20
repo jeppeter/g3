@@ -10,12 +10,12 @@
 
 #include <pcmcap_common.h>
 #ifdef PCMCAPINJECT_EXPORTS
-#define PCMCAPINJECT_API __declspec(dllexport)
+#define PCMCAPINJECT_API extern "C" __declspec(dllexport)
 #else
-#define PCMCAPINJECT_API __declspec(dllimport)
+#define PCMCAPINJECT_API extern "C" __declspec(dllimport)
 #endif
 
-extern "C" PCMCAPINJECT_API int HandleAudioOperation(PCMCAP_CONTROL_t* pControl);
+PCMCAPINJECT_API int HandleAudioOperation(PCMCAP_CONTROL_t* pControl);
 extern "C" int PcmCapInjectInit(HMODULE hModule);
 extern "C" void PcmCapInjectFini(void);
 
