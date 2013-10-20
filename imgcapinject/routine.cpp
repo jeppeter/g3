@@ -6,6 +6,7 @@ x509\routin.cpp
 
 *************************************************************************/
 #include <Windows.h>
+#include "routine.h"
 #include <vector>
 #include <assert.h>
 #include <TlHelp32.h>
