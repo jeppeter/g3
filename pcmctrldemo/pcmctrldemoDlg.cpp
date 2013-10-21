@@ -11,6 +11,11 @@
 #define new DEBUG_NEW
 #endif
 
+#ifdef _DEBUG
+#pragma comment(lib,"injectctrld.lib")
+#else
+#pragma comment(lib,"injectctrl.lib")
+#endif
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
