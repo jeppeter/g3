@@ -6,15 +6,25 @@
 #include "pcmctrldemo.h"
 #include "pcmctrldemoDlg.h"
 #include "afxdialogex.h"
+#include <output_debug.h>
+#include <uniansi.h>
+#include <dllinsert.h>
+#include <sched.h>
+#include <procex.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
+#define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
+
+
 #ifdef _DEBUG
 #pragma comment(lib,"injectctrld.lib")
+#pragma comment(lib,"pcmcapctrld.lib")
 #else
 #pragma comment(lib,"injectctrl.lib")
+#pragma comment(lib,"pcmcapctrl.lib")
 #endif
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
@@ -57,7 +67,12 @@ CpcmctrldemoDlg::CpcmctrldemoDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CpcmctrldemoDlg::IDD, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+    m_pCapper = NULL;
+    m_pDemoCallBack = NULL;
+    m_hProc = NULL;
 }
+
+
 
 void CpcmctrldemoDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -68,6 +83,12 @@ BEGIN_MESSAGE_MAP(CpcmctrldemoDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+    ON_BN_CLICKED(IDC_BTN_EXE,OnBtnExe)
+    ON_BN_CLICKED(IDC_BTN_DLL,OnBtnDll)
+    ON_BN_CLICKED(IDC_BTN_DUMP,OnBtnDump)
+    ON_BN_CLICKED(IDC_BTN_START,OnBtnStart)
+    ON_BN_CLICKED(IDC_CHK_RENDER, OnCheckBoxClick)
+    ON_BN_CLICKED(IDC_CHK_CAPTURE,OnCheckBoxClick)
 END_MESSAGE_MAP()
 
 
@@ -75,6 +96,9 @@ END_MESSAGE_MAP()
 
 BOOL CpcmctrldemoDlg::OnInitDialog()
 {
+    CButton* pCheck=NULL;
+    CEdit* pEdt=NULL;
+    CString fstr;
 	CDialogEx::OnInitDialog();
 
 	// 将“关于...”菜单项添加到系统菜单中。
@@ -103,6 +127,17 @@ BOOL CpcmctrldemoDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+    pCheck = (CButton*)this->GetDlgItem(IDC_CHK_RENDER);
+    pCheck->SetCheck(0);
+    pCheck = (CButton*)this->GetDlgItem(IDC_CHK_CAPTURE);
+    pCheck->SetCheck(1);
+
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_BUFNUM);
+    fstr.Format(TEXT("%d"),10);
+    pEdt->SetWindowText(fstr);
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_BLOCKSIZE);
+    fstr.Format(TEXT("%d"),10240);
+    pEdt->SetWindowText(fstr);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -155,4 +190,477 @@ HCURSOR CpcmctrldemoDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
 }
+
+
+void CpcmctrldemoDlg::OnCheckBoxClick()
+{
+    CButton* pCheck=NULL;
+    int renderchk=0,capturechk=0;
+    int iOperation=PCMCAPPER_OPERATION_NONE;
+    BOOL bret;
+    int ret;
+    CString errstr;
+    if(this->m_pCapper == NULL || this->m_pDemoCallBack == NULL || this->m_hProc == NULL)
+    {
+        return ;
+    }
+
+    pCheck = (CButton*)this->GetDlgItem(IDC_CHK_RENDER);
+    renderchk = pCheck->GetCheck();
+    pCheck = (CButton*)this->GetDlgItem(IDC_CHK_CAPTURE);
+    capturechk = pCheck->GetCheck();
+
+    if(renderchk ==0 && capturechk == 0)
+    {
+        iOperation = PCMCAPPER_OPERATION_NONE;
+    }
+    else if(renderchk == 0 && capturechk)
+    {
+        iOperation = PCMCAPPER_OPERATION_CAPTURE;
+    }
+    else if(renderchk  && capturechk == 0)
+    {
+        iOperation = PCMCAPPER_OPERATION_RENDER;
+    }
+    else
+    {
+        iOperation = PCMCAPPER_OPERATION_BOTH;
+    }
+
+    bret = this->m_pCapper->SetAudioOperation(PCMCAPPER_OPERATION_NONE);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("could not set PCMCAPPER_OPERATION_NONE error(%d)"),ret);
+        this->StopCapper();
+        AfxMessageBox(errstr);
+        return;
+    }
+
+    bret = this->m_pCapper->SetAudioOperation(iOperation);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        switch(iOperation)
+        {
+        case PCMCAPPER_OPERATION_NONE:
+            errstr.Format(TEXT("set operation none error(%d)"),ret);
+            break;
+        case PCMCAPPER_OPERATION_CAPTURE:
+            errstr.Format(TEXT("set operation cature error(%d)"),ret);
+            break;
+        case PCMCAPPER_OPERATION_RENDER:
+            errstr.Format(TEXT("set operation render error(%d)"),ret);
+            break;
+        case PCMCAPPER_OPERATION_BOTH:
+            errstr.Format(TEXT("set operation both error(%d)"),ret);
+            break;
+        default:
+            errstr.Format(TEXT("set operation (%d) error(%d)"),iOperation,ret);
+            break;
+        }
+        this->StopCapper();
+        AfxMessageBox(errstr);
+        return;
+    }
+
+    return ;
+}
+
+
+void CpcmctrldemoDlg::StartCapper()
+{
+    char *pExecAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL,*pDumpAnsi=NULL,*pBufNumAnsi=NULL,*pBlockSizeAnsi=NULL;
+    char *pPartDllAnsi=NULL;
+    char *pFullExecName=NULL;
+    int fullexecnamesize=0;
+    int rendercheck=0,capturecheck=0;
+    DWORD processid=0;
+#ifdef _UNICODE
+    int execansisize=0,dllansisize=0,paramansisize=0,dumpansisize=0,bufnumansisize=0,blocksizeansisize=0;
+#endif
+    int ret;
+    CEdit* pEdt=NULL;
+    CString errstr;
+    CButton* pCheck=NULL;
+    int iOperation=PCMCAP_AUDIO_NONE;
+    int bufnum,blocksize;
+    unsigned int i;
+    unsigned int *pInsertProcessId=NULL;
+    int insertprocsize=0;
+	unsigned int insertprocnum=0;
+
+
+    DEBUG_INFO("\n");
+
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_EXE);
+    pEdt->GetWindowText(this->m_strExec);
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_PARAMETER);
+    pEdt->GetWindowText(this->m_strParam);
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_DLL);
+    pEdt->GetWindowText(this->m_strDll);
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_DUMP);
+    pEdt->GetWindowText(this->m_strDump);
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_BUFNUM);
+    pEdt->GetWindowText(this->m_strBufNum);
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_BLOCKSIZE);
+    pEdt->GetWindowText(this->m_strBlockSize);
+
+
+#ifdef _UNICODE
+    ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)this->m_strExec),&pExecAnsi,&execansisize);
+    if(ret < 0)
+    {
+        errstr.Format(TEXT("can not Get exec string"));
+        goto free_release;
+    }
+
+    ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)this->m_strParam),&pParamAnsi,&paramansisize);
+    if(ret < 0)
+    {
+        errstr.Format(TEXT("can not get param string"));
+        goto free_release;
+    }
+
+    ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)this->m_strDll),&pDllAnsi,&dllansisize);
+    if(ret < 0)
+    {
+        errstr.Format(TEXT("can not get dll string"));
+        goto free_release;
+    }
+
+    ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)this->m_strDump),&pDumpAnsi,&dumpansisize);
+    if(ret < 0)
+    {
+        errstr.Format(TEXT("can not get dump string"));
+        goto free_release;
+    }
+
+    ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)this->m_strBufNum),&pBufNumAnsi,&bufnumansisize);
+    if(ret < 0)
+    {
+        errstr.Format(TEXT("can not get bufnum string"));
+        goto free_release;
+    }
+
+    ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)this->m_strBlockSize),&pBlockSizeAnsi,&blocksizeansisize);
+    if(ret < 0)
+    {
+        errstr.Format(TEXT("can not get blocksize string"));
+        goto free_release;
+    }
+
+#else
+    pExecAnsi = (const char*) this->m_strExec;
+    pDllAnsi = (const char*) this->m_strDll;
+    pParamAnsi = (const char*) this->m_strParam;
+    pDumpAnsi = (const char*) this->m_strDump;
+    pBufNumAnsi = (const char*)this->m_strBufNum;
+    pBlockSizeAnsi = (const char*) this->m_strBlockSize;
+#endif
+
+    DEBUG_INFO("\n");
+
+    pCheck = (CButton*)this->GetDlgItem(IDC_CHK_RENDER);
+    rendercheck = pCheck->GetCheck();
+    pCheck = (CButton*)this->GetDlgItem(IDC_CHK_CAPTURE);
+    capturecheck = pCheck->GetCheck();
+
+    DEBUG_INFO("\n");
+    if(strlen(pExecAnsi) < 1 || strlen(pDllAnsi) < 1)
+    {
+        errstr.Format(TEXT("must specify execname and dllname"));
+        goto free_release;
+    }
+
+    DEBUG_INFO("\n");
+
+    bufnum = atoi(pBufNumAnsi);
+    blocksize = atoi(pBlockSizeAnsi);
+    if(bufnum < 1 || blocksize < 0x1000)
+    {
+        errstr.Format(TEXT("bufnum %d < 1 or blocksize %d < 0x1000"),bufnum,blocksize);
+        goto free_release;
+    }
+    DEBUG_INFO("\n");
+
+    pPartDllAnsi = strrchr(pDllAnsi,'\\');
+    if(pPartDllAnsi == NULL)
+    {
+        pPartDllAnsi = pDllAnsi;
+    }
+    else
+    {
+        pPartDllAnsi ++ ;
+    }
+
+    DEBUG_INFO("DllAnsi %s PartDllAnsi %s\n",pDllAnsi,pPartDllAnsi);
+    /**/
+    fullexecnamesize =strlen(pExecAnsi) + 1;
+    if(strlen(pParamAnsi))
+    {
+        fullexecnamesize += strlen(pParamAnsi) + 3;
+    }
+
+    pFullExecName = new char[fullexecnamesize];
+    DEBUG_INFO("\n");
+
+    if(strlen(pParamAnsi))
+    {
+        _snprintf_s(pFullExecName,fullexecnamesize,_TRUNCATE,"%s %s",pExecAnsi,pParamAnsi);
+    }
+    else
+    {
+        _snprintf_s(pFullExecName,fullexecnamesize,_TRUNCATE,"%s",pExecAnsi);
+    }
+    DEBUG_INFO("\n");
+
+
+    ret = LoadInsert(NULL,pFullExecName,pDllAnsi,pPartDllAnsi);
+    DEBUG_INFO("LoadInsert ret %d\n",ret);
+    if(ret < 0)
+    {
+        errstr.Format(TEXT("could not run (%s) error(%d) with dll(%s) part(%s)"),pFullExecName,ret,
+                      pDllAnsi,pPartDllAnsi);
+        goto free_release;
+    }
+    DEBUG_INFO("\n");
+
+
+    for(i=0; i<100; i++)
+    {
+        SchedOut();
+    }
+
+    ret = GetModuleInsertedProcess(pPartDllAnsi,&pInsertProcessId,&insertprocsize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("could not get (%s) inserted process error(%d)"),pPartDllAnsi,ret);
+        goto fail;
+    }
+
+    /*now we should */
+    insertprocnum = ret;
+
+    for(i=0; i<insertprocnum; i++)
+    {
+        ret = this->StartProcessCapper(pInsertProcessId[i],rendercheck,capturecheck,bufnum,blocksize,pDumpAnsi);
+        if(ret >= 0)
+        {
+            break;
+        }
+    }
+
+    if(i >= insertprocnum)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("could not start capper for insert (%S:%S)(num:%d) error(%d)\n"),pDllAnsi,pPartDllAnsi,insertprocnum,ret);
+        goto fail;
+    }
+
+
+    /*ok all is ok*/
+    DEBUG_INFO("\n");
+
+
+#ifdef _UNICODE
+    UnicodeToAnsi(NULL,&pExecAnsi,&execansisize);
+    UnicodeToAnsi(NULL,&pDllAnsi,&dllansisize);
+    UnicodeToAnsi(NULL,&pParamAnsi,&paramansisize);
+    UnicodeToAnsi(NULL,&pDumpAnsi,&dumpansisize);
+    UnicodeToAnsi(NULL,&pBufNumAnsi,&bufnumansisize);
+    UnicodeToAnsi(NULL,&pBlockSizeAnsi,&blocksizeansisize);
+#endif
+    if(pFullExecName)
+    {
+        delete [] pFullExecName;
+    }
+    pFullExecName = NULL;
+
+    if(pInsertProcessId)
+    {
+        free(pInsertProcessId);
+    }
+    pInsertProcessId = NULL;
+    insertprocnum =0;
+    insertprocsize = 0;
+
+    return ;
+
+fail:
+    this->StopCapper();
+free_release:
+#ifdef _UNICODE
+    UnicodeToAnsi(NULL,&pExecAnsi,&execansisize);
+    UnicodeToAnsi(NULL,&pDllAnsi,&dllansisize);
+    UnicodeToAnsi(NULL,&pParamAnsi,&paramansisize);
+    UnicodeToAnsi(NULL,&pDumpAnsi,&dumpansisize);
+    UnicodeToAnsi(NULL,&pBufNumAnsi,&bufnumansisize);
+    UnicodeToAnsi(NULL,&pBlockSizeAnsi,&blocksizeansisize);
+#endif
+    if(pFullExecName)
+    {
+        delete [] pFullExecName;
+    }
+    pFullExecName = NULL;
+
+    if(pInsertProcessId)
+    {
+        free(pInsertProcessId);
+    }
+    pInsertProcessId = NULL;
+    insertprocnum =0;
+    insertprocsize = 0;
+    AfxMessageBox(errstr);
+
+    return;
+
+}
+
+int CpcmctrldemoDlg::StartProcessCapper(unsigned int procid,int rendercheck,int capturecheck,int bufnum,int blocksize,const char * pDumpAnsi)
+{
+    int ret;
+    CString errstr;
+    int iOperation = PCMCAP_AUDIO_NONE;
+    BOOL bret;
+    this->StopCapper();
+
+    this->m_hProc = OpenProcess(PROCESS_VM_OPERATION |PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD ,FALSE,procid);
+    if(this->m_hProc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("could not open process(%d) error(%d)"),procid,ret);
+        ERROR_INFO("could not open process(%d) error(%d)",procid,ret);
+        goto fail;
+    }
+    DEBUG_INFO("\n");
+
+
+    /*now to get the text  */
+    this->m_pCapper = new CPcmCapper();
+    this->m_pDemoCallBack = new CPcmCapDemoCallBack();
+
+    DEBUG_INFO("\n");
+    /*now to make the dump file*/
+    if(strlen(pDumpAnsi) > 0)
+    {
+        ret = this->m_pDemoCallBack->OpenFile(pDumpAnsi);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            errstr.Format(TEXT("can not open (%s) error(%d)"),pDumpAnsi,ret);
+            ERROR_INFO("can not open (%s) error(%d)",pDumpAnsi,ret);
+            goto fail;
+        }
+    }
+
+    DEBUG_INFO("\n");
+    if(rendercheck == 0 && capturecheck == 0)
+    {
+        iOperation = PCMCAP_AUDIO_NONE;
+    }
+    else if(rendercheck == 0 && capturecheck)
+    {
+        iOperation = PCMCAP_AUDIO_CAPTURE;
+    }
+    else if(rendercheck  && capturecheck == 0)
+    {
+        iOperation = PCMCAP_AUDIO_RENDER;
+    }
+    else
+    {
+        iOperation = PCMCAP_AUDIO_BOTH;
+    }
+
+    /*now to create the process*/
+    DEBUG_INFO("\n");
+
+
+    bret= this->m_pCapper->Start(this->m_hProc,iOperation,bufnum,blocksize,this->m_pDemoCallBack,NULL);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("could not start %d operation error(%d)"),iOperation,ret);
+        ERROR_INFO("could not start %d operation error(%d)",iOperation,ret);
+        goto fail;
+    }
+
+    return 0;
+
+fail:
+    this->StopCapper();
+    SetLastError(ret);
+    return ret;
+}
+
+void CpcmctrldemoDlg::StopCapper()
+{
+    if(this->m_pCapper)
+    {
+        delete this->m_pCapper;
+    }
+    this->m_pCapper = NULL;
+
+    if(this->m_pDemoCallBack)
+    {
+        delete this->m_pDemoCallBack;
+    }
+    this->m_pDemoCallBack = NULL;
+    if(this->m_hProc)
+    {
+        CloseHandle(this->m_hProc);
+    }
+    this->m_hProc = NULL;
+    return ;
+}
+
+void CpcmctrldemoDlg::OnBtnExe()
+{
+    CFileDialog fdlg(TRUE,NULL,NULL,OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_READONLY,
+                     TEXT("execute files (*.exe)|*.exe||"),NULL);
+    CString fname;
+    CEdit* pEdt=NULL;
+    if(fdlg.DoModal() == IDOK)
+    {
+        fname = fdlg.GetPathName();
+        pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_EXE);
+        pEdt->SetWindowText(fname);
+    }
+}
+
+void CpcmctrldemoDlg::OnBtnDll()
+{
+    CFileDialog fdlg(TRUE,NULL,NULL,OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_READONLY,
+                     TEXT("dynamic link library files (*.dll)|*.dll||"),NULL);
+    CString fname;
+    CEdit* pEdt=NULL;
+    if(fdlg.DoModal() == IDOK)
+    {
+        fname = fdlg.GetPathName();
+        pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_DLL);
+        pEdt->SetWindowText(fname);
+    }
+}
+
+void CpcmctrldemoDlg::OnBtnDump()
+{
+    CFileDialog fdlg(TRUE,NULL,NULL,0,
+                     TEXT("pcm files (*.pcm)|*.pcm||"),NULL);
+    CString fname;
+    CEdit* pEdt=NULL;
+    if(fdlg.DoModal() == IDOK)
+    {
+        fname = fdlg.GetPathName();
+        pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_DUMP);
+        pEdt->SetWindowText(fname);
+    }
+}
+
+void CpcmctrldemoDlg::OnBtnStart()
+{
+    this->StartCapper();
+}
+
+
 
