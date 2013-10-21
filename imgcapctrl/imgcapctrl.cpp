@@ -132,7 +132,7 @@ remark :
              and the format will give
 
 ******************************************/
-int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * data, int len, int * format, int * width, int * height)
+extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * data, int len, int * format, int * width, int * height)
 {
     int ret;
     char* pDllStripName=NULL;
