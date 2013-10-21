@@ -4878,6 +4878,7 @@ int CaptureBufferDX11(capture_buffer_t* pCapture)
 		ret = GrabD11Context(idx,&pSwapChain,&pDevice,&pContext,1000);
 		if (ret < 0)
 		{
+			ret = LAST_ERROR_RETURN();
 			goto fail;
 		}
 		else if (ret == 0)
