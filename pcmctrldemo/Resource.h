@@ -7,6 +7,23 @@
 #define IDD_ABOUTBOX					100
 #define IDS_ABOUTBOX					101
 #define IDD_PCMCTRLDEMO_DIALOG				102
+#define IDC_BTN_START                   1000
+#define IDC_STC_PARAMETER               1003
+#define IDC_EDT_EXE                     1004
+#define IDC_EDT_PARAMETER               1005
+#define IDC_EDT_DLL                     1006
+#define IDC_BTN_EXE                     1007
+#define IDC_BTN_DLL                     1008
+#define IDC_CHK_RENDER                  1009
+#define IDC_CHK_RENDER2                 1010
+#define IDC_CHK_CAPTURE                 1010
+#define IDC_BTN_DUMP                    1011
+#define IDC_EDT_DUMP                    1012
+#define IDC_STC_BUFNUM                  1013
+#define IDC_STC_BLOCKSIZE               1014
+#define IDC_EDT_BUFNUM                  1015
+#define IDC_EDT_BUFNUM2                 1016
+#define IDC_EDT_BLOCKSIZE               1016
 
 // 新对象的下一组默认值
 //
