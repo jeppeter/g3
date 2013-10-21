@@ -11,6 +11,8 @@
 #ifndef _DETOURS_H_
 #define _DETOURS_H_
 
+#include <output_debug.h>
+
 #define DETOURS_VERSION     30000   // 3.00.00
 
 
@@ -516,8 +518,9 @@ PDETOUR_SYM_INFO DetourLoadDbgHelp(VOID);
 
 #endif // IMAGEAPI
 
-#undef DETOUR_TRACE
-
+#undef  DETOUR_TRACE
+#define DETOUR_TRACE(x)  DEBUG_INFO x
+#define DETOUR_BREAK()  __debugbreak()
 
 #ifndef DETOUR_TRACE
 #if DETOUR_DEBUG

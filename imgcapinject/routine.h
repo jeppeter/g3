@@ -8,6 +8,8 @@ x509\routin.h
 
 #pragma once
 
+#include <Windows.h>
+
 #ifdef IMGCAPINJECT_EXPORTS
 #ifndef IMGCAPINJECT_API
 #define IMGCAPINJECT_API  extern "C" __declspec(dllexport)
@@ -18,7 +20,7 @@ x509\routin.h
 #endif
 #endif /*IMGCAPINJECT_EXPORTS*/
 
-int Routine();
+int Routine(HMODULE hModule);
 int Cleanup();
 
 

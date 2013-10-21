@@ -4059,6 +4059,7 @@ int RoutineDetourD11(void)
 {
     int ret;
 
+	DEBUG_INFO("Initialize RoutineD11\n");
     ret = InitializeD11Environment();
     if(ret < 0)
     {
@@ -4882,6 +4883,7 @@ int CaptureBufferDX11(capture_buffer_t* pCapture)
         if(ret < 0)
         {
             ret = LAST_ERROR_RETURN();
+			DEBUG_INFO("[%d]ret %d\n",idx,ret);
             goto fail;
         }
         else if(ret == 0)
@@ -4893,12 +4895,16 @@ int CaptureBufferDX11(capture_buffer_t* pCapture)
             continue;
         }
 
+		DEBUG_INFO("get[%d]\n",idx);
         ret = __CaptureBufferDX11(pDevice,pContext,pSwapChain,hRemoteProc,pCapture->m_Data,pCapture->m_DataLen,&(pCapture->m_Format),&(pCapture->m_Width),&(pCapture->m_Height));
         if(ret >= 0)
         {
             getlen = ret;
+            DEBUG_INFO("getlen %d\n",getlen);
             break;
         }
+
+		DEBUG_INFO("ret %d\n",ret);
 
 
 

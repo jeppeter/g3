@@ -2014,11 +2014,11 @@ int InitializeHook(void)
     return 0;
 }
 
-int Routine()
+int Routine(HMODULE hModule)
 {
-
-    InitializeHook();
+	DEBUG_INFO("Initialize Routine");
     InitializeEnviron();
+    InitializeHook();
     RoutineDetourD11();
     return 0;
 }
@@ -2489,9 +2489,11 @@ void* CaptureBuffer(capture_buffer_t *pCapture)
     ret = CaptureBufferDX9(pCapture);
     if(ret >= 0)
     {
+    	DEBUG_INFO("\n");
         return (void*) ret;
     }
 
+	DEBUG_INFO("\n");
     ret = CaptureBufferDX11(pCapture);
     return (void*)ret;
 }
