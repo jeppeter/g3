@@ -67,7 +67,7 @@ BOOL CPcmCapper::__SetOperationInner(PCMCAP_CONTROL_t * pControl,DWORD *pRetCode
 
     pControl->m_Timeout = timeout;
     /*now to call the */
-    ret = __GetRemoteProcAddress(this->m_ProcessId,PCMCAP_DLL_NAME,PCMCAP_SET_OPERATION_FUNC_NAME,&pRemoteFunc);
+    ret = GetRemoteProcAddress(this->m_ProcessId,PCMCAP_DLL_NAME,PCMCAP_SET_OPERATION_FUNC_NAME,&pRemoteFunc);
     if(ret < 0)
     {
         ret = -ret;

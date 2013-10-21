@@ -13,18 +13,18 @@ typedef unsigned long ptr_type_t;
 
 typedef struct
 {
+	int m_Pointer;
     int m_DataLen;
     int m_DataSize;
     unsigned char m_Data[4];
 } PCM_AUDIO_DATA_t;
 
+#define  FORMAT_EXTEND_SIZE   128
+
 typedef struct
 {
-    int m_Format;
-    int m_Channels;
-    int m_SampleRate;
-    int m_BitsPerSample;
-    float m_Volume;
+	float m_Volume;
+	unsigned char m_Format[FORMAT_EXTEND_SIZE];
 } PCM_AUDIO_FORMAT_t;
 
 typedef struct
@@ -37,23 +37,6 @@ typedef struct
 #define  PCMCAP_AUDIO_CAPTURE          1
 #define  PCMCAP_AUDIO_RENDER           2
 #define  PCMCAP_AUDIO_BOTH             3
-
-enum AVSampleFormat {
-    AV_SAMPLE_FMT_NONE = -1,
-    AV_SAMPLE_FMT_U8,          ///< unsigned 8 bits
-    AV_SAMPLE_FMT_S16,         ///< signed 16 bits
-    AV_SAMPLE_FMT_S32,         ///< signed 32 bits
-    AV_SAMPLE_FMT_FLT,         ///< float
-    AV_SAMPLE_FMT_DBL,         ///< double
-
-    AV_SAMPLE_FMT_U8P,         ///< unsigned 8 bits, planar
-    AV_SAMPLE_FMT_S16P,        ///< signed 16 bits, planar
-    AV_SAMPLE_FMT_S32P,        ///< signed 32 bits, planar
-    AV_SAMPLE_FMT_FLTP,        ///< float, planar
-    AV_SAMPLE_FMT_DBLP,        ///< double, planar
-
-    AV_SAMPLE_FMT_NB           ///< Number of sample formats. DO NOT USE if linking dynamically
-};
 
 
 

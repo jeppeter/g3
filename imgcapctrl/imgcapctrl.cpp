@@ -1,4 +1,11 @@
 
+#include <dllinsert.h>
+#include <detours/detours.h>
+#include <capture.h>
+#include <output_debug.h>
+
+#define LAST_ERROR_RETURN()  ((int)(GetLastError() ? GetLastError() : 1))
+
 
 extern "C" int CaptureFile(DWORD processid,const char* pDllName,const char* pFuncName,const char* bmpfile)
 {

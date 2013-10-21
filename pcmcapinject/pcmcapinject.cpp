@@ -1,6 +1,7 @@
 // pcmcapinject.cpp : 定义 DLL 应用程序的导出函数。
 //
 
+#include "stdafx.h"
 #include "pcmcapinject.h"
 #include <assert.h>
 #include <Mmreg.h>
@@ -18,11 +19,14 @@
 #include <uniansi.h>
 #include <injectbase.h>
 
+
 #ifdef _DEBUG
 #pragma comment(lib,"injectbased.lib")
 #else
 #pragma comment(lib,"injectbase.lib")
 #endif
+
+#pragma comment(lib,"psapi.lib")
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 
@@ -2466,6 +2470,15 @@ static int DetourEnumeratorVirtFunctions(IMMDeviceEnumerator* pEnumerator)
 }
 
 
+LONG WINAPI DetourApplicationCrashHandler(EXCEPTION_POINTERS *pException)
+{
+    StackWalker sw;
+    EXCEPTION_RECORD *xr = pException->ExceptionRecord;
+    CONTEXT *xc = pException->ContextRecord;
+    DEBUG_INFO("Eip 0x%08x\n",xc->Eip);
+    sw.ShowCallstack(GetCurrentThread(), pException->ContextRecord,NULL,NULL);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
 
 
 
@@ -2486,6 +2499,7 @@ HRESULT WINAPI  CoCreateInstanceCallBack(
 )
 {
     HRESULT hr;
+    SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
     hr = CoCreateInstanceNext(rclsid,
                               pUnkOuter,dwClsContext,riid,ppv);
     if(SUCCEEDED(hr))
@@ -2565,6 +2579,7 @@ int PcmCapInjectInit(HMODULE hModule)
         return 0;
     }
 
+
     ret = InsertModuleFileName(hModule);
     if(ret < 0)
     {
@@ -2578,6 +2593,7 @@ int PcmCapInjectInit(HMODULE hModule)
         return 0;
     }
     DEBUG_INFO("\n");
+    SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
 
     st_PcmCapInited = 1;
     DEBUG_INFO("Init PcmCapInject succ\n");

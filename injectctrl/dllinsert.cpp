@@ -7,7 +7,6 @@
 #include <TlHelp32.h>
 #include <assert.h>
 #include "output_debug.h"
-//#include "capture.h"
 
 #define LAST_ERROR_RETURN()  ((int)(GetLastError() ? GetLastError() : 1))
 
@@ -693,7 +692,7 @@ int TimeExpire(ULONGLONG ctime,ULONGLONG etime)
 
 #define  BIT32_MASK  0xffffffff
 
-ULONGLONG GetCurrentTime(ULONGLONG *pCtime)
+ULONGLONG GetCurrentTick(ULONGLONG *pCtime)
 {
     ULONGLONG ctime = GetTickCount() & BIT32_MASK;
     ULONGLONG lastltime = *pCtime & BIT32_MASK;
@@ -831,7 +830,7 @@ extern "C" int CallRemoteFunc(unsigned int processid,void* pFnAddr,const char* p
             DEBUG_INFO("wait error %d\n",ret);
             goto fail;
         }
-        GetCurrentTime(&ctime);
+        GetCurrentTick(&ctime);
     }
 
     if(ctime >= etime && timeout > 0)
@@ -893,32 +892,6 @@ fail:
 }
 
 
-extern "C" int CaptureFile(DWORD processid,const char* pDllName,const char* pFuncName,const char* bmpfile)
-{
-    int ret;
-    PVOID pFnAddr=NULL;
-    PVOID pRetVal;
-
-    ret = GetRemoteProcAddress(processid,pDllName,pFuncName,&pFnAddr);
-    if(ret < 0)
-    {
-        return ret;
-    }
-
-    ret = CallRemoteFunc(processid,pFnAddr,bmpfile,0,&pRetVal);
-    if(ret < 0)
-    {
-        return ret;
-    }
-
-    ret = (int)pRetVal;
-    if(ret != 0)
-    {
-        ret = ret > 0 ? 0 : ret;
-    }
-
-    return ret;
-}
 
 
 
