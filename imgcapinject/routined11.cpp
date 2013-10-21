@@ -98,6 +98,7 @@ static int UnRegisterAllD11Pointers(void)
         {
             idx = st_D11PointersVec.size();
             idx --;
+            DEBUG_INFO("[%d]pPointer 0x%p\n",idx,pPointer);
             pPointer = st_D11PointersVec[idx];
             if(pPointer->m_DeviceState == POINTER_STATE_FREE &&
                     pPointer->m_DeviceContextState == POINTER_STATE_FREE &&
@@ -210,6 +211,7 @@ static int UnRegisterAllD11Pointers(void)
             {
                 count ++;
                 pPointer = Pointers[0];
+                DEBUG_INFO("[%d] pointer 0x%p\n",Pointers.size(),pPointer);
                 Pointers.erase(Pointers.begin());
                 delete pPointer;
                 pPointer = NULL;
@@ -217,10 +219,11 @@ static int UnRegisterAllD11Pointers(void)
         }
         else
         {
+            DEBUG_INFO("pPointer 0x%p\n",pPointer);
             assert(pFreeSwapChain == NULL);
             assert(pFreeDevice == NULL);
             assert(pFreeDeviceContext == NULL);
-            assert(pPointer = NULL);
+            assert(pPointer == NULL);
             assert(pCurPointer == NULL);
         }
 
@@ -4770,12 +4773,12 @@ int __CaptureBufferDX11(ID3D11Device *pDevice,ID3D11DeviceContext* pContext,IDXG
     mapped = 1;
 
     rgbabuflen = (StagingDesc.Width << 2) * StagingDesc.Height;
-	DEBUG_INFO("rgbabuflen 0x%x remotelen 0x%x\n",rgbabuflen,remotelen);
+    DEBUG_INFO("rgbabuflen 0x%x remotelen 0x%x\n",rgbabuflen,remotelen);
 
     if(rgbabuflen > remotelen)
     {
         ret = ERROR_INSUFFICIENT_BUFFER;
-		DEBUG_INFO("rgbabuflen %d > remotelen %d\n",rgbabuflen,remotelen);
+        DEBUG_INFO("rgbabuflen %d > remotelen %d\n",rgbabuflen,remotelen);
         goto fail;
     }
 
@@ -4787,13 +4790,13 @@ int __CaptureBufferDX11(ID3D11Device *pDevice,ID3D11DeviceContext* pContext,IDXG
         if(!bret)
         {
             ret = LAST_ERROR_RETURN();
-			ERROR_INFO("remote hRemoteProc (0x%08x ) addr 0x%p size(0x%x) error %d\n",
-				hRemoteProc,(LPVOID)((unsigned long)pRemoteAddr + writelen),(rgbabuflen-writelen),ret);
+            ERROR_INFO("remote hRemoteProc (0x%08x ) addr 0x%p size(0x%x) error %d\n",
+                       hRemoteProc,(LPVOID)((unsigned long)pRemoteAddr + writelen),(rgbabuflen-writelen),ret);
             goto fail;
         }
         writelen += curret;
     }
-	DEBUG_INFO("rgbabuflen %d\n",rgbabuflen);
+    DEBUG_INFO("rgbabuflen %d\n",rgbabuflen);
 
 
     /*unmap as quickly as we can*/
@@ -4854,109 +4857,109 @@ extern "C" int CaptureBufferDX11(capture_buffer_t* pCapture);
 
 int CaptureBufferDX11(capture_buffer_t* pCapture)
 {
-	int idx=0,res;
-	ID3D11Device *pDevice=NULL;
-	ID3D11DeviceContext* pContext=NULL;
-	IDXGISwapChain* pSwapChain=NULL;
-	int ret;
-	HANDLE hRemoteProc=NULL;
-	int getlen=0;
+    int idx=0,res;
+    ID3D11Device *pDevice=NULL;
+    ID3D11DeviceContext* pContext=NULL;
+    IDXGISwapChain* pSwapChain=NULL;
+    int ret;
+    HANDLE hRemoteProc=NULL;
+    int getlen=0;
 
-	hRemoteProc = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION ,FALSE,pCapture->m_Processid);
-	if (hRemoteProc == NULL)
-	{
-		ret = LAST_ERROR_RETURN();
-		goto fail;
-	}
+    hRemoteProc = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION ,FALSE,pCapture->m_Processid);
+    if(hRemoteProc == NULL)
+    {
+        ret = LAST_ERROR_RETURN();
+        goto fail;
+    }
 
-	idx = 0;
-	while(1)
-	{
-		assert(pDevice==NULL);
-		assert(pContext == NULL);
-		assert(pSwapChain == NULL);
-		ret = GrabD11Context(idx,&pSwapChain,&pDevice,&pContext,1000);
-		if (ret < 0)
-		{
-			ret = LAST_ERROR_RETURN();
-			goto fail;
-		}
-		else if (ret == 0)
-		{
-			assert(pSwapChain == NULL);
-			assert(pDevice == NULL);
-			assert(pContext == NULL);
-			idx ++;
-			continue;
-		}
+    idx = 0;
+    while(1)
+    {
+        assert(pDevice==NULL);
+        assert(pContext == NULL);
+        assert(pSwapChain == NULL);
+        ret = GrabD11Context(idx,&pSwapChain,&pDevice,&pContext,1000);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_RETURN();
+            goto fail;
+        }
+        else if(ret == 0)
+        {
+            assert(pSwapChain == NULL);
+            assert(pDevice == NULL);
+            assert(pContext == NULL);
+            idx ++;
+            continue;
+        }
 
-		ret = __CaptureBufferDX11(pDevice,pContext,pSwapChain,hRemoteProc,pCapture->m_Data,pCapture->m_DataLen,&(pCapture->m_Format),&(pCapture->m_Width),&(pCapture->m_Height));
-		if (ret >= 0)
-		{
-			getlen = ret;
-			break;
-		}
-
-		
-
-		assert(ret < 0);
-		assert(pSwapChain && pDevice && pContext);
-		/*now we should get the value*/
-		res = ReleaseD11Context(pSwapChain,pDevice,pContext);
-		if (res == 0)
-		{
-			ERROR_INFO("could not release[%d] swapchain(0x%p) device(0x%p) context(0x%p)\n",idx,
-				pSwapChain,pDevice,pContext);			
-		}
-		pSwapChain = NULL;
-		pDevice = NULL;
-		pContext = NULL;
-		idx ++;
-	}
+        ret = __CaptureBufferDX11(pDevice,pContext,pSwapChain,hRemoteProc,pCapture->m_Data,pCapture->m_DataLen,&(pCapture->m_Format),&(pCapture->m_Width),&(pCapture->m_Height));
+        if(ret >= 0)
+        {
+            getlen = ret;
+            break;
+        }
 
 
-	if(pDevice)
-	{
-		res = ReleaseD11Context(pSwapChain,pDevice,pContext);
-		if (res == 0)
-		{
-			ERROR_INFO("could not release swapchain(0x%p) device(0x%p) context(0x%p)\n",
-				pSwapChain,pDevice,pContext);			
-		}
-	}
-	pDevice = NULL;
-	pSwapChain = NULL;
-	pContext = NULL;
 
-	if (hRemoteProc)
-	{
-		CloseHandle(hRemoteProc);
-	}
-	hRemoteProc = NULL;
-	
+        assert(ret < 0);
+        assert(pSwapChain && pDevice && pContext);
+        /*now we should get the value*/
+        res = ReleaseD11Context(pSwapChain,pDevice,pContext);
+        if(res == 0)
+        {
+            ERROR_INFO("could not release[%d] swapchain(0x%p) device(0x%p) context(0x%p)\n",idx,
+                       pSwapChain,pDevice,pContext);
+        }
+        pSwapChain = NULL;
+        pDevice = NULL;
+        pContext = NULL;
+        idx ++;
+    }
 
-	return getlen;
+
+    if(pDevice)
+    {
+        res = ReleaseD11Context(pSwapChain,pDevice,pContext);
+        if(res == 0)
+        {
+            ERROR_INFO("could not release swapchain(0x%p) device(0x%p) context(0x%p)\n",
+                       pSwapChain,pDevice,pContext);
+        }
+    }
+    pDevice = NULL;
+    pSwapChain = NULL;
+    pContext = NULL;
+
+    if(hRemoteProc)
+    {
+        CloseHandle(hRemoteProc);
+    }
+    hRemoteProc = NULL;
+
+
+    return getlen;
 fail:
-	assert(ret > 0);
-	if(pDevice)
-	{
-		res = ReleaseD11Context(pSwapChain,pDevice,pContext);
-		if (res == 0)
-		{
-			ERROR_INFO("could not release swapchain(0x%p) device(0x%p) context(0x%p)\n",
-				pSwapChain,pDevice,pContext);			
-		}
-	}
-	pDevice = NULL;
-	pSwapChain = NULL;
-	pContext = NULL;
+    assert(ret > 0);
+    if(pDevice)
+    {
+        res = ReleaseD11Context(pSwapChain,pDevice,pContext);
+        if(res == 0)
+        {
+            ERROR_INFO("could not release swapchain(0x%p) device(0x%p) context(0x%p)\n",
+                       pSwapChain,pDevice,pContext);
+        }
+    }
+    pDevice = NULL;
+    pSwapChain = NULL;
+    pContext = NULL;
 
-	if (hRemoteProc)
-	{
-		CloseHandle(hRemoteProc);
-	}
-	hRemoteProc = NULL;
-	SetLastError(ret);
-	return -ret;
+    if(hRemoteProc)
+    {
+        CloseHandle(hRemoteProc);
+    }
+    hRemoteProc = NULL;
+    SetLastError(ret);
+    return -ret;
 }
 
