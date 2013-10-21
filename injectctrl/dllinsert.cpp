@@ -624,7 +624,7 @@ fail:
     return NULL;
 }
 
-extern "C" int __GetRemoteProcAddress(unsigned int processid,const char* pDllName,const char* pProcName,void** ppFnAddr)
+extern "C" int GetRemoteProcAddress(unsigned int processid,const char* pDllName,const char* pProcName,void** ppFnAddr)
 {
     HANDLE hProcess=NULL;
     PVOID pBaseAddr=NULL,pFuncAddr=NULL;
@@ -682,7 +682,7 @@ fail:
 }
 
 
-int __TimeExpire(ULONGLONG ctime,ULONGLONG etime)
+int TimeExpire(ULONGLONG ctime,ULONGLONG etime)
 {
     if(ctime >= etime)
     {
@@ -693,7 +693,7 @@ int __TimeExpire(ULONGLONG ctime,ULONGLONG etime)
 
 #define  BIT32_MASK  0xffffffff
 
-ULONGLONG __GetCurrentTime(ULONGLONG *pCtime)
+ULONGLONG GetCurrentTime(ULONGLONG *pCtime)
 {
     ULONGLONG ctime = GetTickCount() & BIT32_MASK;
     ULONGLONG lastltime = *pCtime & BIT32_MASK;
@@ -709,7 +709,7 @@ ULONGLONG __GetCurrentTime(ULONGLONG *pCtime)
 
 }
 
-extern "C" int __CallRemoteFunc(unsigned int processid,void* pFnAddr,const char* pParam,int timeout,void** ppRetVal)
+extern "C" int CallRemoteFunc(unsigned int processid,void* pFnAddr,const char* pParam,int timeout,void** ppRetVal)
 {
     PVOID pRemoteAddr=NULL;
     char* pNullPtr="\x00";
@@ -793,7 +793,7 @@ extern "C" int __CallRemoteFunc(unsigned int processid,void* pFnAddr,const char*
     etime = stime + timeout* 1000;
     ctime = stime;
 
-    while(__TimeExpire(ctime, etime)== 0|| timeout == 0)
+    while(TimeExpire(ctime, etime)== 0|| timeout == 0)
     {
         waitmils = 2000;
         if(timeout)
@@ -831,7 +831,7 @@ extern "C" int __CallRemoteFunc(unsigned int processid,void* pFnAddr,const char*
             DEBUG_INFO("wait error %d\n",ret);
             goto fail;
         }
-        __GetCurrentTime(&ctime);
+        GetCurrentTime(&ctime);
     }
 
     if(ctime >= etime && timeout > 0)
@@ -899,13 +899,13 @@ extern "C" int CaptureFile(DWORD processid,const char* pDllName,const char* pFun
     PVOID pFnAddr=NULL;
     PVOID pRetVal;
 
-    ret = __GetRemoteProcAddress(processid,pDllName,pFuncName,&pFnAddr);
+    ret = GetRemoteProcAddress(processid,pDllName,pFuncName,&pFnAddr);
     if(ret < 0)
     {
         return ret;
     }
 
-    ret = __CallRemoteFunc(processid,pFnAddr,bmpfile,0,&pRetVal);
+    ret = CallRemoteFunc(processid,pFnAddr,bmpfile,0,&pRetVal);
     if(ret < 0)
     {
         return ret;
@@ -921,339 +921,5 @@ extern "C" int CaptureFile(DWORD processid,const char* pDllName,const char* pFun
 }
 
 
-extern "C" BOOL UpdateImports(HANDLE hProcess, LPCSTR *plpDlls, DWORD nDlls);
-
-
-
-/******************************************
-D3DHook_HookProcess :
-param :
-           hProc   HANDLE for process insert
-           strDllName  name must be fullpath ,if not ,it assume this is in the current directory
-
-return value:
-           0 for success
-           otherwise ,negative error code
-
-remarks :
-           this will give error
-******************************************/
-int D3DHook_HookProcess(HANDLE hProc, char * strDllName)
-{
-    int ret=-1;
-    char* pPartDllName=NULL;
-    BOOL bret;
-    char *pDllFullName=NULL,*pDllStripName=NULL;
-    char* dllNames[2];
-
-
-    pPartDllName = strrchr(strDllName,'\\');
-    if(pPartDllName == NULL)
-    {
-        pPartDllName = strDllName;
-    }
-    else
-    {
-        /*skip the name*/
-        pPartDllName ++;
-    }
-
-    pDllFullName = _strdup(strDllName);
-    if(pDllFullName == NULL)
-    {
-        ret = GetLastError();
-        goto out;
-    }
-
-    pDllStripName = _strdup(pPartDllName);
-    if(pDllStripName == NULL)
-    {
-        ret = GetLastError();
-        goto out;
-    }
-    dllNames[0] = pDllFullName;
-    dllNames[1] = pDllStripName;
-
-    bret = UpdateImports(hProc,(LPCSTR*)dllNames,2);
-    if(!bret)
-    {
-        ret = GetLastError();
-        goto out;
-    }
-
-    /*all is ok*/
-    ret = 0;
-out:
-    if(pDllFullName)
-    {
-        free(pDllFullName);
-    }
-    pDllFullName = NULL;
-    if(pDllStripName)
-    {
-        free(pDllStripName);
-    }
-    pDllStripName = NULL;
-    SetLastError(ret);
-    return -ret;
-}
-
-
-
-/******************************************
-D3DHook_CaptureImageBuffer:
-            capture image buffer ,we will copy the format
-
-parameter:
-		hProc  process handle that the D3DHook_HookProcess
-		strDllName  name of dll to insert last time
-		data   data to copy
-             len   length of the data
-             format      format of the data please see capture.h
-             width        the width of the picture
-             height       height of the picture
-
-return value:
-             filled length of the buffer is success
-             otherwise the negative error code
-
-remark :
-             this will give the timeout to copy buffer
-             and the format will give
-
-******************************************/
-int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * data, int len, int * format, int * width, int * height)
-{
-    int ret;
-    char* pDllStripName=NULL;
-    capture_buffer_t *pCaptureBuffer=NULL,*pCurCaptureBuffer=NULL;
-    unsigned int capturesize=sizeof(*pCaptureBuffer);
-    HANDLE hHandleProc=NULL;
-    unsigned int processid=0;
-    BOOL bret;
-    SIZE_T curret;
-    void* pFnAddr=NULL;
-    int getlen=0;
-    HANDLE hThread=NULL;
-    DWORD threadid=0;
-    DWORD stime,etime,ctime,wtime;
-    DWORD dret;
-    int timeout=3;
-    DWORD retcode=(DWORD)-1;
-
-
-    DEBUG_INFO("\n");
-    pDllStripName = strrchr(strDllName,'\\');
-    if(pDllStripName == NULL)
-    {
-        pDllStripName = strDllName;
-    }
-    else
-    {
-        pDllStripName ++;
-    }
-    DEBUG_INFO("\n");
-
-    processid = GetProcessId(hProc);
-    DEBUG_INFO("get hProc 0x%08lx processid (%d)\n",hProc,processid);
-
-
-    hHandleProc = OpenProcess(PROCESS_VM_OPERATION |PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD ,FALSE,processid);
-    if(hHandleProc == NULL)
-    {
-        ret = GetLastError() ? GetLastError() : 1;
-        DEBUG_INFO("OpenProcess (%d) error (%d)\n",processid,ret);
-        goto fail;
-    }
-
-    pCaptureBuffer = (capture_buffer_t*)VirtualAllocEx(hHandleProc,NULL,capturesize,MEM_COMMIT,PAGE_EXECUTE_READWRITE);
-    if(pCaptureBuffer == NULL)
-    {
-        ret = LAST_ERROR_RETURN();
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    pCurCaptureBuffer =(capture_buffer_t*) calloc(sizeof(*pCurCaptureBuffer),1);
-    if(pCurCaptureBuffer == NULL)
-    {
-        ret = LAST_ERROR_RETURN();
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    DEBUG_INFO("current 0x%08lx data 0x%p len(0x%08x)\n",GetCurrentProcess(),data,len);
-    pCurCaptureBuffer->m_Data = data;
-    pCurCaptureBuffer->m_DataLen = len;
-    pCurCaptureBuffer->m_Processid = GetCurrentProcessId();
-
-    /*now copy the memory*/
-    bret = WriteProcessMemory(hHandleProc,pCaptureBuffer,pCurCaptureBuffer,sizeof(*pCaptureBuffer),&curret);
-    if(!bret)
-    {
-        ret = LAST_ERROR_RETURN();
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    if(curret != sizeof(*pCaptureBuffer))
-    {
-        ret = ERROR_INVALID_PARAMETER;
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    /*now to create remote thread*/
-    ret = __GetRemoteProcAddress(processid,pDllStripName,"CaptureBuffer",&pFnAddr);
-    if(ret < 0)
-    {
-        ret = LAST_ERROR_RETURN();
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    hThread=CreateRemoteThread(hHandleProc,NULL,0,(LPTHREAD_START_ROUTINE)pFnAddr,pCaptureBuffer,0,&threadid);
-    if(hThread == NULL)
-    {
-        ret = LAST_ERROR_RETURN();
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    stime = GetTickCount();
-    etime = stime + timeout* 1000;
-    ctime = stime;
-
-    while(__TimeExpire(ctime,etime)==0)
-    {
-        wtime = 2000;
-        if((etime - ctime) < wtime)
-        {
-            wtime = (etime - ctime);
-        }
-        dret = WaitForSingleObject(hThread,wtime);
-        if(dret == WAIT_OBJECT_0)
-        {
-            bret = GetExitCodeThread(hThread,&retcode);
-            if(bret)
-            {
-                break;
-            }
-            else if(GetLastError() != STILL_ACTIVE)
-            {
-                ret = LAST_ERROR_RETURN();
-                DEBUG_INFO("\n");
-                goto fail;
-            }
-            /*still alive ,continue*/
-        }
-        else if(dret == WAIT_TIMEOUT)
-        {
-            ;
-        }
-        else
-        {
-            ret = LAST_ERROR_RETURN();
-            DEBUG_INFO("\n");
-            goto fail;
-        }
-        ctime= GetTickCount();
-    }
-
-    if(__TimeExpire(ctime, etime))
-    {
-        ret = WAIT_TIMEOUT;
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    ret =(int) retcode;
-    if(ret < 0)
-    {
-        ret = -ret;
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    /*get the length*/
-    getlen = ret;
-
-    /*now to read from the memory as the  result*/
-    bret = ReadProcessMemory(hHandleProc,pCaptureBuffer,pCurCaptureBuffer,sizeof(*pCurCaptureBuffer),&curret);
-    if(!bret)
-    {
-        ret = LAST_ERROR_RETURN();
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-    if(curret != sizeof(*pCurCaptureBuffer))
-    {
-        ret = ERROR_INVALID_OPERATION;
-        DEBUG_INFO("\n");
-        goto fail;
-    }
-
-
-    *format = pCurCaptureBuffer->m_Format;
-    *width = pCurCaptureBuffer->m_Width;
-    *height = pCurCaptureBuffer->m_Height;
-
-
-    /*all is ok ,so we should do this*/
-    if(hThread)
-    {
-        CloseHandle(hThread);
-    }
-    hThread=NULL;
-    if(pCaptureBuffer)
-    {
-        bret = VirtualFreeEx(hHandleProc,pCaptureBuffer,capturesize,MEM_DECOMMIT);
-        if(!bret)
-        {
-            ERROR_INFO("could not free %p size %d on %x error (%d)\n",pCaptureBuffer,capturesize,hHandleProc,GetLastError());
-        }
-    }
-    if(pCurCaptureBuffer)
-    {
-        free(pCurCaptureBuffer);
-    }
-    pCurCaptureBuffer = NULL;
-    if(hHandleProc)
-    {
-        CloseHandle(hHandleProc);
-    }
-    hHandleProc = NULL;
-
-    return getlen;
-
-fail:
-    if(hThread)
-    {
-        CloseHandle(hThread);
-    }
-    hThread=NULL;
-    if(pCaptureBuffer)
-    {
-        bret = VirtualFreeEx(hHandleProc,pCaptureBuffer,capturesize,MEM_DECOMMIT);
-        if(!bret)
-        {
-            ERROR_INFO("could not free %p size %d on %x error (%d)\n",pCaptureBuffer,capturesize,hHandleProc,GetLastError());
-        }
-    }
-    if(pCurCaptureBuffer)
-    {
-        free(pCurCaptureBuffer);
-    }
-    pCurCaptureBuffer = NULL;
-    if(hHandleProc)
-    {
-        CloseHandle(hHandleProc);
-    }
-    hHandleProc = NULL;
-    SetLastError(ret);
-    return -ret;
-
-}
 
 
