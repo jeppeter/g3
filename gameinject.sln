@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "injectctrl", "injectctrl\in
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pcmcapctrl", "pcmcapctrl\pcmcapctrl.vcxproj", "{EC3AB22B-354C-4917-B536-F2A672FAEAED}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imgcapctrl", "imgcapctrl\imgcapctrl.vcxproj", "{0C90B658-B58F-4D18-A684-281164996B07}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -43,6 +45,10 @@ Global
 		{EC3AB22B-354C-4917-B536-F2A672FAEAED}.Debug|Win32.Build.0 = Debug|Win32
 		{EC3AB22B-354C-4917-B536-F2A672FAEAED}.Release|Win32.ActiveCfg = Release|Win32
 		{EC3AB22B-354C-4917-B536-F2A672FAEAED}.Release|Win32.Build.0 = Release|Win32
+		{0C90B658-B58F-4D18-A684-281164996B07}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0C90B658-B58F-4D18-A684-281164996B07}.Debug|Win32.Build.0 = Debug|Win32
+		{0C90B658-B58F-4D18-A684-281164996B07}.Release|Win32.ActiveCfg = Release|Win32
+		{0C90B658-B58F-4D18-A684-281164996B07}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
