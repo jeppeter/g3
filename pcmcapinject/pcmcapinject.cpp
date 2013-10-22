@@ -2592,7 +2592,6 @@ int PcmCapInjectInit(HMODULE hModule)
         return 0;
     }
     DEBUG_INFO("\n");
-    SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
 
     st_PcmCapInited = 1;
     DEBUG_INFO("Init PcmCapInject succ\n");

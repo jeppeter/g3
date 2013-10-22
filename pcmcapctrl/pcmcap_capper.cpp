@@ -9,7 +9,11 @@
 #include <evt.h>
 #include <sched.h>
 
+#ifdef _DEBUG
+#define  PCMCAP_DLL_NAME                 "pcmcapinjectd.dll"
+#else
 #define  PCMCAP_DLL_NAME                 "pcmcapinject.dll"
+#endif
 #define  PCMCAP_SET_OPERATION_FUNC_NAME  "HandleAudioOperation"
 
 #define  MAP_FILE_OBJNAME_BASE           "PCMCAP_CAPPER_MAPFILE"
