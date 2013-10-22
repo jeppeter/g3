@@ -35,6 +35,7 @@ extern "C" int CaptureFile(DWORD processid,const char* pDllName,const char* pFun
 }
 
 
+
 /******************************************
 D3DHook_HookProcess :
 param :
@@ -84,7 +85,7 @@ int D3DHook_HookProcess(HANDLE hProc, char * strDllName)
     dllNames[0] = pDllFullName;
     dllNames[1] = pDllStripName;
 
-    bret = DetourUpdateProcessWithDll(hProc,(LPCSTR*)dllNames,2);
+    bret = UpdateImports(hProc,(LPCSTR*)dllNames,2);
     if(!bret)
     {
         ret = GetLastError();

@@ -2,7 +2,7 @@
 //
 //  Detours Disassembler (disasm.cpp of detours.lib)
 //
-//  Microsoft Research Detours Package, Version 3.0 Build_316.
+//  Microsoft Research Detours Package, Version 2.1.
 //
 //  Copyright (c) Microsoft Corporation.  All rights reserved.
 //
@@ -15,12 +15,8 @@
 
 #include "detours.h"
 
-#if defined(DETOURS_X86)
-#elif defined(DETOURS_X64)
-#elif defined(DETOURS_IA64)
-#elif defined(DETOURS_ARM)
-#else
-#error Must define one of DETOURS_X86, DETOURS_X64, DETOURS_IA64, or DETOURS_ARM
+#if !defined(DETOURS_X86) && !defined(DETOURS_X64) && !defined(DETOURS_IA64)
+#error Must define one of DETOURS_X86, DETOURS_X64, or DETOURS_IA64
 #endif
 
 #undef ASSERT
@@ -29,11 +25,10 @@
 //////////////////////////////////////////////////////////////////////////////
 //
 //  Function:
-//      DetourCopyInstruction(PVOID pDst,
-//                            PVOID *ppDstPool
-//                            PVOID pSrc,
-//                            PVOID *ppTarget,
-//                            LONG *plExtra)
+//      DetourCopyInstructionEx(PVOID pDst,
+//                              PVOID pSrc,
+//                              PVOID *ppTarget,
+//                              LONG *plExtra)
 //  Purpose:
 //      Copy a single instruction from pSrc to pDst.
 //
@@ -43,11 +38,6 @@
 //          case DetourCopyInstruction is used to measure an instruction.
 //          If not NULL then the source instruction is copied to the
 //          destination instruction and any relative arguments are adjusted.
-//      ppDstPool:
-//          Destination address for the end of the constant pool.  The
-//          constant pool works backwards toward pDst.  All memory between
-//          pDst and *ppDstPool must be available for use by this function.
-//          ppDstPool may be NULL if pDst is NULL.
 //      pSrc:
 //          Source address of the instruction.
 //      ppTarget:
@@ -85,6 +75,11 @@
 //      targets remain constant.  It does so by adjusting any IP relative
 //      offsets.
 //
+
+PVOID WINAPI DetourCopyInstruction(PVOID pDst, PVOID pSrc, PVOID *ppTarget)
+{
+    return DetourCopyInstructionEx(pDst, pSrc, ppTarget, NULL);
+}
 
 //////////////////////////////////////////////////// X86 and X64 Disassembler.
 //
@@ -133,7 +128,7 @@ class CDetourDis
 #define ENTRY_CopyBytes1            1, 1, 0, 0, 0, 0, &CDetourDis::CopyBytes
 #define ENTRY_CopyBytes1Dynamic     1, 1, 0, 0, 0, DYNAMIC, &CDetourDis::CopyBytes
 #define ENTRY_CopyBytes2            2, 2, 0, 0, 0, 0, &CDetourDis::CopyBytes
-#define ENTRY_CopyBytes2Jump        2, 2, 0, 1, 0, 0, &CDetourDis::CopyBytesJump
+#define ENTRY_CopyBytes2Jump        2, 2, 0, 1, 0, 0, &CDetourDis::CopyBytes
 #define ENTRY_CopyBytes2CantJump    2, 2, 0, 1, 0, NOENLARGE, &CDetourDis::CopyBytes
 #define ENTRY_CopyBytes2Dynamic     2, 2, 0, 0, 0, DYNAMIC, &CDetourDis::CopyBytes
 #define ENTRY_CopyBytes3            3, 3, 0, 0, 0, 0, &CDetourDis::CopyBytes
@@ -164,7 +159,6 @@ class CDetourDis
     PBYTE CopyBytes(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc);
     PBYTE CopyBytesPrefix(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc);
     PBYTE CopyBytesRax(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc);
-    PBYTE CopyBytesJump(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc);
 
     PBYTE Invalid(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc);
 
@@ -197,13 +191,11 @@ class CDetourDis
     BYTE                m_rbScratchDst[64];
 };
 
-PVOID WINAPI DetourCopyInstruction(PVOID pDst,
-                                   PVOID *ppDstPool,
-                                   PVOID pSrc,
-                                   PVOID *ppTarget,
-                                   LONG *plExtra)
+PVOID WINAPI DetourCopyInstructionEx(PVOID pDst,
+                                     PVOID pSrc,
+                                     PVOID *ppTarget,
+                                     LONG *plExtra)
 {
-    (void)ppDstPool; // x86 & x64 don't use a constant pool.
     CDetourDis oDetourDisasm((PBYTE*)ppTarget, plExtra);
     return oDetourDisasm.CopyInstruction((PBYTE)pDst, (PBYTE)pSrc);
 }
@@ -245,11 +237,11 @@ PBYTE CDetourDis::CopyInstruction(PBYTE pbDst, PBYTE pbSrc)
 PBYTE CDetourDis::CopyBytes(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc)
 {
 #ifdef DETOURS_X64
-#error Feature not supported in this release.
-
-
-
-
+    LONG nBytesFixed = (pEntry->nFlagBits & ADDRESS)
+        ? (m_bAddressOverride ? 5 : 9)      // For move A0-A3
+        : ((pEntry->nFlagBits & RAX)
+            ? (m_bRaxOverride ? 9 : 5)      // For move B8
+            : (m_bOperandOverride ? pEntry->nFixedSize16 : pEntry->nFixedSize));
 #else
     LONG nBytesFixed = (pEntry->nFlagBits & ADDRESS)
         ? (m_bAddressOverride ? pEntry->nFixedSize16 : pEntry->nFixedSize)
@@ -283,9 +275,9 @@ PBYTE CDetourDis::CopyBytes(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc)
         }
         else if (bFlags & RIP) {
 #ifdef DETOURS_X64
-#error Feature not supported in this release.
-
-
+            nBytesFixed = nBytes;
+            nRelOffset = nBytes - (4 + pEntry->nTargetBack);
+            cbTarget = 4;
 #endif
         }
     }
@@ -294,10 +286,10 @@ PBYTE CDetourDis::CopyBytes(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc)
     if (nRelOffset) {
         *m_ppbTarget = AdjustTarget(pbDst, pbSrc, nBytesFixed, nRelOffset, cbTarget);
 #ifdef DETOURS_X64
-#error Feature not supported in this release.
-
-
-
+        if (pEntry->nRelOffset == 0) {
+            // This is a data target, not a code target, so we shoulnd't return it.
+            *m_ppbTarget = NULL;
+        }
 #endif
     }
     if (pEntry->nFlagBits & NOENLARGE) {
@@ -327,39 +319,6 @@ PBYTE CDetourDis::CopyBytesRax(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc)
 
     pEntry = &s_rceCopyTable[pbSrc[1]];
     return (this->*pEntry->pfCopy)(pEntry, pbDst + 1, pbSrc + 1);
-}
-
-PBYTE CDetourDis::CopyBytesJump(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc)
-{
-    (void)pEntry;
-
-    PVOID pvSrcAddr = &pbSrc[1];
-    PVOID pvDstAddr = NULL;
-    LONG_PTR nOldOffset = (LONG_PTR)*(CHAR*&)pvSrcAddr;
-    LONG_PTR nNewOffset = 0;
-
-    *m_ppbTarget = pbSrc + 2 + nOldOffset;
-
-    if (pbSrc[0] == 0xeb) {
-        pbDst[0] = 0xe9;
-        pvDstAddr = &pbDst[1];
-        nNewOffset = nOldOffset - ((pbDst - pbSrc) + 3);
-        *(LONG*&)pvDstAddr = (LONG)nNewOffset;
-
-        *m_plExtra = 3;
-        return pbSrc + 2;
-    }
-
-    ASSERT(pbSrc[0] >= 0x70 && pbSrc[0] <= 0x7f);
-
-    pbDst[0] = 0x0f;
-    pbDst[1] = 0x80 | (pbSrc[0] & 0xf);
-    pvDstAddr = &pbDst[2];
-    nNewOffset = nOldOffset - ((pbDst - pbSrc) + 4);
-    *(LONG*&)pvDstAddr = (LONG)nNewOffset;
-
-    *m_plExtra = 4;
-    return pbSrc + 2;
 }
 
 PBYTE CDetourDis::AdjustTarget(PBYTE pbDst, PBYTE pbSrc, LONG cbOp,
@@ -394,19 +353,19 @@ PBYTE CDetourDis::AdjustTarget(PBYTE pbDst, PBYTE pbSrc, LONG cbOp,
       case 1:
         *(CHAR*&)pvTargetAddr = (CHAR)nNewOffset;
         if (nNewOffset < SCHAR_MIN || nNewOffset > SCHAR_MAX) {
-            *m_plExtra = sizeof(ULONG) - 1;
+            *m_plExtra = sizeof(ULONG_PTR) - 1;
         }
         break;
       case 2:
         *(SHORT*&)pvTargetAddr = (SHORT)nNewOffset;
         if (nNewOffset < SHRT_MIN || nNewOffset > SHRT_MAX) {
-            *m_plExtra = sizeof(ULONG) - 2;
+            *m_plExtra = sizeof(ULONG_PTR) - 2;
         }
         break;
       case 4:
         *(LONG*&)pvTargetAddr = (LONG)nNewOffset;
         if (nNewOffset < LONG_MIN || nNewOffset > LONG_MAX) {
-            *m_plExtra = sizeof(ULONG) - 4;
+            *m_plExtra = sizeof(ULONG_PTR) - 4;
         }
         break;
       case 8:
@@ -498,9 +457,9 @@ PBYTE CDetourDis::CopyFF(REFCOPYENTRY pEntry, PBYTE pbDst, PBYTE pbSrc)
 
     if (0x15 == pbSrc[1] || 0x25 == pbSrc[1]) {         // CALL [], JMP []
 #ifdef DETOURS_X64
-#error Feature not supported in this release.
-
-
+        INT32 offset = *(INT32 *)&pbSrc[2];
+        PBYTE *ppbTarget = (PBYTE *)(pbSrc + 6 + offset);
+        *m_ppbTarget = *ppbTarget;
 #else
         PBYTE *ppbTarget = *(PBYTE**)&pbSrc[2];
         *m_ppbTarget = *ppbTarget;
@@ -605,22 +564,22 @@ const CDetourDis::COPYENTRY CDetourDis::s_rceCopyTable[257] =
     { 0x3E, ENTRY_CopyBytesPrefix },                    // DS prefix
     { 0x3F, ENTRY_CopyBytes1 },                         // AAS
 #ifdef DETOURS_X64 // For Rax Prefix
-#error Feature not supported in this release.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    { 0x40, ENTRY_CopyBytesRax },                       // Rax
+    { 0x41, ENTRY_CopyBytesRax },                       // Rax
+    { 0x42, ENTRY_CopyBytesRax },                       // Rax
+    { 0x43, ENTRY_CopyBytesRax },                       // Rax
+    { 0x44, ENTRY_CopyBytesRax },                       // Rax
+    { 0x45, ENTRY_CopyBytesRax },                       // Rax
+    { 0x46, ENTRY_CopyBytesRax },                       // Rax
+    { 0x47, ENTRY_CopyBytesRax },                       // Rax
+    { 0x48, ENTRY_CopyBytesRax },                       // Rax
+    { 0x49, ENTRY_CopyBytesRax },                       // Rax
+    { 0x4A, ENTRY_CopyBytesRax },                       // Rax
+    { 0x4B, ENTRY_CopyBytesRax },                       // Rax
+    { 0x4C, ENTRY_CopyBytesRax },                       // Rax
+    { 0x4D, ENTRY_CopyBytesRax },                       // Rax
+    { 0x4E, ENTRY_CopyBytesRax },                       // Rax
+    { 0x4F, ENTRY_CopyBytesRax },                       // Rax
 #else
     { 0x40, ENTRY_CopyBytes1 },                         // INC
     { 0x41, ENTRY_CopyBytes1 },                         // INC
@@ -671,22 +630,22 @@ const CDetourDis::COPYENTRY CDetourDis::s_rceCopyTable[257] =
     { 0x6D, ENTRY_CopyBytes1 },                         // INS
     { 0x6E, ENTRY_CopyBytes1 },                         // OUTS/OUTSB
     { 0x6F, ENTRY_CopyBytes1 },                         // OUTS/OUTSW
-    { 0x70, ENTRY_CopyBytes2Jump },                     // JO           // 0f80
-    { 0x71, ENTRY_CopyBytes2Jump },                     // JNO          // 0f81
-    { 0x72, ENTRY_CopyBytes2Jump },                     // JB/JC/JNAE   // 0f82
-    { 0x73, ENTRY_CopyBytes2Jump },                     // JAE/JNB/JNC  // 0f83
-    { 0x74, ENTRY_CopyBytes2Jump },                     // JE/JZ        // 0f84
-    { 0x75, ENTRY_CopyBytes2Jump },                     // JNE/JNZ      // 0f85
-    { 0x76, ENTRY_CopyBytes2Jump },                     // JBE/JNA      // 0f86
-    { 0x77, ENTRY_CopyBytes2Jump },                     // JA/JNBE      // 0f87
-    { 0x78, ENTRY_CopyBytes2Jump },                     // JS           // 0f88
-    { 0x79, ENTRY_CopyBytes2Jump },                     // JNS          // 0f89
-    { 0x7A, ENTRY_CopyBytes2Jump },                     // JP/JPE       // 0f8a
-    { 0x7B, ENTRY_CopyBytes2Jump },                     // JNP/JPO      // 0f8b
-    { 0x7C, ENTRY_CopyBytes2Jump },                     // JL/JNGE      // 0f8c
-    { 0x7D, ENTRY_CopyBytes2Jump },                     // JGE/JNL      // 0f8d
-    { 0x7E, ENTRY_CopyBytes2Jump },                     // JLE/JNG      // 0f8e
-    { 0x7F, ENTRY_CopyBytes2Jump },                     // JG/JNLE      // 0f8f
+    { 0x70, ENTRY_CopyBytes2Jump },                     // JO
+    { 0x71, ENTRY_CopyBytes2Jump },                     // JNO
+    { 0x72, ENTRY_CopyBytes2Jump },                     // JB/JC/JNAE
+    { 0x73, ENTRY_CopyBytes2Jump },                     // JAE/JNB/JNC
+    { 0x74, ENTRY_CopyBytes2Jump },                     // JE/JZ
+    { 0x75, ENTRY_CopyBytes2Jump },                     // JNE/JNZ
+    { 0x76, ENTRY_CopyBytes2Jump },                     // JBE/JNA
+    { 0x77, ENTRY_CopyBytes2Jump },                     // JA/JNBE
+    { 0x78, ENTRY_CopyBytes2Jump },                     // JS
+    { 0x79, ENTRY_CopyBytes2Jump },                     // JNS
+    { 0x7A, ENTRY_CopyBytes2Jump },                     // JP/JPE
+    { 0x7B, ENTRY_CopyBytes2Jump },                     // JNP/JPO
+    { 0x7C, ENTRY_CopyBytes2Jump },                     // JL/JNGE
+    { 0x7D, ENTRY_CopyBytes2Jump },                     // JGE/JNL
+    { 0x7E, ENTRY_CopyBytes2Jump },                     // JLE/JNG
+    { 0x7F, ENTRY_CopyBytes2Jump },                     // JG/JNLE
     { 0x80, ENTRY_CopyBytes2Mod1 },                     // ADC/2 ib, etc.s
     { 0x81, ENTRY_CopyBytes2ModOperand },               //
     { 0x82, ENTRY_CopyBytes2 },                         // MOV al,x
@@ -851,7 +810,7 @@ const CDetourDis::COPYENTRY CDetourDis::s_rceCopyTable0F[257] =
     { 0x1C, ENTRY_Invalid },                            // _1C
     { 0x1D, ENTRY_Invalid },                            // _1D
     { 0x1E, ENTRY_Invalid },                            // _1E
-    { 0x1F, ENTRY_CopyBytes2Mod },                      // NOP/r
+    { 0x1F, ENTRY_Invalid },                            // _1F
     { 0x20, ENTRY_CopyBytes2Mod },                      // MOV/r
     { 0x21, ENTRY_CopyBytes2Mod },                      // MOV/r
     { 0x22, ENTRY_CopyBytes2Mod },                      // MOV/r
@@ -1115,1788 +1074,526 @@ BOOL CDetourDis::SanityCheckSystem()
 /////////////////////////////////////////////////////////// IA64 Disassembler.
 //
 #ifdef DETOURS_IA64
-#error Feature not supported in this release.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+const DETOUR_IA64_BUNDLE::DETOUR_IA64_METADATA DETOUR_IA64_BUNDLE::s_rceCopyTable[33] =
+{
+    { 0x00, M_UNIT,      I_UNIT,      I_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x01, M_UNIT,      I_UNIT,      I_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x02, M_UNIT,      I_UNIT|STOP, I_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x03, M_UNIT,      I_UNIT|STOP, I_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x04, M_UNIT,      L_UNIT,      X_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytesMLX },
+    { 0x05, M_UNIT,      L_UNIT,      X_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytesMLX },
+    { 0x06, 0,           0,           0,           &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x07, 0,           0,           0,           &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x08, M_UNIT,      M_UNIT,      I_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x09, M_UNIT,      M_UNIT,      I_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x0a, M_UNIT|STOP, M_UNIT,      I_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x0b, M_UNIT|STOP, M_UNIT,      I_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x0c, M_UNIT,      F_UNIT,      I_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x0d, M_UNIT,      F_UNIT,      I_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x0e, M_UNIT,      M_UNIT,      F_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x0f, M_UNIT,      M_UNIT,      F_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x10, M_UNIT,      I_UNIT,      B_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytesMMB },
+    { 0x11, M_UNIT,      I_UNIT,      B_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytesMMB },
+    { 0x12, M_UNIT,      B_UNIT,      B_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytesMBB },
+    { 0x13, M_UNIT,      B_UNIT,      B_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytesMBB },
+    { 0x14, 0,           0,           0,           &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x15, 0,           0,           0,           &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x16, B_UNIT,      B_UNIT,      B_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytesBBB },
+    { 0x17, B_UNIT,      B_UNIT,      B_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytesBBB },
+    { 0x18, M_UNIT,      M_UNIT,      B_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytesMMB },
+    { 0x19, M_UNIT,      M_UNIT,      B_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytesMMB },
+    { 0x1a, 0,           0,           0,           &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x1b, 0,           0,           0,           &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x1c, M_UNIT,      F_UNIT,      B_UNIT,      &DETOUR_IA64_BUNDLE::CopyBytesMMB },
+    { 0x1d, M_UNIT,      F_UNIT,      B_UNIT|STOP, &DETOUR_IA64_BUNDLE::CopyBytesMMB },
+    { 0x1e, 0,           0,           0,           &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x1f, 0,           0,           0,           &DETOUR_IA64_BUNDLE::CopyBytes },
+    { 0x00, 0,           0,           0,           NULL },
+};
+
+// 120 112 104 96 88 80 72 64 56 48 40 32 24 16  8  0
+//  f.  e.  d. c. b. a. 9. 8. 7. 6. 5. 4. 3. 2. 1. 0.
+
+//                                      00
+// f.e. d.c. b.a. 9.8. 7.6. 5.4. 3.2. 1.0.
+// 0000 0000 0000 0000 0000 0000 0000 001f : Template [4..0]
+// 0000 0000 0000 0000 0000 03ff ffff ffe0 : Zero [ 41..  5]
+// 0000 0000 0000 0000 0000 3c00 0000 0000 : Zero [ 45.. 42]
+// 0000 0000 0007 ffff ffff c000 0000 0000 : One  [ 82.. 46]
+// 0000 0000 0078 0000 0000 0000 0000 0000 : One  [ 86.. 83]
+// 0fff ffff ff80 0000 0000 0000 0000 0000 : Two  [123.. 87]
+// f000 0000 0000 0000 0000 0000 0000 0000 : Two  [127..124]
+BYTE DETOUR_IA64_BUNDLE::GetTemplate() const
+{
+    return (data[0] & 0x1f);
+}
+
+BYTE DETOUR_IA64_BUNDLE::GetInst0() const
+{
+    return ((data[5] & 0x3c) >> 2);
+}
+
+BYTE DETOUR_IA64_BUNDLE::GetInst1() const
+{
+    return ((data[10] & 0x78) >> 3);
+}
+
+BYTE DETOUR_IA64_BUNDLE::GetInst2() const
+{
+    return ((data[15] & 0xf0) >> 4);
+}
+
+BYTE DETOUR_IA64_BUNDLE::GetUnit0() const
+{
+    return s_rceCopyTable[data[0] & 0x1f].nUnit0;
+}
+
+BYTE DETOUR_IA64_BUNDLE::GetUnit1() const
+{
+    return s_rceCopyTable[data[0] & 0x1f].nUnit1;
+}
+
+BYTE DETOUR_IA64_BUNDLE::GetUnit2() const
+{
+    return s_rceCopyTable[data[0] & 0x1f].nUnit2;
+}
+
+UINT64 DETOUR_IA64_BUNDLE::GetData0() const
+{
+    return (((wide[0] & 0x000003ffffffffe0) >> 5));
+}
+
+UINT64 DETOUR_IA64_BUNDLE::GetData1() const
+{
+    return (((wide[0] & 0xffffc00000000000) >> 46) |
+            ((wide[1] & 0x000000000007ffff) << 18));
+}
+
+UINT64 DETOUR_IA64_BUNDLE::GetData2() const
+{
+    return (((wide[1] & 0x0fffffffff800000) >> 23));
+}
+
+VOID DETOUR_IA64_BUNDLE::SetInst0(BYTE nInst)
+{
+    data[5] = (data[5] & ~0x3c) | ((nInst << 2) & 0x3c);
+}
+
+VOID DETOUR_IA64_BUNDLE::SetInst1(BYTE nInst)
+{
+    data[10] = (data[10] & ~0x78) | ((nInst << 3) & 0x78);
+}
+
+VOID DETOUR_IA64_BUNDLE::SetInst2(BYTE nInst)
+{
+    data[15] = (data[15] & ~0xf0) | ((nInst << 4) & 0xf0);
+}
+
+VOID DETOUR_IA64_BUNDLE::SetData0(UINT64 nData)
+{
+    wide[0] = (wide[0] & ~0x000003ffffffffe0) | (( nData << 5)  & 0x000003ffffffffe0);
+}
+
+VOID DETOUR_IA64_BUNDLE::SetData1(UINT64 nData)
+{
+    wide[0] = (wide[0] & ~0xffffc00000000000) | ((nData << 46) & 0xffffc00000000000);
+    wide[1] = (wide[1] & ~0x000000000007ffff) | ((nData >> 18) & 0x000000000007ffff);
+}
+
+VOID DETOUR_IA64_BUNDLE::SetData2(UINT64 nData)
+{
+    wide[1] = (wide[1] & ~0x0fffffffff800000) | ((nData << 23) & 0x0fffffffff800000);
+}
+
+BOOL DETOUR_IA64_BUNDLE::IsBrl() const
+{
+    // f.e. d.c. b.a. 9.8. 7.6. 5. 4. 3. 2. 1. 0.
+    // c000 0070 0000 0000 0000 00 01 00 00 00 05 : brl.sptk.few
+    // c8ff fff0 007f fff0 ffff 00 01 00 00 00 05 : brl.sptk.few
+    // c000 0048 0000 0000 0001 00 00 00 00 00 05 : brl.sptk.many
+    return ((wide[0] & 0x000000000000001e) == 0x0000000000000004 && // 4 or 5.
+            (wide[1] & 0xe000000000000000) == 0xc000000000000000);  // c or d.
+}
+
+VOID DETOUR_IA64_BUNDLE::SetBrl()
+{
+    wide[0] = 0x0000000100000005;   // few
+    //wide[0] = 0x0000000180000005; // many
+    wide[1] = 0xc000000800000000;
+}
+
+UINT64 DETOUR_IA64_BUNDLE::GetBrlImm() const
+{
+    return (
+            //          0x0000000000fffff0
+            ((wide[1] & 0x00fffff000000000) >> 32) |    // all 20 bits of imm20b.
+            //          0x000000ffff000000
+            ((wide[0] & 0xffff000000000000) >> 24) |    // bottom 16 bits of imm39.
+            //          0x7fffff0000000000
+            ((wide[1] & 0x00000000007fffff) << 40) |    // top 23 bits of imm39.
+            //          0x8000000000000000
+            ((wide[1] & 0x0800000000000000) <<  4)      // single bit of i.
+           );
+}
+
+VOID DETOUR_IA64_BUNDLE::SetBrlImm(UINT64 imm)
+{
+    wide[0] = ((wide[0] & ~0xffff000000000000) |
+               //      0xffff000000000000
+               ((imm & 0x000000ffff000000) << 24)       // bottom 16 bits of imm39.
+              );
+    wide[1] = ((wide[1] & ~0x08fffff0007fffff) |
+               //      0x00fffff000000000
+               ((imm & 0x0000000000fffff0) << 32) |     // all 20 bits of imm20b.
+               //      0x00000000007fffff
+               ((imm & 0x7fffff0000000000) >> 40) |     // top 23 bits of imm39.
+               //      0x0800000000000000
+               ((imm & 0x8000000000000000) >>  4)       // single bit of i.
+              );
+}
+
+UINT64 DETOUR_IA64_BUNDLE::GetBrlTarget() const
+{
+    return (UINT64)this + GetBrlImm();
+}
+
+VOID DETOUR_IA64_BUNDLE::SetBrl(UINT64 target)
+{
+    UINT64 imm = target - (UINT64)this;
+    SetBrl();
+    SetBrlImm(imm);
+}
+
+VOID DETOUR_IA64_BUNDLE::SetBrlTarget(UINT64 target)
+{
+    UINT64 imm = target - (UINT64)this;
+    SetBrlImm(imm);
+}
+
+BOOL DETOUR_IA64_BUNDLE::IsMovlGp() const
+{
+    // f.e. d.c. b.a. 9.8. 7.6. 5.4. 3.2. 1.0.
+    // 6fff f7f0 207f ffff ffff c001 0000 0004
+    // 6000 0000 2000 0000 0000 0001 0000 0004
+    return ((wide[0] & 0x00003ffffffffffe) == 0x0000000100000004 &&
+            (wide[1] & 0xf000080fff800000) == 0x6000000020000000);
+}
+
+UINT64 DETOUR_IA64_BUNDLE::GetMovlGp() const
+{
+    UINT64 raw = (
+                  //          0x0000000000000070
+                  ((wide[1] & 0x000007f000000000) >> 36) |
+                  //          0x000000000000ff80
+                  ((wide[1] & 0x07fc000000000000) >> 43) |
+                  //          0x00000000001f0000
+                  ((wide[1] & 0x0003e00000000000) >> 29) |
+                  //          0x0000000000200000
+                  ((wide[1] & 0x0000100000000000) >> 23) |
+                  //          0x000000ffffc00000
+                  ((wide[0] & 0xffffc00000000000) >> 24) |
+                  //          0x7fffff0000000000
+                  ((wide[1] & 0x00000000007fffff) << 40) |
+                  //          0x8000000000000000
+                  ((wide[1] & 0x0800000000000000) <<  4)
+                 );
+
+    return (INT64)raw;
+}
+
+VOID DETOUR_IA64_BUNDLE::SetMovlGp(UINT64 gp)
+{
+    UINT64 raw = (UINT64)gp;
+
+    wide[0] = (0x0000000100000005 |
+               //      0xffffc00000000000
+               ((raw & 0x000000ffffc00000) << 24)
+              );
+    wide[1] = (
+               0x6000000020000000 |
+               //      0x0000070000000000
+               ((raw & 0x0000000000000070) << 36) |
+               //      0x07fc000000000000
+               ((raw & 0x000000000000ff80) << 43) |
+               //      0x0003e00000000000
+               ((raw & 0x00000000001f0000) << 29) |
+               //      0x0000100000000000
+               ((raw & 0x0000000000200000) << 23) |
+               //      0x00000000007fffff
+               ((raw & 0x7fffff0000000000) >> 40) |
+               //      0x0800000000000000
+               ((raw & 0x8000000000000000) >>  4)
+              );
+}
+
+BOOL DETOUR_IA64_BUNDLE::CopyBytes(const DETOUR_IA64_METADATA *pMeta,
+                                   DETOUR_IA64_BUNDLE *pDst) const
+{
+    (void)pMeta;
+    pDst->wide[0] = wide[0];
+    pDst->wide[1] = wide[1];
+
+    return true;
+}
+
+BOOL DETOUR_IA64_BUNDLE::CopyBytesMMB(const DETOUR_IA64_METADATA *pMeta,
+                                      DETOUR_IA64_BUNDLE *pDst) const
+{
+    (void)pMeta;
+    pDst->wide[0] = wide[0];
+    pDst->wide[1] = wide[1];
+
+    BYTE nInst2 = GetInst2();
+    if ((nInst2 == 0x0 || nInst2 == 0x1 || nInst2 == 0x2)) {
+        return true;
+    }
+    return false;
+}
+
+BOOL DETOUR_IA64_BUNDLE::CopyBytesMBB(const DETOUR_IA64_METADATA *pMeta,
+                                      DETOUR_IA64_BUNDLE *pDst) const
+{
+    (void)pMeta;
+    pDst->wide[0] = wide[0];
+    pDst->wide[1] = wide[1];
+
+    BYTE nInst1 = GetInst1();
+    BYTE nInst2 = GetInst2();
+    if ((nInst1 == 0x0 || nInst1 == 0x1 || nInst1 == 0x2) &&
+        (nInst2 == 0x0 || nInst2 == 0x1 || nInst2 == 0x2)) {
+        return true;
+    }
+    return false;
+}
+
+BOOL DETOUR_IA64_BUNDLE::CopyBytesBBB(const DETOUR_IA64_METADATA *pMeta,
+                                      DETOUR_IA64_BUNDLE *pDst) const
+{
+    (void)pMeta;
+    pDst->wide[0] = wide[0];
+    pDst->wide[1] = wide[1];
+
+    BYTE nInst0 = GetInst0();
+    BYTE nInst1 = GetInst1();
+    BYTE nInst2 = GetInst2();
+    if ((nInst0 == 0x0 || nInst0 == 0x1 || nInst0 == 0x2) &&
+        (nInst1 == 0x0 || nInst1 == 0x1 || nInst1 == 0x2) &&
+        (nInst2 == 0x0 || nInst2 == 0x1 || nInst2 == 0x2)) {
+        return true;
+    }
+
+    return false;
+}
+
+BOOL DETOUR_IA64_BUNDLE::CopyBytesMLX(const DETOUR_IA64_METADATA *pMeta,
+                                      DETOUR_IA64_BUNDLE *pDst) const
+{
+    (void)pMeta;
+    pDst->wide[0] = wide[0];
+    pDst->wide[1] = wide[1];
+
+#if DETOUR_DEBUG
+    {
+        const char szUnitNames[17] = "?aimbflx?AIMBFLX";
+        BYTE nTemplate = GetTemplate();
+        BYTE nInst0 = GetInst0();
+        BYTE nInst1 = GetInst1();
+        BYTE nInst2 = GetInst2();
+        BYTE nUnit0 = GetUnit0();
+        BYTE nUnit1 = GetUnit1();
+        BYTE nUnit2 = GetUnit2();
+        if (nUnit1 == L_UNIT) { // MLX instruction
+            UINT64 d2 = (
+                         //          0x0000000000fffff0
+                         ((wide[1] & 0x00fffff000000000) >> 32) |
+                         //          0x000000ffff000000
+                         ((wide[0] & 0xffff000000000000) >> 24) |
+                         //          0x7fffff0000000000
+                         ((wide[1] & 0x00000000007fffff) << 40) |
+                         //          0x8000000000000000
+                         ((wide[1] & 0x0800000000000000) <<  4)
+                        );
+            printf("%p: %02x %c%01x %010I64lx %c%01x %016I64lx\n",
+                   this,
+                   nTemplate,
+                   szUnitNames[nUnit0], nInst0, GetData0(),
+                   szUnitNames[nUnit2], nInst2, d2);
+        }
+        else {
+            printf("%p: %02x %c%01x %010I64lx %c%01x %010I64lx %c%01x %010I64lx\n",
+                   this,
+                   nTemplate,
+                   szUnitNames[nUnit0], nInst0, GetData0(),
+                   szUnitNames[nUnit1], nInst1, GetData1(),
+                   szUnitNames[nUnit2], nInst2, GetData2());
+        }
+    }
+#endif
+
+    if (IsBrl()) {
+        pDst->SetBrlTarget(GetBrlTarget());
+        return true;
+    }
+    BYTE nInst2 = GetInst2();
+
+    if (nInst2 == 0x06 && nInst2 == 0x0d) {
+        return false;
+    }
+    return true;
+}
+
+BOOL DETOUR_IA64_BUNDLE::Copy(DETOUR_IA64_BUNDLE *pDst) const
+{
+    const DETOUR_IA64_METADATA *pce = &s_rceCopyTable[GetTemplate()];
+    return (this->*pce->pfCopy)(pce, pDst);
+}
+
+BOOL DETOUR_IA64_BUNDLE::SetNop0()
+{
+    const DETOUR_IA64_METADATA *pce = &s_rceCopyTable[GetTemplate()];
+
+    switch (pce->nUnit0 & UNIT_MASK) {
+      case I_UNIT:
+      case M_UNIT:
+      case F_UNIT:
+        SetInst0(0);
+        SetData0(0x8000000);
+        return true;
+      case B_UNIT:
+        SetInst0(2);
+        SetData0(0);
+        return true;
+    }
+    DebugBreak();
+    return false;
+}
+
+BOOL DETOUR_IA64_BUNDLE::SetNop1()
+{
+    const DETOUR_IA64_METADATA *pce = &s_rceCopyTable[GetTemplate()];
+
+    switch (pce->nUnit1 & UNIT_MASK) {
+      case I_UNIT:
+      case M_UNIT:
+      case F_UNIT:
+        SetInst1(0);
+        SetData1(0x8000000);
+        return true;
+      case B_UNIT:
+        SetInst1(2);
+        SetData1(0);
+        return true;
+    }
+    DebugBreak();
+    return false;
+}
+
+BOOL DETOUR_IA64_BUNDLE::SetNop2()
+{
+    const DETOUR_IA64_METADATA *pce = &s_rceCopyTable[GetTemplate()];
+
+    switch (pce->nUnit2 & UNIT_MASK) {
+      case I_UNIT:
+      case M_UNIT:
+      case F_UNIT:
+        SetInst2(0);
+        SetData2(0x8000000);
+        return true;
+      case B_UNIT:
+        SetInst2(2);
+        SetData2(0);
+        return true;
+    }
+    DebugBreak();
+    return false;
+}
+
+BOOL DETOUR_IA64_BUNDLE::SetStop()
+{
+    data[0] |= 0x01;
+    return true;
+}
+
+#if 0
+void TestBoth()
+{
+    LPVOID pvBase = VirtualAlloc((PBYTE)0x800000000, 0x10000,
+                                 MEM_RESERVE | MEM_COMMIT,
+                                 PAGE_EXECUTE_READWRITE);
+
+    BUNDLE *pbBase = (BUNDLE *)pvBase;
+    BUNDLE *pb = pbBase;
+
+    printf("TestBoth:\n");
+    for (UINT64 i = 0x10; i < 0x8000000000000000; i <<= 1) {
+        pb->SetMovlGp(i);
+        if (pb->GetMovlGp() != i) {
+            printf("Error in MovlGp!\n");
+            return;
+        }
+        pb++;
+
+        pb->SetBrlImm((INT64)i);
+        if (pb->GetBrlImm() != (INT64)i) {
+            printf("Error in Brl!\n");
+            return;
+        }
+        pb++;
+    }
+
+    for (UINT64 i = (UINT64)(INT64)-0x10; i > 0; i <<= 1) {
+        pb->SetMovlGp(i);
+        if (pb->GetMovlGp() != i) {
+            printf("Error in MovlGp!\n");
+            return;
+        }
+        pb++;
+
+        pb->SetBrlImm((INT64)i);
+        if (pb->GetBrlImm() != (INT64)i) {
+            printf("Error in Brl!\n");
+            return;
+        }
+        pb++;
+    }
+
+    printf("u %p %p\n", pbBase, pb);
+}
+#endif
+
+PVOID WINAPI DetourCopyInstructionEx(PVOID pDst,
+                                     PVOID pSrc,
+                                     PVOID *ppTarget,
+                                     LONG *plExtra)
+{
+    DETOUR_IA64_BUNDLE bExtra;
+
+    DETOUR_IA64_BUNDLE *pbSrc = (DETOUR_IA64_BUNDLE *)pSrc;
+    DETOUR_IA64_BUNDLE *pbDst = pDst ? (DETOUR_IA64_BUNDLE *)pDst : &bExtra;
+
+    if (ppTarget != NULL) {
+        if (pbSrc->IsBrl()) {
+            *ppTarget = (PVOID)pbSrc->GetBrlTarget();
+        }
+        else {
+            *ppTarget = DETOUR_INSTRUCTION_TARGET_NONE;
+        }
+    }
+    if (pbSrc->Copy(pbDst)) {
+        if (plExtra != NULL) {
+            *plExtra = 0;
+        }
+    }
+    else {
+        if (plExtra != NULL) {
+            *plExtra = sizeof(DETOUR_IA64_BUNDLE);
+        }
+    }
+
+    return pbSrc + 1;
+}
 
 #endif // DETOURS_IA64
-
-#ifdef DETOURS_ARM
-#error Feature not supported in this release.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#endif // DETOURS_ARM
 
 //
 ///////////////////////////////////////////////////////////////// End of File.

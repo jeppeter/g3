@@ -2,7 +2,7 @@
 //
 //  Module Enumeration Functions (modules.cpp of detours.lib)
 //
-//  Microsoft Research Detours Package, Version 3.0 Build_316.
+//  Microsoft Research Detours Package, Version 2.1.
 //
 //  Copyright (c) Microsoft Corporation.  All rights reserved.
 //
@@ -18,9 +18,6 @@
 //#define DETOUR_DEBUG 1
 #define DETOURS_INTERNAL
 #include "detours.h"
-
-#define CLR_DIRECTORY OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR]
-#define IAT_DIRECTORY OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IAT]
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -116,10 +113,6 @@ const GUID DETOUR_EXE_RESTORE_GUID = {
     0x2ed7a3ff, 0x3339, 0x4a8d,
     { 0x80, 0x5c, 0xd4, 0x98, 0x15, 0x3f, 0xc2, 0x8f }};
 
-const GUID DETOUR_EXE_HELPER_GUID = { /* ea0251b9-5cde-41b5-98d0-2af4a26b0fee */
-    0xea0251b9, 0x5cde, 0x41b5,
-    { 0x98, 0xd0, 0x2a, 0xf4, 0xa2, 0x6b, 0x0f, 0xee }};
-
 //////////////////////////////////////////////////////////////////////////////
 //
 PDETOUR_SYM_INFO DetourLoadImageHlp(VOID)
@@ -149,7 +142,7 @@ PDETOUR_SYM_INFO DetourLoadImageHlp(VOID)
     symInfo.hProcess = GetCurrentProcess();
 #endif
 
-    symInfo.hDbgHelp = LoadLibraryExW(L"dbghelp.dll", NULL, 0);
+    symInfo.hDbgHelp = LoadLibraryA("dbghelp.dll");
     if (symInfo.hDbgHelp == NULL) {
       abort:
         failed = true;
@@ -237,7 +230,7 @@ PVOID WINAPI DetourFindFunction(PCSTR pszModule, PCSTR pszFunction)
 {
     /////////////////////////////////////////////// First, try GetProcAddress.
     //
-    HMODULE hModule = LoadLibraryExA(pszModule, NULL, 0);
+    HMODULE hModule = LoadLibraryA(pszModule);
     if (hModule == NULL) {
         return NULL;
     }
@@ -260,6 +253,8 @@ PVOID WINAPI DetourFindFunction(PCSTR pszModule, PCSTR pszFunction)
     if (pSymInfo->pfSymLoadModule64(pSymInfo->hProcess, NULL,
                                     (PCHAR)pszModule, NULL,
                                     (DWORD64)hModule, 0) == 0) {
+        // We don't stop because some versions of dbghelp fail secondary calls.
+        //return NULL;
         if (ERROR_SUCCESS != GetLastError()) {
             DETOUR_TRACE(("SymLoadModule64(%p) failed: %d\n",
                           pSymInfo->hProcess, GetLastError()));
@@ -311,7 +306,7 @@ PVOID WINAPI DetourFindFunction(PCSTR pszModule, PCSTR pszFunction)
         return NULL;
     }
 
-#if defined(DETOURS_IA64)
+#ifdef DETOURS_IA64
     // On the IA64, we get a raw code pointer from the symbol engine
     // and have to convert it to a wrapped [code pointer, global pointer].
     //
@@ -321,10 +316,6 @@ PVOID WINAPI DetourFindFunction(PCSTR pszModule, PCSTR pszFunction)
     pldSymbol->EntryPoint = symbol.Address;
     pldSymbol->GlobalPointer = pldEntry->GlobalPointer;
     return (PBYTE)pldSymbol;
-#elif defined(DETOURS_ARM)
-    // On the ARM, we get a raw code pointer, which we must convert into a
-    // valied Thumb2 function pointer.
-    return DETOURS_PBYTE_TO_PFUNC(symbol.Address);
 #else
     return (PBYTE)symbol.Address;
 #endif
@@ -355,17 +346,13 @@ HMODULE WINAPI DetourEnumerateModules(HMODULE hModuleLast)
 
         // Skip uncommitted regions and guard pages.
         //
-        if ((mbi.State != MEM_COMMIT) ||
-            ((mbi.Protect & 0xff) == PAGE_NOACCESS) ||
-            (mbi.Protect & PAGE_GUARD)) {
+        if ((mbi.State != MEM_COMMIT) || (mbi.Protect & PAGE_GUARD)) {
             continue;
         }
 
         __try {
             PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)pbLast;
-            if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE ||
-                (DWORD)pDosHeader->e_lfanew > mbi.RegionSize ||
-                (DWORD)pDosHeader->e_lfanew < sizeof(*pDosHeader)) {
+            if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
                 continue;
             }
 
@@ -378,7 +365,7 @@ HMODULE WINAPI DetourEnumerateModules(HMODULE hModuleLast)
             return (HMODULE)pDosHeader;
         }
         __except(EXCEPTION_EXECUTE_HANDLER) {
-            continue;
+            return NULL;
         }
     }
     return NULL;
@@ -388,7 +375,7 @@ PVOID WINAPI DetourGetEntryPoint(HMODULE hModule)
 {
     PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)hModule;
     if (hModule == NULL) {
-        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandleW(NULL);
+        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandle(NULL);
     }
 
     __try {
@@ -407,37 +394,6 @@ PVOID WINAPI DetourGetEntryPoint(HMODULE hModule)
             SetLastError(ERROR_EXE_MARKED_INVALID);
             return NULL;
         }
-
-        PDETOUR_CLR_HEADER pClrHeader = NULL;
-        if (pNtHeader->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
-            if (((PIMAGE_NT_HEADERS32)pNtHeader)->CLR_DIRECTORY.VirtualAddress != 0 &&
-                ((PIMAGE_NT_HEADERS32)pNtHeader)->CLR_DIRECTORY.Size != 0) {
-                pClrHeader = (PDETOUR_CLR_HEADER)
-                    (((PBYTE)pDosHeader)
-                     + ((PIMAGE_NT_HEADERS32)pNtHeader)->CLR_DIRECTORY.VirtualAddress);
-            }
-        }
-        else if (pNtHeader->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
-            if (((PIMAGE_NT_HEADERS64)pNtHeader)->CLR_DIRECTORY.VirtualAddress != 0 &&
-                ((PIMAGE_NT_HEADERS64)pNtHeader)->CLR_DIRECTORY.Size != 0) {
-                pClrHeader = (PDETOUR_CLR_HEADER)
-                    (((PBYTE)pDosHeader)
-                     + ((PIMAGE_NT_HEADERS64)pNtHeader)->CLR_DIRECTORY.VirtualAddress);
-            }
-        }
-
-        if (pClrHeader != NULL) {
-            // For MSIL assemblies, we want to use the _Cor entry points.
-
-            HMODULE hClr = GetModuleHandleW(L"MSCOREE.DLL");
-            if (hClr == NULL) {
-                return NULL;
-            }
-
-            SetLastError(NO_ERROR);
-            return GetProcAddress(hClr, "_CorExeMain");
-        }
-
         SetLastError(NO_ERROR);
         return ((PBYTE)pDosHeader) +
             pNtHeader->OptionalHeader.AddressOfEntryPoint;
@@ -452,7 +408,7 @@ ULONG WINAPI DetourGetModuleSize(HMODULE hModule)
 {
     PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)hModule;
     if (hModule == NULL) {
-        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandleW(NULL);
+        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandle(NULL);
     }
 
     __try {
@@ -481,53 +437,6 @@ ULONG WINAPI DetourGetModuleSize(HMODULE hModule)
     }
 }
 
-HMODULE WINAPI DetourGetContainingModule(PVOID pvAddr)
-{
-    MEMORY_BASIC_INFORMATION mbi;
-    ZeroMemory(&mbi, sizeof(mbi));
-
-    __try {
-        if (VirtualQuery(pvAddr, &mbi, sizeof(mbi)) <= 0) {
-            SetLastError(ERROR_BAD_EXE_FORMAT);
-            return NULL;
-        }
-
-        // Skip uncommitted regions and guard pages.
-        //
-        if ((mbi.State != MEM_COMMIT) ||
-            ((mbi.Protect & 0xff) == PAGE_NOACCESS) ||
-            (mbi.Protect & PAGE_GUARD)) {
-            SetLastError(ERROR_BAD_EXE_FORMAT);
-            return NULL;
-        }
-
-        PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)mbi.AllocationBase;
-        if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
-            SetLastError(ERROR_BAD_EXE_FORMAT);
-            return NULL;
-        }
-
-        PIMAGE_NT_HEADERS pNtHeader = (PIMAGE_NT_HEADERS)((PBYTE)pDosHeader +
-                                                          pDosHeader->e_lfanew);
-        if (pNtHeader->Signature != IMAGE_NT_SIGNATURE) {
-            SetLastError(ERROR_INVALID_EXE_SIGNATURE);
-            return NULL;
-        }
-        if (pNtHeader->FileHeader.SizeOfOptionalHeader == 0) {
-            SetLastError(ERROR_EXE_MARKED_INVALID);
-            return NULL;
-        }
-        SetLastError(NO_ERROR);
-
-        return (HMODULE)pDosHeader;
-    }
-    __except(EXCEPTION_EXECUTE_HANDLER) {
-        SetLastError(ERROR_INVALID_EXE_SIGNATURE);
-        return NULL;
-    }
-}
-
-
 static inline PBYTE RvaAdjust(PIMAGE_DOS_HEADER pDosHeader, DWORD raddr)
 {
     if (raddr != NULL) {
@@ -542,7 +451,7 @@ BOOL WINAPI DetourEnumerateExports(HMODULE hModule,
 {
     PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)hModule;
     if (hModule == NULL) {
-        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandleW(NULL);
+        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandle(NULL);
     }
 
     __try {
@@ -603,110 +512,11 @@ BOOL WINAPI DetourEnumerateExports(HMODULE hModule,
     }
 }
 
-BOOL WINAPI DetourEnumerateImports(HMODULE hModule,
-                                   PVOID pContext,
-                                   PF_DETOUR_IMPORT_FILE_CALLBACK pfImportFile,
-                                   PF_DETOUR_IMPORT_FUNC_CALLBACK pfImportFunc)
-{
-    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)hModule;
-    if (hModule == NULL) {
-        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandleW(NULL);
-    }
-
-    __try {
-        if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
-            SetLastError(ERROR_BAD_EXE_FORMAT);
-            return FALSE;
-        }
-
-        PIMAGE_NT_HEADERS pNtHeader = (PIMAGE_NT_HEADERS)((PBYTE)pDosHeader +
-                                                          pDosHeader->e_lfanew);
-        if (pNtHeader->Signature != IMAGE_NT_SIGNATURE) {
-            SetLastError(ERROR_INVALID_EXE_SIGNATURE);
-            return FALSE;
-        }
-        if (pNtHeader->FileHeader.SizeOfOptionalHeader == 0) {
-            SetLastError(ERROR_EXE_MARKED_INVALID);
-            return FALSE;
-        }
-
-        PIMAGE_IMPORT_DESCRIPTOR iidp
-            = (PIMAGE_IMPORT_DESCRIPTOR)
-            RvaAdjust(pDosHeader,
-                      pNtHeader->OptionalHeader
-                      .DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
-
-        if (iidp == NULL) {
-            SetLastError(ERROR_EXE_MARKED_INVALID);
-            return FALSE;
-        }
-
-        for (; iidp->OriginalFirstThunk != 0; iidp++) {
-
-            PCSTR pszName = (PCHAR)RvaAdjust(pDosHeader, iidp->Name);
-            if (pszName == NULL) {
-                SetLastError(ERROR_EXE_MARKED_INVALID);
-                return FALSE;
-            }
-
-            PIMAGE_THUNK_DATA pThunks = (PIMAGE_THUNK_DATA)
-                RvaAdjust(pDosHeader, iidp->OriginalFirstThunk);
-            PVOID * pAddrs = (PVOID *)
-                RvaAdjust(pDosHeader, iidp->FirstThunk);
-
-            HMODULE hFile = DetourGetContainingModule(pAddrs[0]);
-
-            if (pfImportFile != NULL) {
-                if (!pfImportFile(pContext, hFile, pszName)) {
-                    break;
-                }
-            }
-
-            DWORD nNames = 0;
-            if (pThunks) {
-                for (; pThunks[nNames].u1.Ordinal; nNames++) {
-                    DWORD nOrdinal = 0;
-                    PCSTR pszFunc = NULL;
-
-                    if (IMAGE_SNAP_BY_ORDINAL(pThunks[nNames].u1.Ordinal)) {
-                        nOrdinal = (DWORD)IMAGE_ORDINAL(pThunks[nNames].u1.Ordinal);
-                    }
-                    else {
-                        pszFunc = (PCSTR)RvaAdjust(pDosHeader,
-                                                   (DWORD)pThunks[nNames].u1.AddressOfData + 2);
-                    }
-
-                    if (pfImportFunc != NULL) {
-                        if (!pfImportFunc(pContext,
-                                          nOrdinal,
-                                          pszFunc,
-                                          pAddrs[nNames])) {
-                            break;
-                        }
-                    }
-                }
-                if (pfImportFunc != NULL) {
-                    pfImportFunc(pContext, 0, NULL, NULL);
-                }
-            }
-        }
-        if (pfImportFile != NULL) {
-            pfImportFile(pContext, NULL, NULL);
-        }
-        SetLastError(NO_ERROR);
-        return TRUE;
-    }
-    __except(EXCEPTION_EXECUTE_HANDLER) {
-        SetLastError(ERROR_EXE_MARKED_INVALID);
-        return FALSE;
-    }
-}
-
 static PDETOUR_LOADED_BINARY WINAPI GetPayloadSectionFromModule(HMODULE hModule)
 {
     PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)hModule;
     if (hModule == NULL) {
-        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandleW(NULL);
+        pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandle(NULL);
     }
 
     __try {
@@ -847,20 +657,6 @@ PVOID WINAPI DetourFindPayload(HMODULE hModule, REFGUID rguid, DWORD * pcbData)
     }
 }
 
-PVOID WINAPI DetourFindPayloadEx(REFGUID rguid, DWORD * pcbData)
-{
-    for (HMODULE hMod = NULL; (hMod = DetourEnumerateModules(hMod)) != NULL;) {
-        PVOID pvData;
-
-        pvData = DetourFindPayload(hMod, rguid, pcbData);
-        if (pvData != NULL) {
-            return pvData;
-        }
-    }
-    SetLastError(ERROR_MOD_NOT_FOUND);
-    return NULL;
-}
-
 BOOL WINAPI DetourRestoreAfterWithEx(PVOID pvData, DWORD cbData)
 {
     PDETOUR_EXE_RESTORE pder = (PDETOUR_EXE_RESTORE)pvData;
@@ -870,55 +666,58 @@ BOOL WINAPI DetourRestoreAfterWithEx(PVOID pvData, DWORD cbData)
         return FALSE;
     }
 
-    DWORD dwPermIdh = ~0u;
-    DWORD dwPermInh = ~0u;
-    DWORD dwPermClr = ~0u;
-    DWORD dwIgnore;
+    DWORD dwPermIdh;
+    DWORD dwPermInh;
+    DWORD dwPermClr;
+    DWORD dwOld;
     BOOL fSucceeded = FALSE;
 
-#if 0
-    if (pder->pclr != NULL && pder->clr.Flags != ((PDETOUR_CLR_HEADER)pder->pclr)->Flags) {
-        // If we had to promote the 32/64-bit agnostic IL to 64-bit, we don't want
-        // to restore its IAT.
-        __debugbreak();
-        return TRUE;
+    if (!VirtualProtect(pder->pidh, sizeof(pder->idh),
+                        PAGE_EXECUTE_READWRITE, &dwPermIdh)) {
+        goto end0;
     }
-#endif
-
-    if (VirtualProtect(pder->pidh, pder->cbidh,
-                       PAGE_EXECUTE_READWRITE, &dwPermIdh)) {
-        if (VirtualProtect(pder->pinh, pder->cbinh,
-                           PAGE_EXECUTE_READWRITE, &dwPermInh)) {
-
-            CopyMemory(pder->pidh, &pder->idh, pder->cbidh);
-            CopyMemory(pder->pinh, &pder->inh, pder->cbinh);
-
-            if (pder->pclr != NULL) {
-                if (VirtualProtect(pder->pclr, pder->cbclr,
-                                   PAGE_EXECUTE_READWRITE, &dwPermClr)) {
-                    CopyMemory(pder->pclr, &pder->clr, pder->cbclr);
-                    VirtualProtect(pder->pclr, pder->cbclr, dwPermClr, &dwIgnore);
-                    fSucceeded = TRUE;
-                }
-            }
-            else {
-                fSucceeded = TRUE;
-            }
-            VirtualProtect(pder->pinh, pder->cbinh, dwPermInh, &dwIgnore);
+    if (!VirtualProtect(pder->pinh, sizeof(pder->inh),
+                        PAGE_EXECUTE_READWRITE, &dwPermInh)) {
+        goto end1;
+    }
+    if (pder->pclrFlags != NULL) {
+        if (!VirtualProtect(pder->pclrFlags, sizeof(pder->clrFlags),
+                            PAGE_EXECUTE_READWRITE, &dwPermClr)) {
+            goto end2;
         }
-        VirtualProtect(pder->pidh, pder->cbidh, dwPermIdh, &dwIgnore);
     }
+
+    CopyMemory(pder->pidh, &pder->idh, sizeof(pder->idh));
+    CopyMemory(pder->pinh, &pder->inh, sizeof(pder->inh));
+
+    if (pder->pclrFlags != NULL) {
+        CopyMemory(pder->pclrFlags, &pder->clrFlags, sizeof(pder->clrFlags));
+    }
+    fSucceeded = TRUE;
+
+    if (pder->pclrFlags != NULL) {
+        VirtualProtect(pder->pclrFlags, sizeof(pder->clrFlags), dwPermIdh, &dwOld);
+    }
+  end2:
+    VirtualProtect(pder->pinh, sizeof(pder->inh), dwPermInh, &dwOld);
+  end1:
+    VirtualProtect(pder->pidh, sizeof(pder->idh), dwPermIdh, &dwOld);
+  end0:
     return fSucceeded;
 }
 
 BOOL WINAPI DetourRestoreAfterWith()
 {
-    PVOID pvData;
-    DWORD cbData;
+    for (HMODULE hMod = NULL; (hMod = DetourEnumerateModules(hMod)) != NULL;) {
+        PVOID pvData;
+        DWORD cbData;
 
-    pvData = DetourFindPayloadEx(DETOUR_EXE_RESTORE_GUID, &cbData);
+        pvData = DetourFindPayload(hMod, DETOUR_EXE_RESTORE_GUID, &cbData);
 
-    if (pvData != NULL && cbData != 0) {
+        if (pvData == NULL || cbData == 0) {
+            continue;
+        }
+
         return DetourRestoreAfterWithEx(pvData, cbData);
     }
     SetLastError(ERROR_MOD_NOT_FOUND);

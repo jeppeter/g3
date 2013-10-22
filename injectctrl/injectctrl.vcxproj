@@ -79,7 +79,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="detours\detours.h" />
-    <ClInclude Include="detours\detver.h" />
     <ClInclude Include="dllinsert.h" />
     <ClInclude Include="evt.h" />
     <ClInclude Include="memshare.h" />

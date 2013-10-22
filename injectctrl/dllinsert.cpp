@@ -17,7 +17,6 @@ int __LoadInsert(const char* pExec,const char* pCommandLine,const char* pDllFull
     PROCESS_INFORMATION pi = {0};
     STARTUPINFO si = {0};
     int ret;
-    BOOL bret;
     si.cb = sizeof(si);
 #ifdef _UNICODE
     LPWSTR pExecWide=NULL;
@@ -42,35 +41,18 @@ int __LoadInsert(const char* pExec,const char* pCommandLine,const char* pDllFull
         }
     }
 
-
-    bret = DetourCreateProcessWithDllExW(pExecWide,pCommandWide,NULL,NULL,TRUE,CREATE_DEFAULT_ERROR_MODE,
-                                         NULL,NULL,
-                                         &si,&pi,pDllFullName,NULL);
-    if(!bret)
-    {
-        ret = -LAST_ERROR_RETURN();
-    }
-    else
-    {
-        ret = pi.dwProcessId;
-    }
+    ret = DetourCreateProcessWithDllW(pExecWide,pCommandWide,NULL,NULL,TRUE,CREATE_DEFAULT_ERROR_MODE,
+                                      NULL,NULL,
+                                      &si,&pi,pDllFullName,pDllName,NULL);
 
 
     AnsiToUnicode(NULL,&pCommandWide,&commandsize);
     AnsiToUnicode(NULL,&pExecWide,&execsize);
 
 #else
-    ret = DetourCreateProcessWithDllExA(pExec,pCommandLine,NULL,NULL,TRUE,CREATE_DEFAULT_ERROR_MODE
-                                        NULL,NULL,
-                                        &si,&pi,pDllFullName,NULL);
-    if(!bret)
-    {
-        ret = -LAST_ERROR_RETURN();
-    }
-    else
-    {
-        ret = pi.dwProcessId;
-    }
+    ret = DetourCreateProcessWithDllA(pExec,pCommandLine,NULL,NULL,TRUE,CREATE_DEFAULT_ERROR_MODE
+                                      NULL,NULL,
+                                      &si,&pi,pDllFullName,pDllName,NULL);
 #endif
 
     if(ret < 0)

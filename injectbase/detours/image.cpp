@@ -2,7 +2,7 @@
 //
 //  Image manipulation functions (image.cpp of detours.lib)
 //
-//  Microsoft Research Detours Package, Version 3.0 Build_316.
+//  Microsoft Research Detours Package, Version 2.1.
 //
 //  Copyright (c) Microsoft Corporation.  All rights reserved.
 //
@@ -1059,12 +1059,12 @@ BOOL CImage::Read(HANDLE hFile)
         return FALSE;
     }
 
-    m_hMap = CreateFileMappingW(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+    m_hMap = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
     if (m_hMap == NULL) {
         return FALSE;
     }
 
-    m_pMap = (PBYTE)MapViewOfFileEx(m_hMap, FILE_MAP_READ, 0, 0, 0, NULL);
+    m_pMap = (PBYTE)MapViewOfFile(m_hMap, FILE_MAP_READ, 0, 0, 0);
     if (m_pMap == NULL) {
         return FALSE;
     }
@@ -1150,7 +1150,7 @@ BOOL CImage::Read(HANDLE hFile)
     }
 
     DWORD nFiles = 0;
-    for (; iidp[nFiles].OriginalFirstThunk != 0 || iidp[nFiles].FirstThunk != 0; nFiles++) {
+    for (; iidp[nFiles].OriginalFirstThunk != 0; nFiles++) {
     }
 
     CImageImportFile **ppLastFile = &m_pImportFiles;
@@ -1206,14 +1206,8 @@ BOOL CImage::Read(HANDLE hFile)
         }
 
         DWORD rvaThunk = iidp->OriginalFirstThunk;
-        if( !rvaThunk ) {
-            rvaThunk = iidp->FirstThunk;
-        }
         PIMAGE_THUNK_DATA pAddrThunk = (PIMAGE_THUNK_DATA)RvaToVa(rvaThunk);
         rvaThunk = oidp->OriginalFirstThunk;
-        if( !rvaThunk ) {
-            rvaThunk = oidp->FirstThunk;
-        }
         PIMAGE_THUNK_DATA pLookThunk = (PIMAGE_THUNK_DATA)RvaToVa(rvaThunk);
 
         DWORD nNames = 0;

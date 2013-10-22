@@ -272,7 +272,7 @@ BOOL InsertDlls(HANDLE hProcess)
         rlpDlls[0] = pFullName;
         rlpDlls[1] = pPartName;
 
-        bret = DetourUpdateProcessWithDll(hProcess,rlpDlls,2);
+        bret = UpdateImports(hProcess,rlpDlls,2);
         if(!bret)
         {
             ret = LAST_ERROR_CODE();

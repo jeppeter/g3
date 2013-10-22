@@ -32,7 +32,6 @@
 
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
 
-extern "C" BOOL UpdateImports(HANDLE hProcess, LPCSTR *plpDlls, DWORD nDlls);
 
 
 static CRITICAL_SECTION st_DetourCS;
