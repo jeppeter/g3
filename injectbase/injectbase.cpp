@@ -271,6 +271,7 @@ BOOL InsertDlls(HANDLE hProcess)
 
         rlpDlls[0] = pFullName;
         rlpDlls[1] = pPartName;
+        DEBUG_INFO("update (%s:%s)\n",pFullName,pPartName);
 
         bret = UpdateImports(hProcess,rlpDlls,2);
         if(!bret)
@@ -333,7 +334,7 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
     PROCESS_INFORMATION pi;
     int ret;
 
-    DEBUG_INFO("Current  Process %d\n",GetCurrentProcessId());
+    DEBUG_INFO("Current  Process (%d)\n",GetCurrentProcessId());
     if(!CreateProcessWNext(lpApplicationName,
                            lpCommandLine,
                            lpProcessAttributes,
@@ -397,7 +398,7 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
     PROCESS_INFORMATION pi;
     int ret;
 
-    DEBUG_INFO("Current  Process %d\n",GetCurrentProcessId());
+    DEBUG_INFO("Current  Process (%d)\n",GetCurrentProcessId());
     if(!CreateProcessANext(lpApplicationName,
                            lpCommandLine,
                            lpProcessAttributes,
@@ -528,6 +529,7 @@ int InsertModuleFileName(HMODULE hModule)
     }
 
     /*now insert the dlls*/
+	DEBUG_INFO("Insert into(%s:%s)\n",pModuleFullName,pModulePartName);
     ret = InsertDllNames(pModuleFullName,pModulePartName);
     if(ret < 0)
     {
@@ -633,21 +635,24 @@ int InjectBaseModuleInit(HMODULE hModule)
     int ret;
     InitializeCriticalSection(&st_DllNameCS);
 
+    DEBUG_INFO("\n");
     ret = DetourCreateProcessFunctions();
     if(ret < 0)
     {
         return 0;
     }
 
+    DEBUG_INFO("\n");
+    st_InjectModuleInited = 1;
 
     ret = InsertModuleFileName(hModule);
     if(ret < 0)
     {
         return 0;
     }
+    DEBUG_INFO("\n");
     SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
 
-    st_InjectModuleInited = 1;
 
     return 0;
 
@@ -658,7 +663,7 @@ void InjectBaseModuleFini(HMODULE hModule)
     if(st_InjectModuleInited)
     {
         ClearAllDllNames();
-    	SetUnhandledExceptionFilter(NULL);
+        SetUnhandledExceptionFilter(NULL);
     }
-	return;
+    return;
 }
