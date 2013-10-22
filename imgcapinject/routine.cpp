@@ -16,6 +16,7 @@ x509\routin.cpp
 #include <output_debug.h>
 #include <D3dx9tex.h>
 #include <detours/detours.h>
+#include <injectbase.h>
 
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
 #define LAST_ERROR_RETURN()  (GetLastError() ? GetLastError() : 1)
@@ -1995,6 +1996,7 @@ Direct3DCreate9Callback(UINT SDKVersion)
 
     if(pv)
     {
+    	DEBUG_INFO("pv get 0x%p\n",pv);
         pv = static_cast<IDirect3D9*>(new CDirect3D9Hook(pv));
     }
 
@@ -2005,11 +2007,15 @@ Direct3DCreate9Callback(UINT SDKVersion)
 
 int InitializeHook(void)
 {
+	DEBUG_INFO("Hook\n");
+	DEBUG_BUFFER(Direct3DCreate9Next,10);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&Direct3DCreate9Next, Direct3DCreate9Callback);
     DetourTransactionCommit();
 
+	DEBUG_INFO("Hook Fini\n");
+	DEBUG_BUFFER(Direct3DCreate9Next,10);
 
     return 0;
 }
@@ -2017,9 +2023,11 @@ int InitializeHook(void)
 int Routine(HMODULE hModule)
 {
 	DEBUG_INFO("Initialize Routine");
+	InsertModuleFileName(hModule);
     InitializeEnviron();
     InitializeHook();
     RoutineDetourD11();
+	DEBUG_INFO("Initialize routine succ\n");
     return 0;
 }
 
