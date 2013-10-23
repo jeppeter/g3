@@ -13,7 +13,7 @@
 #include <procex.h>
 
 #ifdef _DEBUG
-#define new DEBUG_NEW
+//#define new DEBUG_NEW
 #endif
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
