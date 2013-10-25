@@ -1,0 +1,25 @@
+
+
+#ifndef __IMG_CAP_COMMON_H__
+#define __IMG_CAP_COMMON_H__
+
+
+
+enum IMGCAPPER_STATE
+{
+	IMGCAPCTRL_STATE_OPEN = 0,			 // 注入成功
+	IMGCAPCTRL_STATE_CLOSE, 			 // 未注入或未注入完毕
+};
+
+enum IMGCAPPER_OPERATION
+{
+	IMGCAPCTRL_OPERATION_NONE = 0,		 // 无可截取内容或不知道可截取内容是以什么方式呈现的
+	IMGCAPCTRL_OPERATION_GDI,			 
+	IMGCAPCTRL_OPERATION_DIRECTX,
+	IMGCAPCTRL_OPERATION_OPENGL,
+};
+
+
+
+#endif /*__IMG_CAP_COMMON_H__*/
+
