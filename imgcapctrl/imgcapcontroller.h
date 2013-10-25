@@ -20,6 +20,8 @@ public:
     int GetOperation() const;
     int GetAverageCapTime() const;
 
+private:
+	void __SetOperationNone();
 
 private:
     HANDLE m_hProc;         // ±»½ØÍ¼½ø³Ì¾ä±ú
