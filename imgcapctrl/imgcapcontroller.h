@@ -20,7 +20,6 @@ public:
     int GetOperation() const;
     int GetAverageCapTime() const;
 
-protected:
 
 private:
     HANDLE m_hProc;         // ±»½ØÍ¼½ø³Ì¾ä±ú

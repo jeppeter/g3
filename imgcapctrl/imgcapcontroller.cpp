@@ -1,0 +1,3 @@
+
+#include "imgcapcontroller.h"
+
