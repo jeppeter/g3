@@ -15,7 +15,7 @@ public:
     BOOL Start(HANDLE hProc,const char* dllname, int iMaxDelay);
     VOID Stop();
 
-    BOOL CapImage(uint8_t *pData, int iLen, int * iFormat, int * iWidth, int * iHeight, int * iTimeStamp, int * iLastTimeStamp);
+    BOOL CapImage(uint8_t *pData, int iLen, int * iFormat, int * iWidth, int * iHeight, int * iTimeStamp, int * pRetLen);
     int GetState();
     int GetOperation();
 

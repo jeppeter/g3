@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "imgctrldemo.h"
 #include "imgctrldemoDlg.h"
+#include "imgcapcontroller.h"
 #include "afxdialogex.h"
 #include <output_debug.h>
 #include <uniansi.h>
@@ -587,10 +588,12 @@ int CimgctrldemoDlg::SnapShot()
     int getlen=0,writelen = 0;
     HANDLE hFile=NULL;
     char* pData=NULL;
-    int datalen = 0x800000;
+    int datalen = 0x1000000;
     int format,width,height;
     DWORD curret;
     BOOL bret;
+    CImgCapController *pImgCap=NULL;
+    int curstamp;
     processid = m_CallProcessId;
     DEBUG_INFO("\n");
 
@@ -638,7 +641,7 @@ int CimgctrldemoDlg::SnapShot()
         ERROR_INFO("could not open datalen %d\n",datalen);
         goto out;
     }
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 
 #ifdef _UNICODE
     hFile = CreateFile((wchar_t*)((const WCHAR*)strFormatBmp),GENERIC_WRITE | GENERIC_READ , FILE_SHARE_READ ,NULL,
@@ -654,7 +657,7 @@ int CimgctrldemoDlg::SnapShot()
         ERROR_INFO("could not open %s file for write (%d)\n",pBmpFile,-ret);
         goto out;
     }
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 
     hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION,FALSE,processid);
     if(hProc==NULL)
@@ -665,43 +668,23 @@ int CimgctrldemoDlg::SnapShot()
         goto out;
     }
 
-	DEBUG_INFO("open process(%d) hProc 0x%08lx\n",processid,hProc);
-
-
-    while(1)
+    DEBUG_INFO("open process(%d) hProc 0x%08lx\n",processid,hProc);
+    pImgCap = new CImgCapController();
+    bret = pImgCap->Start(hProc,pDllName,20);
+    if(!bret)
     {
-        ret = D3DHook_CaptureImageBuffer(hProc,pDllName,pData,datalen,&format,&width,&height);
-        if(ret < 0)
-        {        	
-			DEBUG_INFO("\n");
-            goto out;
-        }
+        ret = LAST_ERROR_RETURN();
+        goto out;
+    }
 
-        if(ret >= 0)
-        {
-            getlen = ret;
-            break;
-        }
 
-        if(datalen >= 0x8000000)
-        {
-            ret = LAST_ERROR_RETURN();
-            ret = -ret;
-            goto out;
-        }
-        if(pData)
-        {
-            free(pData);
-        }
-        pData = NULL;
-        datalen <<= 1;
-        pData = (char*)malloc(datalen);
-        if(pData == NULL)
-        {
-            ret = LAST_ERROR_RETURN();
-            ret = -ret;
-            goto out;
-        }
+
+
+    bret = pImgCap->CapImage((uint8_t*)pData,datalen,&format,&width,&height,&curstamp,&getlen);
+    if(!bret)
+    {
+        ret = LAST_ERROR_RETURN();
+        goto out;
     }
 
     writelen = 0;
@@ -722,6 +705,11 @@ int CimgctrldemoDlg::SnapShot()
 
 
 out:
+    if(pImgCap)
+    {
+        delete pImgCap;
+    }
+    pImgCap = NULL;
 #ifdef _UNICODE
     UnicodeToAnsi(NULL,&pFullDllName,&fulldllnamesize);
     UnicodeToAnsi(NULL,&pBmpFile,&bmpfilesize);

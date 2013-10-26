@@ -71,10 +71,10 @@ BOOL CImgCapController::Start(HANDLE hProc,const char * dllname,int iMaxDelay)
 }
 
 
-BOOL CImgCapController::CapImage(uint8_t * pData,int iLen,int * iFormat,int * iWidth,int * iHeight,int * iTimeStamp,int * iLastTimeStamp)
+BOOL CImgCapController::CapImage(uint8_t * pData,int iLen,int * iFormat,int * iWidth,int * iHeight,int * iTimeStamp,int * pRetLen)
 {
     int ret;
-	unsigned int curticks;
+    unsigned int curticks;
 
     if(this->m_hProc == NULL)
     {
@@ -87,18 +87,22 @@ BOOL CImgCapController::CapImage(uint8_t * pData,int iLen,int * iFormat,int * iW
     if(ret < 0)
     {
         ret = -ret;
-		ERROR_INFO("could not capimage %s data 0x%p size %d error(%d)\n",this->m_strDllName,pData,iLen,ret);
+        ERROR_INFO("could not capimage %s data 0x%p size %d error(%d)\n",this->m_strDllName,pData,iLen,ret);
         goto fail;
     }
 
-	/*now to give the stamp*/
-	GetCurrentTicks(&curticks);
-	*iTimeStamp = curticks;
-	*iLastTimeStamp = this->m_iLastTimeStamp;
-	this->m_iLastTimeStamp = curticks;
-	
-	SetLastError(0);
-	return TRUE;
+    if(pRetLen)
+    {
+        *pRetLen = ret;
+    }
+
+    /*now to give the stamp*/
+    GetCurrentTicks(&curticks);
+    *iTimeStamp = curticks;
+    this->m_iLastTimeStamp = curticks;
+
+    SetLastError(0);
+    return TRUE;
 
 fail:
     assert(ret > 0);
