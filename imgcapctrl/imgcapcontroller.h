@@ -12,19 +12,19 @@ public:
     ~CImgCapController();
 
 
-    BOOL Start(HANDLE hProc, int iMaxDelay);
+    BOOL Start(HANDLE hProc,const char* dllname, int iMaxDelay);
     VOID Stop();
 
     BOOL CapImage(uint8_t * pData, int iLen, int * iFormat, int * iWidth, int * iHeight, int * iTimeStamp, int * iLastTimeStamp);
     int GetState() const;
     int GetOperation() const;
-    int GetAverageCapTime() const;
 
-private:
-	void __SetOperationNone();
 
 private:
     HANDLE m_hProc;         // 被截图进程句柄
+    unsigned char m_strDllName[256];
+    int m_iState;
+	int m_iOperation;
     int m_iMaxDelay;        // 尝试截图的最大时间
     int m_iLastTimeStamp;   // 最后一次截图时间戳
 
