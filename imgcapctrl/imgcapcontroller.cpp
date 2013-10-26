@@ -1,7 +1,11 @@
 
 #include "imgcapcontroller.h"
-#include <imgcapctrl.h>
+#include <string.h>
+#include <output_debug.h>
+#include <timeticks.h>
+#include <assert.h>
 
+extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * data, int len, int * format, int * width, int * height);
 
 CImgCapController::CImgCapController()
 {
@@ -58,12 +62,10 @@ int CImgCapController::GetOperation()
 
 BOOL CImgCapController::Start(HANDLE hProc,const char * dllname,int iMaxDelay)
 {
-    BOOL bret;
-
     this->Stop();
 
     this->m_iMaxDelay;
-    _strncpy_s(this->m_strDllName,sizeof(this->m_strDllName),dllname,_TRUNCATE);
+    strncpy_s((char*)this->m_strDllName,sizeof(this->m_strDllName),dllname,_TRUNCATE);
     this->m_hProc = hProc;
     return TRUE;
 }
@@ -71,7 +73,6 @@ BOOL CImgCapController::Start(HANDLE hProc,const char * dllname,int iMaxDelay)
 
 BOOL CImgCapController::CapImage(uint8_t * pData,int iLen,int * iFormat,int * iWidth,int * iHeight,int * iTimeStamp,int * iLastTimeStamp)
 {
-    BOOL bret;
     int ret;
 	unsigned int curticks;
 
@@ -82,7 +83,7 @@ BOOL CImgCapController::CapImage(uint8_t * pData,int iLen,int * iFormat,int * iW
         return FALSE;
     }
 
-    ret = D3DHook_CaptureImageBuffer(this->m_hProc,this->m_strDllName,pData,iLen,iFormat,iWidth,iHeight);
+    ret = D3DHook_CaptureImageBuffer(this->m_hProc,(char*)this->m_strDllName,(char*)pData,iLen,iFormat,iWidth,iHeight);
     if(ret < 0)
     {
         ret = -ret;
