@@ -95,13 +95,68 @@ public:
         DIRECT_INPUT_DEVICE_8A_OUT();
         if(uret == 1)
         {
-            uret = UnRegisterDirectInput8AHook(this->m_ptr);
+            uret = UnRegisterDirectInputDevice8AHook(this->m_ptr);
             if(uret == 0)
             {
                 delete this;
             }
         }
         return uret;
+    }
+
+    COM_METHOD(HRESULT,GetCapabilities)(THIS_ LPDIDEVCAPS lpDIDevCaps)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->GetCapabilities(lpDIDevCaps);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,EnumObjects)(THIS_ LPDIENUMDEVICEOBJECTSCALLBACK lpCallback,LPVOID pvRef,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->EnumObjects(lpCallback,pvRef,dwFlags);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetProperty)(THIS_ REFGUID rguidProp,LPDIPROPHEADER pdiph)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->GetProperty(rguidProp,pdiph);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetProperty)(THIS_ REFGUID rguidProp,LPCDIPROPHEADER pdiph)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->SetProperty(rguidProp,pdiph);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Acquire)(THIS)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->Acquire();
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+
+    COM_METHOD(HRESULT,Unacquire)(THIS)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->Unacquire();
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
     }
 
 
