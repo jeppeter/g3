@@ -159,6 +159,96 @@ public:
         return hr;
     }
 
+    COM_METHOD(HRESULT,GetDeviceState)(THIS_ DWORD cbData,LPVOID lpvData)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->GetDeviceState(cbData,lpvData);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetDeviceData)(THIS_ DWORD cbObjectData,LPDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetDataFormat)(THIS_ LPCDIDATAFORMAT lpdf)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->SetDataFormat(lpdf);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetEventNotification)(THIS_ HANDLE hEvent)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->SetEventNotification(hEvent);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetCooperativeLevel)(THIS_ HWND hwnd,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->SetCooperativeLevel(hwnd,dwFlags);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetObjectInfo)(THIS_ LPDIDEVICEOBJECTINSTANCE pdidoi,DWORD dwObj,DWORD dwHow)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->GetObjectInfo(pdidoi,dwObj,dwHow);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetDeviceInfo)(THIS_ LPDIDEVICEINSTANCE pdidi)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->GetDeviceInfo(pdidi);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,RunControlPanel)(THIS_ HWND hwndOwner,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->RunControlPanel(hwndOwner,dwFlags);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Initialize)(THIS_ HINSTANCE hinst,DWORD dwVersion,REFGUID rguid)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->Initialize(hinst,dwVersion,rguid);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,CreateEffect)(THIS_ REFGUID rguid,LPCDIEFFECT lpeff,LPDIRECTINPUTEFFECT * ppdeff,LPUNKNOWN punkOuter)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->CreateEffect(rguid,lpeff,ppdeff,punkOuter);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
 
 };
 
