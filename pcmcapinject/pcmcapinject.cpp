@@ -29,7 +29,6 @@
 #pragma comment(lib,"psapi.lib")
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
-
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
 
 
