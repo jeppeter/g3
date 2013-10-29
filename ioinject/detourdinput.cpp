@@ -249,6 +249,34 @@ public:
         return hr;
     }
 
+    COM_METHOD(HRESULT,EnumEffects)(THIS_ LPDIENUMEFFECTSCALLBACK lpCallback,LPVOID pvRef,DWORD dwEffType)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->EnumEffects(lpCallback,pvRef,dwEffType);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+
+    COM_METHOD(HRESULT,GetEffectInfo)(THIS_ LPDIEffectInfo pdei,REFGUID rguid)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->GetEffectInfo(pdei,rguid);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetForceFeedbackState)(THIS_  LPDWORD pdwOut)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->GetForceFeedbackState(pdwOut);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
 
 };
 
