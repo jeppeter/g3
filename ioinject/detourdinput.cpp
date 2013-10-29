@@ -11,6 +11,107 @@
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
 
 
+
+/*****************************************
+*  to make the IDirectInputDevice8A hook
+*
+*****************************************/
+class CDirectInputDevice8AHook;
+
+static std::vector<IDirectInputDevice8A*> st_DIDevice8AVecs;
+static std::vector<CDirectInputDevice8AHook*> st_CDIDevice8AHookVecs;
+static CRITICAL_SECTION st_DIDevice8ACS;
+
+#define EQUAL_DI_DEVICE_8A_VECS() \
+do\
+{\
+	assert(st_DIDevice8AVecs.size() == st_CDIDevice8AHookVecs.size());\
+}while(0)
+
+ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
+{
+    int findidx = -1;
+    ULONG uret=1;
+    unsigned int i;
+
+    EnterCriticalSection(&st_DIDevice8ACS);
+    EQUAL_DI_DEVICE_8A_VECS();
+    for(i=0; i<st_DIDevice8AVecs.size() ; i++)
+    {
+        if(st_DIDevice8AVecs[i] == ptr)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        st_DIDevice8AVecs.erase(st_DIDevice8AVecs.begin()+findidx);
+        st_CDIDevice8AHookVecs.erase(st_CDIDevice8AHookVecs.begin() + findidx);
+    }
+    LeaveCriticalSection(&st_DIDevice8ACS);
+
+    if(findidx >= 0)
+    {
+        uret = ptr->Release();
+    }
+    return uret;
+}
+
+
+#define  DIRECT_INPUT_DEVICE_8A_IN()
+#define  DIRECT_INPUT_DEVICE_8A_OUT()
+
+
+class CDirectInputDevice8AHook : public IDirectInputDevice8A
+{
+private:
+    IDirectInputDevice8A* m_ptr;
+public:
+    CDirectInputDevice8AHook(IDirectInputDevice8A* ptr) : m_ptr(ptr) {};
+public:
+    COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->QueryInterface(riid,ppvObject);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+    COM_METHOD(ULONG,AddRef)(THIS)
+    {
+        ULONG uret;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        uret = m_ptr->AddRef();
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return uret;
+    }
+    COM_METHOD(ULONG,Release)(THIS)
+    {
+        ULONG uret;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        uret = m_ptr->Release();
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        if(uret == 1)
+        {
+            uret = UnRegisterDirectInput8AHook(this->m_ptr);
+            if(uret == 0)
+            {
+                delete this;
+            }
+        }
+        return uret;
+    }
+
+
+};
+
+
+/*****************************************
+*   to make the DirectInput8A hook
+*
+*****************************************/
 class CDirectInput8AHook;
 
 static std::vector<IDirectInput8A*> st_DI8AVecs;
@@ -20,7 +121,7 @@ static CRITICAL_SECTION st_DI8ACS;
 #define EQUAL_DI8A_VECS() \
 do\
 {\
-	assert(st_DI8ACS.size() == st_CDI8AHookVecs.size());\
+	assert(st_DI8AVecs.size() == st_CDI8AHookVecs.size());\
 }while(0)
 
 ULONG UnRegisterDirectInput8AHook(IDirectInput8A* ptr)
@@ -193,8 +294,8 @@ CDirectInput8AHook* RegisterDirectInput8AHook(IDirectInput8A* ptr)
     if(findidx < 0)
     {
         pHook =new CDirectInput8AHook(ptr);
-		/*to add reference to control the delete procedure*/
-		ptr->AddRef();
+        /*to add reference to control the delete procedure*/
+        ptr->AddRef();
         st_DI8AVecs.push_back(ptr);
         st_CDI8AHookVecs.push_back(pHook);
     }
@@ -207,6 +308,12 @@ CDirectInput8AHook* RegisterDirectInput8AHook(IDirectInput8A* ptr)
 }
 
 
+/*****************************************
+*   to make the DirectInput8W hook
+*
+*****************************************/
+
+
 class CDirectInput8WHook;
 
 static std::vector<IDirectInput8W*> st_DI8WVecs;
@@ -216,7 +323,7 @@ static CRITICAL_SECTION st_DI8WCS;
 #define EQUAL_DI8W_VECS() \
 do\
 {\
-	assert(st_DI8WCS.size() == st_CDI8WHookVecs.size());\
+	assert(st_DI8WVecs.size() == st_CDI8WHookVecs.size());\
 }while(0)
 
 ULONG UnRegisterDirectInput8WHook(IDirectInput8W* ptr)
@@ -369,7 +476,7 @@ public:
         DIRECT_INPUT_8W_OUT();
         return hr;
     }
-	
+
 };
 
 CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
@@ -392,8 +499,8 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
     if(findidx < 0)
     {
         pHook =new CDirectInput8WHook(ptr);
-		/*to add reference to control the delete procedure*/
-		ptr->AddRef();
+        /*to add reference to control the delete procedure*/
+        ptr->AddRef();
         st_DI8WVecs.push_back(ptr);
         st_CDI8WHookVecs.push_back(pHook);
     }
@@ -442,6 +549,25 @@ HRESULT WINAPI DirectInput8CreateCallBack(HINSTANCE hinst, DWORD dwVersion, REFI
         if(punkOuter)
         {
             DEBUG_INFO("*punkOuter 0x%p\n",*punkOuter);
+        }
+
+        if(riidltf == IID_IDirectInput8A)
+        {
+            CDirectInput8AHook* pHookA = NULL;
+            IDirectInput8A* pPtrA = (IDirectInput8A*)*ppvOut;
+            pHookA = RegisterDirectInput8AHook(pPtrA);
+            assert(pHookA);
+            DEBUG_INFO("IDirectInput8A(0x%p) =>CDirectInput8AHook(0x%p)\n",pPtrA,pHookA);
+            *ppvOut = pHookA;
+        }
+        else if(riidltf == IID_IDirectInput8W)
+        {
+            CDirectInput8WHook *pHookW = NULL;
+            IDirectInput8W* pPtrW = (IDirectInput8W*) *ppvOut;
+            pHookW = RegisterDirectInput8WHook(pPtrW);
+            assert(pHookW);
+            DEBUG_INFO("IDirectInput8W(0x%p) => CDirectInput8AHook(0x%p)\n",pPtrW,pHookW);
+            *ppvOut = pHookW;
         }
     }
     return hr;
