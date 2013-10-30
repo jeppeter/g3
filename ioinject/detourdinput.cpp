@@ -359,6 +359,355 @@ CDirectInputDevice8AHook* RegisterDirectInputDevice8AHook(IDirectInputDevice8A* 
 }
 
 
+
+/*****************************************
+*  to make the IDirectInputDevice8W hook
+*
+*****************************************/
+class CDirectInputDevice8WHook;
+
+static std::vector<IDirectInputDevice8W*> st_DIDevice8WVecs;
+static std::vector<CDirectInputDevice8WHook*> st_CDIDevice8WHookVecs;
+static CRITICAL_SECTION st_DIDevice8WCS;
+
+#define EQUAL_DI_DEVICE_8W_VECS() \
+do\
+{\
+	assert(st_DIDevice8WVecs.size() == st_CDIDevice8WHookVecs.size());\
+}while(0)
+
+ULONG UnRegisterDirectInputDevice8WHook(IDirectInputDevice8W* ptr)
+{
+    int findidx = -1;
+    ULONG uret=1;
+    unsigned int i;
+
+    EnterCriticalSection(&st_DIDevice8WCS);
+    EQUAL_DI_DEVICE_8W_VECS();
+    for(i=0; i<st_DIDevice8WVecs.size() ; i++)
+    {
+        if(st_DIDevice8WVecs[i] == ptr)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        st_DIDevice8WVecs.erase(st_DIDevice8WVecs.begin()+findidx);
+        st_CDIDevice8WHookVecs.erase(st_CDIDevice8WHookVecs.begin() + findidx);
+    }
+    LeaveCriticalSection(&st_DIDevice8WCS);
+
+    if(findidx >= 0)
+    {
+        uret = ptr->Release();
+    }
+    return uret;
+}
+
+
+#define  DIRECT_INPUT_DEVICE_8W_IN()
+#define  DIRECT_INPUT_DEVICE_8W_OUT()
+
+
+class CDirectInputDevice8WHook : public IDirectInputDevice8W
+{
+private:
+    IDirectInputDevice8W* m_ptr;
+public:
+    CDirectInputDevice8WHook(IDirectInputDevice8W* ptr) : m_ptr(ptr) {};
+public:
+    COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->QueryInterface(riid,ppvObject);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+    COM_METHOD(ULONG,AddRef)(THIS)
+    {
+        ULONG uret;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        uret = m_ptr->AddRef();
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return uret;
+    }
+    COM_METHOD(ULONG,Release)(THIS)
+    {
+        ULONG uret;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        uret = m_ptr->Release();
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        if(uret == 1)
+        {
+            uret = UnRegisterDirectInputDevice8WHook(this->m_ptr);
+            if(uret == 0)
+            {
+                delete this;
+            }
+        }
+        return uret;
+    }
+
+    COM_METHOD(HRESULT,GetCapabilities)(THIS_ LPDIDEVCAPS lpDIDevCaps)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->GetCapabilities(lpDIDevCaps);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,EnumObjects)(THIS_ LPDIENUMDEVICEOBJECTSCALLBACK lpCallback,LPVOID pvRef,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->EnumObjects(lpCallback,pvRef,dwFlags);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetProperty)(THIS_ REFGUID rguidProp,LPDIPROPHEADER pdiph)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->GetProperty(rguidProp,pdiph);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetProperty)(THIS_ REFGUID rguidProp,LPCDIPROPHEADER pdiph)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->SetProperty(rguidProp,pdiph);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Acquire)(THIS)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->Acquire();
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+
+    COM_METHOD(HRESULT,Unacquire)(THIS)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->Unacquire();
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetDeviceState)(THIS_ DWORD cbData,LPVOID lpvData)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->GetDeviceState(cbData,lpvData);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetDeviceData)(THIS_ DWORD cbObjectData,LPDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetDataFormat)(THIS_ LPCDIDATAFORMAT lpdf)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->SetDataFormat(lpdf);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetEventNotification)(THIS_ HANDLE hEvent)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->SetEventNotification(hEvent);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetCooperativeLevel)(THIS_ HWND hwnd,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->SetCooperativeLevel(hwnd,dwFlags);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetObjectInfo)(THIS_ LPDIDEVICEOBJECTINSTANCE pdidoi,DWORD dwObj,DWORD dwHow)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->GetObjectInfo(pdidoi,dwObj,dwHow);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetDeviceInfo)(THIS_ LPDIDEVICEINSTANCE pdidi)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->GetDeviceInfo(pdidi);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,RunControlPanel)(THIS_ HWND hwndOwner,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->RunControlPanel(hwndOwner,dwFlags);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Initialize)(THIS_ HINSTANCE hinst,DWORD dwVersion,REFGUID rguid)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->Initialize(hinst,dwVersion,rguid);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,CreateEffect)(THIS_ REFGUID rguid,LPCDIEFFECT lpeff,LPDIRECTINPUTEFFECT * ppdeff,LPUNKNOWN punkOuter)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->CreateEffect(rguid,lpeff,ppdeff,punkOuter);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,EnumEffects)(THIS_ LPDIENUMEFFECTSCALLBACK lpCallback,LPVOID pvRef,DWORD dwEffType)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->EnumEffects(lpCallback,pvRef,dwEffType);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+
+    COM_METHOD(HRESULT,GetEffectInfo)(THIS_ LPDIEffectInfo pdei,REFGUID rguid)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->GetEffectInfo(pdei,rguid);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetForceFeedbackState)(THIS_  LPDWORD pdwOut)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->GetForceFeedbackState(pdwOut);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SendForceFeedbackCommand)(THIS_ DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->SendForceFeedbackCommand(dwFlags);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,EnumCreatedEffectObjects)(THIS_  LPDIENUMCREATEDEFFECTOBJECTSCALLBACK lpCallback,LPVOID pvRef,DWORD fl)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->EnumCreatedEffectObjects(lpCallback,pvRef,fl);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Escape)(THIS_ LPDIEFFESCAPE pesc)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->Escape(pesc);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Poll)(THIS)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->Poll();
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SendDeviceData)(THIS_ DWORD cbObjectData,LPCDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD fl)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8W_IN();
+        hr = m_ptr->SendDeviceData(cbObjectData,rgdod,pdwInOut,fl);
+        DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+    }
+
+};
+
+CDirectInputDevice8WHook* RegisterDirectInputDevice8WHook(IDirectInputDevice8W* ptr)
+{
+    CDirectInputDevice8WHook* pHookA=NULL;
+    int findidx = -1;
+    unsigned int i;
+
+    EnterCriticalSection(&st_DIDevice8WCS);
+    for(i=0; i<st_DIDevice8WVecs.size() ; i++)
+    {
+        if(st_DIDevice8WVecs[i] == ptr)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        pHookA = st_CDIDevice8WHookVecs[findidx];
+    }
+    else
+    {
+        pHookA = new CDirectInputDevice8WHook(ptr);
+        st_CDIDevice8WHookVecs.push_back(pHookA);
+        st_DIDevice8WVecs.push_back(ptr);
+        /*to add reference ,it will give release ok*/
+        ptr->AddRef();
+    }
+
+    LeaveCriticalSection(&st_DIDevice8WCS);
+
+    return pHookA;
+}
+
+
+
 /*****************************************
 *   to make the DirectInput8A hook
 *
