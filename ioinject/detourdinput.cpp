@@ -277,8 +277,86 @@ public:
         return hr;
     }
 
+    COM_METHOD(HRESULT,SendForceFeedbackCommand)(THIS_ DWORD dwFlags)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->SendForceFeedbackCommand(dwFlags);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,EnumCreatedEffectObjects)(THIS_  LPDIENUMCREATEDEFFECTOBJECTSCALLBACK lpCallback,LPVOID pvRef,DWORD fl)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->EnumCreatedEffectObjects(lpCallback,pvRef,fl);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Escape)(THIS_ LPDIEFFESCAPE pesc)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->Escape(pesc);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Poll)(THIS)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->Poll();
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SendDeviceData)(THIS_ DWORD cbObjectData,LPCDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD fl)
+    {
+        HRESULT hr;
+        DIRECT_INPUT_DEVICE_8A_IN();
+        hr = m_ptr->SendDeviceData(cbObjectData,rgdod,pdwInOut,fl);
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+    }
 
 };
+
+CDirectInputDevice8AHook* RegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
+{
+    CDirectInputDevice8AHook* pHookA=NULL;
+    int findidx = -1;
+    unsigned int i;
+
+    EnterCriticalSection(&st_DIDevice8ACS);
+    for(i=0; i<st_DIDevice8AVecs.size() ; i++)
+    {
+        if(st_DIDevice8AVecs[i] == ptr)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        pHookA = st_CDIDevice8AHookVecs[findidx];
+    }
+    else
+    {
+        pHookA = new CDirectInputDevice8AHook(ptr);
+        st_CDIDevice8AHookVecs.push_back(pHookA);
+        st_DIDevice8AVecs.push_back(ptr);
+        /*to add reference ,it will give release ok*/
+        ptr->AddRef();
+    }
+
+    LeaveCriticalSection(&st_DIDevice8ACS);
+
+    return pHookA;
+}
 
 
 /*****************************************
