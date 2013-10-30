@@ -804,6 +804,51 @@ public:
         HRESULT hr;
         DIRECT_INPUT_8A_IN();
         hr = m_ptr->CreateDevice(rguid,lplpDirectInputDevice,pUnkOuter);
+        if(SUCCEEDED(hr))
+        {
+            if(rguid == GUID_SysMouse)
+            {
+                DEBUG_INFO("sysmouse 0x%p\n",*lplpDirectInputDevice);
+            }
+            else if(rguid == GUID_SysKeyboard)
+            {
+                DEBUG_INFO("keyboard 0x%p\n",*lplpDirectInputDevice);
+            }
+            else if(rguid == GUID_Joystick)
+            {
+                DEBUG_INFO("joystick 0x%p\n",*lplpDirectInputDevice);
+            }
+            else if(rguid == GUID_SysMouseEm)
+            {
+                DEBUG_INFO("sysmouseem 0x%p\n",*lplpDirectInputDevice);
+            }
+            else if(rguid == GUID_SysMouseEm2)
+            {
+                DEBUG_INFO("sysmouseem2 0x%p\n",*lplpDirectInputDevice);
+            }
+            else if(rguid == GUID_SysKeyboardEm)
+            {
+                DEBUG_INFO("keyboardem 0x%p\n",*lplpDirectInputDevice);
+            }
+            else if(rguid == GUID_SysKeyboardEm2)
+            {
+                DEBUG_INFO("keyboardem2 0x%p\n",*lplpDirectInputDevice);
+            }
+
+
+            DEBUG_INFO("rguid %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                       rguid.Data1,
+                       rguid.Data2,
+                       rguid.Data3,
+                       rguid.Data4[0],
+                       rguid.Data4[1],
+                       rguid.Data4[2],
+                       rguid.Data4[3],
+                       rguid.Data4[4],
+                       rguid.Data4[5],
+                       rguid.Data4[6],
+                       rguid.Data4[7]);
+        }
         DIRECT_INPUT_8A_OUT();
         return hr;
     }
