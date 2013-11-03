@@ -581,3 +581,19 @@ fail:
     return 0;
 }
 
+
+
+int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidth,int* pHeight)
+{
+	BOOL bret;
+	int ret;
+	int getlen=0;
+
+
+	return getlen;
+	
+fail:
+	SetLastError(ret);
+	return -ret;
+}
+

@@ -66,6 +66,27 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize);
 *******************************************************/
 extern "C" int IsWndFullScreen(HWND hwnd);
 
+/*******************************************************
+*
+*  input:
+*      hwnd  the windows to get the buffer
+*      pData  the buffer to get the bitmap for the buffer
+*      iLen length of the data
+*      pFormat  format stored of data
+*      pWidth  width of the pData of bmp
+*      pHeight height of the pData of bmp
+*
+*
+*  output:
+*       return the filled length of the pData if success
+*       otherwise negative error code
+*
+*  remark :
+*      for pData for it ,and it will fill in it
+*  
+*******************************************************/
+extern "C" int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidth,int* pHeight);
+
 #ifdef __cplusplus
 }
 #endif
