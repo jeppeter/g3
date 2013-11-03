@@ -586,10 +586,12 @@ fail:
 int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidth,int* pHeight)
 {
     BOOL bret;
-    int ret;
-    int getlen=0;
+    int ret,res;
+    int getlen=0,needlen;
     RECT rect;
-    HDC hdc=NULL,hSimDC=NULL,hMemDC=NULL;
+    HDC hdc=NULL,hMemDC=NULL;
+    HBITMAP hDDBmp=NULL,hOldBmp=NULL;
+    int oldbmp=0;
     SIZE size;
     BITMAP bitmap;
 
@@ -621,38 +623,102 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
         size.cy = - size.cy;
     }
 
-    hSimDC = CreateCompatibleBitmap(hdc,size.cx,size.cy);
-    if(hSimDC == NULL)
+    hMemDC = CreateCompatibleDC(hdc);
+    if(hMemDC == NULL)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("wnd(0x%08x) hdc(0x%08x) create x-y(%d:%d) error(%d)\n",
-                   hwnd,hdc,size.cx,size.cy,ret);
+        ERROR_INFO("wnd(0x%08x) hdc(0x%08x) create DC error(%d)\n",
+                   hwnd,hdc,ret);
         goto fail;
     }
 
-    ret = GetObject(hSimDC,sizeof(bitmap),&bitmap);
-    if(ret == 0)
+    hDDBmp = CreateCompatibleBitmap(hdc,size.cx,size.cy);
+    if(hDDBmp == NULL)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("get simdc(0x%08x) sizeof(%d) error(%d)\n",
-                   hSimDC,sizeof(bitmap),ret);
+        ERROR_INFO("could not create %d:%d bitmap error(%d)\n",size.cx,size.cy,ret);
         goto fail;
     }
 
-	/*now to create */
 
+    /* now we test the bitmap buffer ,should do this */
+    hOldBmp = SelectObject(hMemDC,hDDBmp);
+    oldbmp = 1;
+    bret = BitBlt(hMemDC, 0, 0, size.cx, size.cy, hdc, 0, 0, SRCCOPY);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
 
+    /*now to check the getlen*/
+    res = GetObject(hDDBmp,sizeof(bitmap),&bitmap);
+    if(res != sizeof(bitmap))
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("DDBmp sizeof(%d) res(%d) error(%d)\n",sizeof(bitmap),res,ret);
+        goto fail;
+    }
 
+    needlen = bitmap.bmWidth * bitmap.bmHeight * bitmap.bmBitsPixel / 8;
+    if(iLen < needlen)
+    {
+        ret = ERROR_INSUFFICIENT_BUFFER;
+        ERROR_INFO("needlen (%d) > iLen(%d)\n",needlen,iLen);
+        goto fail;
+    }
+
+    /*now to set getlen*/
+    getlen = needlen;
+    /*now copy the memory*/
+    memcpy(pData,bitmap.bmBits,getlen);
+    *pHeight = bitmap.bmHeight;
+    *pWidth = bitmap.bmWidth;
+    *pFormat = AV_PIX_FMT_RGB24;
+
+    if(oldbmp)
+    {
+        SelectObject(hMemDC,hOldBmp);
+    }
+    hOldBmp = NULL;
+    oldbmp = 0;
+
+    if(hDDBmp)
+    {
+        DeleteObject(hDDBmp);
+    }
+    hDDBmp = NULL;
+
+    if(hMemDC)
+    {
+        DeleteObject(hMemDC);
+    }
+    hMemDC=NULL;
+
+    if(hdc)
+    {
+        ReleaseDC(hwnd,hdc);
+    }
+    hdc = NULL;
+
+    SetLastError(0);
 
     return getlen;
 
 fail:
 
-    if(hSimDC)
+    if(oldbmp)
     {
-        DeleteObject(hSimDC);
+        SelectObject(hMemDC,hOldBmp);
     }
-    hSimDC=NULL;
+    hOldBmp = NULL;
+    oldbmp = 0;
+
+    if(hDDBmp)
+    {
+        DeleteObject(hDDBmp);
+    }
+    hDDBmp = NULL;
 
     if(hMemDC)
     {

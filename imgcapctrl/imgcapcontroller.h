@@ -19,6 +19,9 @@ public:
     int GetState();
     int GetOperation();
 
+private:
+	BOOL __CapImageWindowed(uint8_t *pData, int iLen, int * iFormat, int * iWidth, int * iHeight, int * iTimeStamp, int * pRetLen);
+
 
 private:
     HANDLE m_hProc;         // ±»½ØÍ¼½ø³Ì¾ä±ú
