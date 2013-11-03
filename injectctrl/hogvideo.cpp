@@ -154,8 +154,15 @@ static int __InitHogVideo(const char* hogfile)
         goto fail;
     }
 
-	st_pVideoWindow->put_WindowState(SW_HIDE);
-	st_pVideoWindow->put_
+    st_pVideoWindow->put_WindowState(SW_HIDE);
+    st_pVideoWindow->put_AutoShow(OAFALSE);
+    st_pVideoWindow->put_Visible(OAFALSE);
+    st_pVideoWindow->put_Top(-100);
+    st_pVideoWindow->put_Left(-100);
+    st_pVideoWindow->put_Width(0);
+    st_pVideoWindow->put_Height(0);
+
+    st_pMediaControl->Pause();
 
 
 
@@ -166,6 +173,8 @@ static int __InitHogVideo(const char* hogfile)
     pHogAnsi = NULL;
 #endif
     return 0;
+
+
 fail:
 #ifdef _UNICODE
     AnsiToUnicode(hogfile,&pHogWide,&hogwidesize);
