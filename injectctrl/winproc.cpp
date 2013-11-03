@@ -585,15 +585,87 @@ fail:
 
 int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidth,int* pHeight)
 {
-	BOOL bret;
-	int ret;
-	int getlen=0;
+    BOOL bret;
+    int ret;
+    int getlen=0;
+    RECT rect;
+    HDC hdc=NULL,hSimDC=NULL,hMemDC=NULL;
+    SIZE size;
+    BITMAP bitmap;
+
+    hdc = GetDC(hwnd);
+    if(hdc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not get 0x%08x wnd dc error(%d)\n",hwnd,ret);
+        goto fail;
+    }
+
+    bret = GetWindowRect(hwnd,&rect);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("wnd(0x%08x) could not get window rect error(%d)\n",hwnd,ret);
+        goto fail;
+    }
+
+    size.cx = rect.right - rect.left;
+    if(size.cx < 0)
+    {
+        size.cx = -size.cx;
+    }
+
+    size.cy = rect.bottom - rect.top;
+    if(size.cy < 0)
+    {
+        size.cy = - size.cy;
+    }
+
+    hSimDC = CreateCompatibleBitmap(hdc,size.cx,size.cy);
+    if(hSimDC == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("wnd(0x%08x) hdc(0x%08x) create x-y(%d:%d) error(%d)\n",
+                   hwnd,hdc,size.cx,size.cy,ret);
+        goto fail;
+    }
+
+    ret = GetObject(hSimDC,sizeof(bitmap),&bitmap);
+    if(ret == 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("get simdc(0x%08x) sizeof(%d) error(%d)\n",
+                   hSimDC,sizeof(bitmap),ret);
+        goto fail;
+    }
+
+	/*now to create */
 
 
-	return getlen;
-	
+
+
+    return getlen;
+
 fail:
-	SetLastError(ret);
-	return -ret;
+
+    if(hSimDC)
+    {
+        DeleteObject(hSimDC);
+    }
+    hSimDC=NULL;
+
+    if(hMemDC)
+    {
+        DeleteObject(hMemDC);
+    }
+    hMemDC=NULL;
+
+    if(hdc)
+    {
+        ReleaseDC(hwnd,hdc);
+    }
+    hdc = NULL;
+    SetLastError(ret);
+    return -ret;
 }
 
