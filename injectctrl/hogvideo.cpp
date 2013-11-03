@@ -1,6 +1,13 @@
 
 #include <hogvideo.h>
 #include <uniansi.h>
+#include <Strmif.h>
+#include <Control.h>
+#include <assert.h>
+#include <output_debug.h>
+#include <dshow.h>
+
+
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 
@@ -10,6 +17,8 @@ static IVideoWindow *st_pVideoWindow=NULL;
 static IMediaControl *st_pMediaControl=NULL;
 static int st_CoInitialized=0;
 
+
+#pragma comment(lib,"strmiids.lib")
 
 static void __UnHog()
 {
@@ -124,7 +133,7 @@ static int __InitHogVideo(const char* hogfile)
     }
 
 #ifdef _UNICODE
-    ret = AnsiToUnicode(hogfile,&pHogWide,&hogwidesize);
+    ret = AnsiToUnicode((char*)hogfile,&pHogWide,&hogwidesize);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -168,7 +177,7 @@ static int __InitHogVideo(const char* hogfile)
 
 
 #ifdef _UNICODE
-    AnsiToUnicode(hogfile,&pHogWide,&hogwidesize);
+    AnsiToUnicode(NULL,&pHogWide,&hogwidesize);
 #else
     pHogAnsi = NULL;
 #endif
@@ -177,7 +186,7 @@ static int __InitHogVideo(const char* hogfile)
 
 fail:
 #ifdef _UNICODE
-    AnsiToUnicode(hogfile,&pHogWide,&hogwidesize);
+    AnsiToUnicode(NULL,&pHogWide,&hogwidesize);
 #else
     pHogAnsi = NULL;
 #endif
@@ -189,6 +198,7 @@ fail:
 int InitHogVideo(const char * hogfile)
 {
     __FiniHogVideo();
+    return __InitHogVideo(hogfile);
 }
 
 

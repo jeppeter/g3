@@ -4,6 +4,7 @@
 #define __WIN_PROC_H__
 
 #include <Windows.h>
+#include <cap_common.h>
 
 #ifdef __cplusplus
 extern "C" {

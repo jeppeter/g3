@@ -4,6 +4,10 @@
 #include <output_debug.h>
 #include <timeticks.h>
 #include <assert.h>
+#include <winproc.h>
+
+
+#define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 
 extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * data, int len, int * format, int * width, int * height);
 
@@ -145,7 +149,7 @@ BOOL CImgCapController::__CapImageWindowed(uint8_t * pData,int iLen,int * iForma
 
     topwndnum = ret;
 
-    ret = GetWindowBmpBuffer(pTopWnd[0],pData,iLen,&iFormat,&iWidth,&iHeight);
+    ret = GetWindowBmpBuffer(pTopWnd[0],pData,iLen,iFormat,iWidth,iHeight);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();

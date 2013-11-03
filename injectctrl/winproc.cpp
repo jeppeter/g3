@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <output_debug.h>
 #include <vector>
+#include <capture.h>
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 
@@ -642,7 +643,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
 
 
     /* now we test the bitmap buffer ,should do this */
-    hOldBmp = SelectObject(hMemDC,hDDBmp);
+    hOldBmp = (HBITMAP)SelectObject(hMemDC,hDDBmp);
     oldbmp = 1;
     bret = BitBlt(hMemDC, 0, 0, size.cx, size.cy, hdc, 0, 0, SRCCOPY);
     if(!bret)
