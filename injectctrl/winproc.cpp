@@ -688,7 +688,13 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
     /*now to set getlen*/
     getlen = needlen;
     /*now copy the memory*/
-    memcpy(pData,bitmap.bmBits,getlen);
+    needlen = GetBitmapBits(hDDBmp,iLen,pData);
+    if(needlen != getlen)
+    {
+        ret = ERROR_NOT_SAME_DEVICE;
+        ERROR_INFO("getBitmapBits return %d != getlen (%d)\n",needlen,getlen);
+        goto fail;
+    }
     *pHeight = bitmap.bmHeight;
     *pWidth = bitmap.bmWidth;
     *pFormat = AV_PIX_FMT_RGB24;
@@ -707,7 +713,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
         DeleteObject(hDDBmp);
     }
     hDDBmp = NULL;
-    DEBUG_INFO("\n");
+    DEBUG_INFO("getlen %d height %d width %d\n",getlen,*pHeight,*pWidth);
 
     if(hMemDC)
     {
