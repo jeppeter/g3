@@ -5,6 +5,7 @@
 #include <output_debug.h>
 #include <vector>
 #include <capture.h>
+#include <Olectl.h>
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 
@@ -593,170 +594,157 @@ fail:
 
 
 
-int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidth,int* pHeight)
+HBITMAP __CaptureWindow(HWND hWnd)
 {
-    BOOL bret;
-    int ret,res;
-    int getlen=0,needlen;
+    if(!hWnd)
+        return NULL;
+
+    HDC hdc;
     RECT rect;
-    HDC hdc=NULL,hMemDC=NULL;
-    HBITMAP hDDBmp=NULL,hOldBmp=NULL;
-    int oldbmp=0;
-    SIZE size;
-    BITMAP bitmap;
+    hdc = GetWindowDC(hWnd);
+    GetWindowRect(hWnd, &rect);
 
-    DEBUG_INFO("\n");
-    hdc = GetDC(hwnd);
-    if(hdc == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not get 0x%08x wnd dc error(%d)\n",hwnd,ret);
-        goto fail;
-    }
-    DEBUG_INFO("\n");
+    if(!hdc)
+        return NULL;
 
-    bret = GetWindowRect(hwnd,&rect);
-    if(!bret)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("wnd(0x%08x) could not get window rect error(%d)\n",hwnd,ret);
-        goto fail;
-    }
-
-    size.cx = rect.right - rect.left;
-    if(size.cx < 0)
-    {
-        size.cx = -size.cx;
-    }
-
-    size.cy = rect.bottom - rect.top;
-    if(size.cy < 0)
-    {
-        size.cy = - size.cy;
-    }
-    DEBUG_INFO("\n");
-
-    hMemDC = CreateCompatibleDC(hdc);
+    HDC hMemDC = CreateCompatibleDC(hdc);
     if(hMemDC == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("wnd(0x%08x) hdc(0x%08x) create DC error(%d)\n",
-                   hwnd,hdc,ret);
-        goto fail;
-    }
+        return NULL;
 
-    hDDBmp = CreateCompatibleBitmap(hdc,size.cx,size.cy);
+    SIZE size;
+    size.cx = rect.right - rect.left;
+    if(rect.right < rect.left)
+        size.cx = -size.cx;
+    size.cy = rect.bottom - rect.top;
+    if(rect.bottom < rect.top)
+        size.cy = -size.cy;
+
+    HBITMAP hDDBmp = CreateCompatibleBitmap(hdc, size.cx, size.cy);
     if(hDDBmp == NULL)
     {
+        DeleteDC(hMemDC);
+        ReleaseDC(hWnd, hdc);
+        return NULL;
+    }
+
+    HBITMAP hOldBmp = static_cast<HBITMAP>(SelectObject(hMemDC, hDDBmp));
+    BitBlt(hMemDC, 0, 0, size.cx, size.cy, hdc, 0, 0, SRCCOPY);
+    SelectObject(hMemDC, hOldBmp);
+    DeleteDC(hMemDC);
+    ReleaseDC(hWnd, hdc);
+
+    HBITMAP hBmp = static_cast<HBITMAP>(CopyImage(hDDBmp,
+                                        IMAGE_BITMAP,
+                                        0,
+                                        0,
+                                        LR_CREATEDIBSECTION));
+
+
+    DeleteObject(hDDBmp);
+
+    return hBmp;
+}
+
+
+int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidth,int* pHeight)
+{
+    HBITMAP hbmp=NULL;
+    int ret;
+    int getlen=0;
+    PICTDESC pd;
+    BOOL    result = TRUE;
+    HRESULT hr ;
+    LPSTREAM pStream=NULL;
+    HGLOBAL hMem = NULL;
+    LPVOID lpData=NULL;
+    // create the IPicture object
+    LPPICTURE pPicture=NULL;
+    DEBUG_INFO("hwnd 0x%08x\n",hwnd);
+
+    hbmp = __CaptureWindow(hwnd);
+    if(hbmp == NULL)
+    {
+        ret =LAST_ERROR_CODE();
+        ERROR_INFO("GetBmp error(%d)\n",ret);
+        goto fail;
+    }
+
+    pd.cbSizeofstruct = sizeof(PICTDESC);
+    pd.picType = PICTYPE_BITMAP;
+    pd.bmp.hbitmap = hbmp;
+    pd.bmp.hpal = NULL;
+
+    hr =  OleCreatePictureIndirect(&pd,
+                                   IID_IPicture,
+                                   false,
+                                   reinterpret_cast<void**>(&pPicture)
+                                  );
+
+    if(FAILED(hr))
+    {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not create %d:%d bitmap error(%d)\n",size.cx,size.cy,ret);
+        ERROR_INFO("could not get picture 0x%08x error(%d)\n",hr,ret);
         goto fail;
     }
-    DEBUG_INFO("\n");
 
-
-    /* now we test the bitmap buffer ,should do this */
-    hOldBmp = (HBITMAP)SelectObject(hMemDC,hDDBmp);
-    oldbmp = 1;
-    bret = BitBlt(hMemDC, 0, 0, size.cx, size.cy, hdc, 0, 0, SRCCOPY);
-    if(!bret)
+    // create an IStream object
+    hr = CreateStreamOnHGlobal(NULL, true, &pStream);
+    if(FAILED(hr))
     {
         ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not get stream 0x%08x error(%d)\n",hr,ret);
         goto fail;
     }
-    DEBUG_INFO("\n");
-
-    /*now to check the getlen*/
-    res = GetObject(hDDBmp,sizeof(bitmap),&bitmap);
-    if(res != sizeof(bitmap))
+    // write the picture to the stream
+    hr = pPicture->SaveAsFile(pStream, true, (LONG*)&getlen);
+    if(FAILED(hr))
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("DDBmp sizeof(%d) res(%d) error(%d)\n",sizeof(bitmap),res,ret);
+        ERROR_INFO("could not Save file 0x%08x error(%d)\n",hr,ret);
         goto fail;
     }
+    GetHGlobalFromStream(pStream, &hMem);
+    lpData = GlobalLock(hMem);
+    memcpy(pData,lpData,getlen);
+    GlobalUnlock(hMem);
 
-    DEBUG_INFO("\n");
-    needlen = bitmap.bmWidth * bitmap.bmHeight * bitmap.bmBitsPixel / 8;
-    if(iLen < needlen)
+    if(pStream)
     {
-        ret = ERROR_INSUFFICIENT_BUFFER;
-        ERROR_INFO("needlen (%d) > iLen(%d)\n",needlen,iLen);
-        goto fail;
+        pStream->Release();
     }
-    DEBUG_INFO("pData 0x%p bmBits 0x%p\n",pData,bitmap.bmBits);
-
-    /*now to set getlen*/
-    getlen = needlen;
-    /*now copy the memory*/
-    needlen = GetBitmapBits(hDDBmp,iLen,pData);
-    if(needlen != getlen)
+    pStream = NULL;
+    if(pPicture)
     {
-        ret = ERROR_NOT_SAME_DEVICE;
-        ERROR_INFO("getBitmapBits return %d != getlen (%d)\n",needlen,getlen);
-        goto fail;
+        pPicture->Release();
     }
-    *pHeight = bitmap.bmHeight;
-    *pWidth = bitmap.bmWidth;
-    *pFormat = AV_PIX_FMT_RGB24;
-    DEBUG_INFO("\n");
+    pPicture = NULL;
 
-    if(oldbmp)
+    if(hbmp)
     {
-        SelectObject(hMemDC,hOldBmp);
+        DeleteObject(hbmp);
     }
-    hOldBmp = NULL;
-    oldbmp = 0;
-    DEBUG_INFO("\n");
-
-    if(hDDBmp)
-    {
-        DeleteObject(hDDBmp);
-    }
-    hDDBmp = NULL;
-    DEBUG_INFO("getlen %d height %d width %d\n",getlen,*pHeight,*pWidth);
-
-    if(hMemDC)
-    {
-        DeleteObject(hMemDC);
-    }
-    hMemDC=NULL;
-
-    if(hdc)
-    {
-        ReleaseDC(hwnd,hdc);
-    }
-    hdc = NULL;
-
-    SetLastError(0);
+    hbmp = NULL;
 
     return getlen;
 
 fail:
 
-    if(oldbmp)
+    if(pStream)
     {
-        SelectObject(hMemDC,hOldBmp);
+        pStream->Release();
     }
-    hOldBmp = NULL;
-    oldbmp = 0;
+    pStream = NULL;
+    if(pPicture)
+    {
+        pPicture->Release();
+    }
+    pPicture = NULL;
 
-    if(hDDBmp)
+    if(hbmp)
     {
-        DeleteObject(hDDBmp);
+        DeleteObject(hbmp);
     }
-    hDDBmp = NULL;
-
-    if(hMemDC)
-    {
-        DeleteObject(hMemDC);
-    }
-    hMemDC=NULL;
-
-    if(hdc)
-    {
-        ReleaseDC(hwnd,hdc);
-    }
-    hdc = NULL;
+    hbmp = NULL;
     SetLastError(ret);
     return -ret;
 }
