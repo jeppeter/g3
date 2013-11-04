@@ -14,7 +14,7 @@ x509\routin.cpp
 #include "capture.h"
 #include <d3d9.h>
 #include <output_debug.h>
-#include <D3dx9tex.h>
+#include <d3dx9tex.h>
 #include <detours/detours.h>
 #include <injectbase.h>
 
