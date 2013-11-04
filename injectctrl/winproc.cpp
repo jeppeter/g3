@@ -35,7 +35,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd,LPARAM lparam)
         /*we just return*/
         return TRUE;
     }
-    DEBUG_INFO("hwnd 0x%08x get procid %d\n",hwnd,procid);
+    //DEBUG_INFO("hwnd 0x%08x get procid %d\n",hwnd,procid);
 
     /*
     	now it is the windows we search ,so we should copy it to the
@@ -243,6 +243,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
         return 0;
     }
 
+    DEBUG_INFO("\n");
     for(i=0; i<wndnum; i++)
     {
         /*to get the GetWindow GW_OWNER ,for the windows*/
@@ -250,6 +251,8 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
         hOwnVecs.push_back(hOwnWin);
         DEBUG_INFO("[%d] hwnd 0x%08x owned by 0x%08x\n",i,pWnds[i],hOwnWin);
     }
+
+    DEBUG_INFO("\n");
 
     for(i=0; i<wndnum; i++)
     {
@@ -296,6 +299,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
         ERROR_INFO("could not find the appwindows\n");
         return 0;
     }
+    DEBUG_INFO("hAppWnd (0x%08x)\n",hAppWnd);
 
     if(pOwnWnds == NULL)
     {
@@ -318,6 +322,8 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
             goto fail;
         }
     }
+
+    DEBUG_INFO("\n");
     if(pRemoveWnds == NULL)
     {
         rmsize = wndnum;
@@ -328,6 +334,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
             goto fail;
         }
     }
+    DEBUG_INFO("\n");
 
     /*to set the root*/
     ownwndnum = 1;
@@ -419,6 +426,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
 
     }
     while(ownedwndnum > 0);
+    DEBUG_INFO("\n");
 
     //DEBUG_INFO("ownwndnum %d\n",ownwndnum);
     num = ownwndnum;
@@ -445,6 +453,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
             memset(pRetTopWnds,0,sizeof(pRetTopWnds[0])*rettopsize);
         }
     }
+    DEBUG_INFO("\n");
 
     if(pOwnWnds)
     {
@@ -596,6 +605,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
     SIZE size;
     BITMAP bitmap;
 
+    DEBUG_INFO("\n");
     hdc = GetDC(hwnd);
     if(hdc == NULL)
     {
@@ -603,6 +613,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
         ERROR_INFO("could not get 0x%08x wnd dc error(%d)\n",hwnd,ret);
         goto fail;
     }
+    DEBUG_INFO("\n");
 
     bret = GetWindowRect(hwnd,&rect);
     if(!bret)
@@ -623,6 +634,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
     {
         size.cy = - size.cy;
     }
+    DEBUG_INFO("\n");
 
     hMemDC = CreateCompatibleDC(hdc);
     if(hMemDC == NULL)
@@ -640,6 +652,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
         ERROR_INFO("could not create %d:%d bitmap error(%d)\n",size.cx,size.cy,ret);
         goto fail;
     }
+    DEBUG_INFO("\n");
 
 
     /* now we test the bitmap buffer ,should do this */
@@ -651,6 +664,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
         ret = LAST_ERROR_CODE();
         goto fail;
     }
+    DEBUG_INFO("\n");
 
     /*now to check the getlen*/
     res = GetObject(hDDBmp,sizeof(bitmap),&bitmap);
@@ -661,6 +675,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
         goto fail;
     }
 
+    DEBUG_INFO("\n");
     needlen = bitmap.bmWidth * bitmap.bmHeight * bitmap.bmBitsPixel / 8;
     if(iLen < needlen)
     {
@@ -668,6 +683,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
         ERROR_INFO("needlen (%d) > iLen(%d)\n",needlen,iLen);
         goto fail;
     }
+    DEBUG_INFO("\n");
 
     /*now to set getlen*/
     getlen = needlen;
@@ -676,6 +692,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
     *pHeight = bitmap.bmHeight;
     *pWidth = bitmap.bmWidth;
     *pFormat = AV_PIX_FMT_RGB24;
+    DEBUG_INFO("\n");
 
     if(oldbmp)
     {
@@ -683,12 +700,14 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
     }
     hOldBmp = NULL;
     oldbmp = 0;
+    DEBUG_INFO("\n");
 
     if(hDDBmp)
     {
         DeleteObject(hDDBmp);
     }
     hDDBmp = NULL;
+    DEBUG_INFO("\n");
 
     if(hMemDC)
     {

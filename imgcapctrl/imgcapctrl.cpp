@@ -177,15 +177,15 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         goto fail;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     pCaptureBuffer = (capture_buffer_t*)VirtualAllocEx(hHandleProc,NULL,capturesize,MEM_COMMIT,PAGE_EXECUTE_READWRITE);
     if(pCaptureBuffer == NULL)
     {
         ret = LAST_ERROR_RETURN();
-        DEBUG_INFO("\n");
+        DEBUG_INFO("virtualAllocEx (0x%08x) error(%d)\n",hHandleProc,ret);
         goto fail;
     }
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 
     pCurCaptureBuffer =(capture_buffer_t*) calloc(sizeof(*pCurCaptureBuffer),1);
     if(pCurCaptureBuffer == NULL)
@@ -209,7 +209,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         goto fail;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     if(curret != sizeof(*pCaptureBuffer))
     {
         ret = ERROR_INVALID_PARAMETER;
@@ -217,7 +217,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         goto fail;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     /*now to create remote thread*/
     ret = GetRemoteProcAddress(processid,pDllStripName,"CaptureBuffer",&pFnAddr);
     if(ret < 0)
@@ -226,7 +226,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         DEBUG_INFO("\n");
         goto fail;
     }
-	DEBUG_INFO("CaptureBuffer function address 0x%p\n",pFnAddr);
+    DEBUG_INFO("CaptureBuffer function address 0x%p\n",pFnAddr);
 
     hThread=CreateRemoteThread(hHandleProc,NULL,0,(LPTHREAD_START_ROUTINE)pFnAddr,pCaptureBuffer,0,&threadid);
     if(hThread == NULL)
@@ -235,7 +235,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         DEBUG_INFO("\n");
         goto fail;
     }
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 
     stime = GetTickCount();
     etime = stime + timeout* 1000;
