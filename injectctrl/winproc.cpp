@@ -683,7 +683,7 @@ int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidt
         ERROR_INFO("needlen (%d) > iLen(%d)\n",needlen,iLen);
         goto fail;
     }
-    DEBUG_INFO("\n");
+    DEBUG_INFO("pData 0x%p bmBits 0x%p\n",pData,bitmap.bmBits);
 
     /*now to set getlen*/
     getlen = needlen;
