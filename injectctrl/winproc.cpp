@@ -229,7 +229,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
     HWND hOwnWin=NULL;
     WINDOWINFO info;
     std::vector<HWND> hOwnVecs;
-    std::vector<DWORD> hWinExStyleVecs;
+    std::vector<DWORD> hWinStyleVecs;
     HWND hAppWnd = NULL;
     int mustrm=0;
 
@@ -261,11 +261,11 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
         bret = GetWindowInfo(pWnds[i],&info);
         if(!bret)
         {
-            hWinExStyleVecs.push_back(0);
+            hWinStyleVecs.push_back(0);
             continue;
         }
 
-        hWinExStyleVecs.push_back(info.dwExStyle);
+        hWinStyleVecs.push_back(info.dwStyle);
 
         /*now to get the app windows*/
         if(info.dwExStyle & WS_EX_APPWINDOW)
@@ -287,7 +287,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
         for(i=0; i <wndnum; i++)
         {
             /*we should find the windows that has the window edge*/
-            if(hWinExStyleVecs[i] & WS_EX_WINDOWEDGE)
+            if(hWinStyleVecs[i] & WS_SYSMENU)
             {
                 hAppWnd = pWnds[i];
                 break;
@@ -354,8 +354,9 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
             {
                 //DEBUG_INFO("hOwnVecs[%d] 0x%08x pOwnWnds[%d] 0x%08x\n",i,hOwnVecs[i],
                 //           j,pOwnWnds[j]);
-                if(hOwnVecs[i] == pOwnWnds[j] && hOwnVecs[i] && hWinExStyleVecs[i] != 0)
+                if(hOwnVecs[i] == pOwnWnds[j] && hOwnVecs[i] && (hWinStyleVecs[i] & WS_SYSMENU))
                 {
+                	/*we get the window from the WS_SYSMENU for it will be the main window or the modal window*/
                     //DEBUG_INFO("Set[%d] 0x%08x\n",ownedwndnum,pWnds[i]);
                     assert(ownedwndnum < ownedwndsize);
                     pOwnedWnds[ownedwndnum] = pWnds[i];
