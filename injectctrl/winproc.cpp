@@ -356,7 +356,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
                 //           j,pOwnWnds[j]);
                 if(hOwnVecs[i] == pOwnWnds[j] && hOwnVecs[i] && (hWinStyleVecs[i] & WS_SYSMENU))
                 {
-                	/*we get the window from the WS_SYSMENU for it will be the main window or the modal window*/
+                    /*we get the window from the WS_SYSMENU for it will be the main window or the modal window*/
                     //DEBUG_INFO("Set[%d] 0x%08x\n",ownedwndnum,pWnds[i]);
                     assert(ownedwndnum < ownedwndsize);
                     pOwnedWnds[ownedwndnum] = pWnds[i];
@@ -649,103 +649,146 @@ HBITMAP __CaptureWindow(HWND hWnd)
 
 int GetWindowBmpBuffer(HWND hwnd,uint8_t *pData,int iLen,int* pFormat,int* pWidth,int* pHeight)
 {
-    HBITMAP hbmp=NULL;
+    BOOL bret;
     int ret;
-    int getlen=0;
-    PICTDESC pd;
-    BOOL    result = TRUE;
-    HRESULT hr ;
-    LPSTREAM pStream=NULL;
-    HGLOBAL hMem = NULL;
-    LPVOID lpData=NULL;
-    // create the IPicture object
-    LPPICTURE pPicture=NULL;
-    DEBUG_INFO("hwnd 0x%08x\n",hwnd);
+    RECT tRt;
+    INT iWidth,iHeight;
+    HDC hDc = NULL;
+    HDC hTmpDc = NULL;
+    HBITMAP hBmp = NULL;
+    HBITMAP hOldBmp = NULL;
+    BITMAPINFOHEADER tBih = {0};
+    int getlen;
+    int setoldbmp=0;
 
-    hbmp = __CaptureWindow(hwnd);
-    if(hbmp == NULL)
-    {
-        ret =LAST_ERROR_CODE();
-        ERROR_INFO("GetBmp error(%d)\n",ret);
-        goto fail;
-    }
 
-    pd.cbSizeofstruct = sizeof(PICTDESC);
-    pd.picType = PICTYPE_BITMAP;
-    pd.bmp.hbitmap = hbmp;
-    pd.bmp.hpal = NULL;
-
-    hr =  OleCreatePictureIndirect(&pd,
-                                   IID_IPicture,
-                                   false,
-                                   reinterpret_cast<void**>(&pPicture)
-                                  );
-
-    if(FAILED(hr))
+    bret = GetClientRect(hwnd,&tRt);
+    if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not get picture 0x%08x error(%d)\n",hr,ret);
+        ERROR_INFO("0x%08x could not get client window error(%d)\n",hwnd,ret);
         goto fail;
     }
 
-    // create an IStream object
-    hr = CreateStreamOnHGlobal(NULL, true, &pStream);
-    if(FAILED(hr))
+
+
+    iWidth = tRt.right - tRt.left;
+    iHeight = tRt.bottom - tRt.top;
+
+    hDc = GetDC(hwnd);
+    if(hDc == NULL)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not get stream 0x%08x error(%d)\n",hr,ret);
+        ERROR_INFO("0x%08x could not get dc error(%d)\n",hwnd,ret);
         goto fail;
+
     }
-    // write the picture to the stream
-    hr = pPicture->SaveAsFile(pStream, true, (LONG*)&getlen);
-    if(FAILED(hr))
+
+    hTmpDc = CreateCompatibleDC(hDc);
+    if(hTmpDc == NULL)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not Save file 0x%08x error(%d)\n",hr,ret);
+        ERROR_INFO("hwnd(0x%08x) hdc(0x%08x) could not get tmpdc error(%d)\n",
+                   hwnd,hDc,ret);
         goto fail;
     }
-    GetHGlobalFromStream(pStream, &hMem);
-    lpData = GlobalLock(hMem);
-    memcpy(pData,lpData,getlen);
-    GlobalUnlock(hMem);
 
-    if(pStream)
+    hBmp = CreateCompatibleBitmap(hDc, iWidth, iHeight);
+    if(hBmp == NULL)
     {
-        pStream->Release();
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("hdc(0x%08x) create bitmap error(%d)\n",hDc,ret);
+        goto fail;
     }
-    pStream = NULL;
-    if(pPicture)
-    {
-        pPicture->Release();
-    }
-    pPicture = NULL;
+    hOldBmp = (HBITMAP)SelectObject(hTmpDc, hBmp);
+    setoldbmp = 1;
 
-    if(hbmp)
+    bret = BitBlt(hTmpDc, 0, 0, iWidth, iHeight, hDc, 0, 0, SRCCOPY);
+    if(!bret)
     {
-        DeleteObject(hbmp);
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("htmpdc(0x%08x) iwidth(%d) iheight(%d) error(%d)\n",hTmpDc,iWidth,iHeight,ret);
+        goto fail;
     }
-    hbmp = NULL;
 
+    getlen = iWidth * iHeight * 24/ 8;
+    if(getlen > iLen)
+    {
+        ret = ERROR_INSUFFICIENT_BUFFER;
+        ERROR_INFO("(%d * %d)getlen (%d) > iLen(%d)\n",iWidth,iHeight,getlen,iLen);
+        goto fail;
+    }
+
+    tBih.biSize = sizeof(BITMAPINFOHEADER);
+    tBih.biWidth = iWidth;
+    tBih.biHeight = iHeight;
+    tBih.biPlanes = 1;
+    tBih.biBitCount = 24;
+    tBih.biCompression = BI_RGB;
+    tBih.biSizeImage = 0;
+    tBih.biXPelsPerMeter = 0;
+    tBih.biYPelsPerMeter = 0;
+    tBih.biClrUsed = 0;
+    tBih.biClrImportant = 0;
+    ret = GetDIBits(hDc, hBmp, 0, iHeight, (LPVOID)pData, (LPBITMAPINFO)&tBih, DIB_RGB_COLORS);
+    if(ret <= 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("error getdibits (%d)\n",ret);
+        goto fail;
+    }
+    if(setoldbmp)
+    {
+        SelectObject(hTmpDc,hOldBmp);
+    }
+    setoldbmp = 0;
+    if(hBmp)
+    {
+        DeleteObject(hBmp);
+    }
+    hBmp = NULL;
+    if(hTmpDc)
+    {
+        DeleteDC(hTmpDc);
+    }
+    hTmpDc = NULL;
+
+    if(hDc)
+    {
+        ReleaseDC(hwnd,hDc);
+    }
+    hDc = NULL;
+
+    *pFormat = AV_PIX_FMT_BGR24;
+    *pWidth = iWidth;
+    *pHeight = iHeight;
+    DEBUG_INFO("(%d * %d )getlen(%d)\n",iWidth,iHeight,getlen);
+    SetLastError(0);
     return getlen;
-
 fail:
+    assert(ret > 0);
+    if(setoldbmp)
+    {
+        SelectObject(hTmpDc,hOldBmp);
+    }
+    setoldbmp = 0;
+    if(hBmp)
+    {
+        DeleteObject(hBmp);
+    }
+    hBmp = NULL;
+    if(hTmpDc)
+    {
+        DeleteDC(hTmpDc);
+    }
+    hTmpDc = NULL;
 
-    if(pStream)
+    if(hDc)
     {
-        pStream->Release();
+        ReleaseDC(hwnd,hDc);
     }
-    pStream = NULL;
-    if(pPicture)
-    {
-        pPicture->Release();
-    }
-    pPicture = NULL;
+    hDc = NULL;
 
-    if(hbmp)
-    {
-        DeleteObject(hbmp);
-    }
-    hbmp = NULL;
     SetLastError(ret);
     return -ret;
 }
