@@ -158,6 +158,7 @@ BOOL CImgCapController::__CapImageWindowed(uint8_t * pData,int iLen,int * iForma
     }
 
 
+    *pRetLen = ret;
     GetTopWinds(NULL,0,&pTopWnd,&topwndsize);
     topwndnum = 0;
     GetProcWindHandles(NULL,&pAllWnds,&allwndsize);

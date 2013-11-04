@@ -97,7 +97,7 @@ static int __InitHogVideo(const char* hogfile)
 
     st_CoInitialized = 1;
 
-    assert(st_pGraph);
+    assert(st_pGraph==NULL);
     hr = CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER,
                           IID_IGraphBuilder, (void **)&st_pGraph);
     if(FAILED(hr))
@@ -108,6 +108,7 @@ static int __InitHogVideo(const char* hogfile)
         goto fail;
     }
 
+	assert(st_pMediaControl == NULL);
     hr = st_pGraph->QueryInterface(IID_IMediaControl, (void **)&st_pMediaControl);
     if(FAILED(hr))
     {
@@ -116,6 +117,7 @@ static int __InitHogVideo(const char* hogfile)
         goto fail;
     }
 
+	assert(st_pVideoWindow == NULL);
     hr = st_pGraph->QueryInterface(IID_IVideoWindow, (void**)&st_pVideoWindow);
     if(FAILED(hr))
     {
@@ -124,6 +126,7 @@ static int __InitHogVideo(const char* hogfile)
         goto fail;
     }
 
+	assert(st_pEvent == NULL);
     hr = st_pGraph->QueryInterface(IID_IMediaEvent, (void **)&st_pEvent);
     if(FAILED(hr))
     {
