@@ -4,7 +4,7 @@
 #define __IMG_CAP_COMMON_H__
 
 
-#include <cap_common.h>
+#include <stdint.h>
 
 enum IMGCAPPER_STATE
 {

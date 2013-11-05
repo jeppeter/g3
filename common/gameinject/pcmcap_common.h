@@ -3,6 +3,8 @@
 #ifndef  __PCM_CAP_COMMON_H__
 #define  __PCM_CAP_COMMON_H__
 
+#include  <stdint.h>
+
 #define    PCMCAPPER_OPERATION_NONE      0 	// 不对进程声音进行抓取或播放的动作
 #define    PCMCAPPER_OPERATION_CAPTURE   1	// 对进程声音进行抓取的动作
 #define    PCMCAPPER_OPERATION_RENDER    2 	// 对进程声音进行播放的动作（播放交给系统去完成，不予干预）
