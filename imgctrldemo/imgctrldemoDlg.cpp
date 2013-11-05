@@ -108,7 +108,6 @@ BOOL CimgctrldemoDlg::OnInitDialog()
     CString str;
     CButton *pCheck=NULL;
     CDialogEx::OnInitDialog();
-    int ret;
 
     // 将“关于...”菜单项添加到系统菜单中。
 
@@ -155,12 +154,6 @@ BOOL CimgctrldemoDlg::OnInitDialog()
     pCheck = (CButton*)this->GetDlgItem(IDC_CHECK_TIMER);
     pCheck->SetCheck(BST_UNCHECKED);
 
-    ret = InitHogVideo("hog.dat");
-    if(ret < 0)
-    {
-        str.Format(TEXT("could not load hog.dat"));
-        AfxMessageBox(str);
-    }
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }

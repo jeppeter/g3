@@ -76,7 +76,8 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>call "$(ProjectDir)\copy.bat"  $(ProjectDir)\hog.dat  $(SolutionDir)\build\hog.dat</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -111,7 +112,8 @@
 "$(SolutionDir)\\build\\hog.dat"</Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>call "$(ProjectDir)\copy.bat"  $(ProjectDir)\hog.dat  $(SolutionDir)\build\hog.dat</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
