@@ -8,9 +8,12 @@
 #include <vector>
 #include <assert.h>
 #include <output_debug.h>
+#include "detourdinput.h"
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
+
+static int st_IOInjectInit=0;
 
 #pragma comment(lib,"dinput8.lib")
 #pragma comment(lib,"dxguid.lib")
@@ -1405,4 +1408,54 @@ HRESULT WINAPI DirectInput8CreateCallBack(HINSTANCE hinst, DWORD dwVersion, REFI
     return hr;
 }
 
+void DetourDirectInputFini(void)
+{
+    if(st_IOInjectInit)
+    {
+        /*nothing to done*/
+    }
+    st_IOInjectInit = 0;
+    return ;
+}
+
+BOOL __DetourDirectInput8CallBack(void)
+{
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DetourAttach((PVOID*)&DirectInput8CreateNext,DirectInput8CreateCallBack);
+    DetourTransactionCommit();
+
+    return TRUE;
+}
+
+
+BOOL DetourDirectInputInit(void)
+{
+    BOOL bret;
+    int ret;
+    /*now first to init all the critical section*/
+    InitCriticalSection(&st_DIDevice8ACS);
+    InitCriticalSection(&st_DIDevice8WCS);
+    InitCriticalSection(&st_DI8ACS);
+    InitCriticalSection(&st_DI8WCS);
+
+    /*now to detour */
+    bret = __DetourDirectInput8CallBack();
+    if(!bret)
+    {
+        /*we pretend true ,not let ok*/
+        ret = LAST_ERROR_CODE();
+		ERROR_INFO("Detour Direct Input Callback error(%d)\n",ret);
+		goto fail;
+    }
+
+
+    st_IOInjectInit = 1;
+	return TRUE;
+
+fail:
+    SetLastError(ret);
+    return FALSE;
+
+}
 
