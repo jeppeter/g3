@@ -72,7 +72,7 @@ extern "C" void DebugBufferFmt(const char* file,int lineno,unsigned char* pBuffe
     if(fmt)
     {
         va_list ap;
-        va_start(fmt,ap);
+        va_start(ap,fmt);
         ret = _vsnprintf_s(pCur,fmtlen-formedlen,formedlen-formedlen - 1,fmt,ap);
         pCur += ret;
         formedlen += ret;

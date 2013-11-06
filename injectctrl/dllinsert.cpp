@@ -106,11 +106,12 @@ PVOID __GetModuleBaseAddr(unsigned int processid,const char* pDllName)
         goto fail;
     }
 
+	SetLastError(0);
     hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE,processid);
     if(hsnap == INVALID_HANDLE_VALUE)
     {
         ret = GetLastError() ? GetLastError() : 1;
-        DEBUG_INFO("\n");
+        DEBUG_INFO("CreateToolhelp32Snapshot process (%d) error(%d)\n",processid,ret);
         goto fail;
     }
 
