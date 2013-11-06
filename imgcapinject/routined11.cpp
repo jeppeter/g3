@@ -3897,9 +3897,11 @@ HRESULT  WINAPI D3D11CreateDeviceAndSwapChainCallBack(
     ID3D11Device *pGetDevice=NULL;
     ID3D11DeviceContext *pGetDevCon=NULL;
 
-
+	DEBUG_INFO("call device swapchain before\n");
     hr = D3D11CreateDeviceAndSwapChainNext(pAdapter,DriverType,Software,Flags,pFeatureLevels,
                                            FeatureLevels,SDKVersion,pSwapChainDesc,ppSwapChain,ppDevice,pFeatureLevel,ppImmediateContext);
+	
+	DEBUG_INFO("call device swapchain hr(0x%08x)\n",hr);
     if(SUCCEEDED(hr))
     {
         if(ppDevice)
@@ -4025,7 +4027,9 @@ static HRESULT WINAPI CreateDXGIFactory1Callback(REFIID riid, void **ppFactory)
     pOrigExpFilter = SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
     DEBUG_INFO("origin exception filter 0x%p\n",pOrigExpFilter);
 
+	DEBUG_INFO("Call CreateDXGIFactory1Next before\n");
     hr = CreateDXGIFactory1Next(riid,ppFactory);
+	DEBUG_INFO("Call CreateDXGIFactory1Next after hr(0x%08x)\n",hr);
     if(SUCCEEDED(hr) && riid ==  __uuidof(IDXGIFactory1) && ppFactory && *ppFactory)
     {
         IDXGIFactory1* pFactory1=NULL;
@@ -4045,8 +4049,12 @@ static int InitializeD11Hook(void)
     assert(CreateDXGIFactory1Next);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
+	DEBUG_BUFFER_FMT(D3D11CreateDeviceAndSwapChainNext,10,"Before D3D11CreateDeviceAndSwapChainNext (0x%p)",D3D11CreateDeviceAndSwapChainNext);
     DetourAttach((PVOID*)&D3D11CreateDeviceAndSwapChainNext, D3D11CreateDeviceAndSwapChainCallBack);
+	DEBUG_BUFFER_FMT(D3D11CreateDeviceAndSwapChainNext,10,"After D3D11CreateDeviceAndSwapChainNext (0x%p)",D3D11CreateDeviceAndSwapChainNext);
+	DEBUG_BUFFER_FMT(CreateDXGIFactory1Next,10,"Before CreateDXGIFactory1Next (0x%p)",CreateDXGIFactory1Next);
     DetourAttach((PVOID*)&CreateDXGIFactory1Next,CreateDXGIFactory1Callback);
+	DEBUG_BUFFER_FMT(CreateDXGIFactory1Next,10,"After CreateDXGIFactory1Next (0x%p)",CreateDXGIFactory1Next);
     DetourTransactionCommit();
 
 

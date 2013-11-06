@@ -20,7 +20,9 @@
 
 
 INJECTBASE_API void DebugOutString(const char* file,int lineno,const char* fmt,...);
-INJECTBASE_API void DebugBuffer(const char* file,int lineno,unsigned char* pBuffer,int buflen);
+//INJECTBASE_API void DebugBuffer(const char* file,int lineno,unsigned char* pBuffer,int buflen);
+INJECTBASE_API void DebugBufferFmt(const char* file,int lineno,unsigned char* pBuffer,int buflen,const char* fmt,...);
+
 
 
 
@@ -39,7 +41,8 @@ INJECTBASE_API void DebugBuffer(const char* file,int lineno,unsigned char* pBuff
 #define  ERROR_INFO(fmt,...) do{;}while(0)
 #endif
 #endif
-#define  DEBUG_BUFFER(ptr,blen) DebugBuffer(__FILE__,__LINE__,(unsigned char*)ptr,blen)
+#define  DEBUG_BUFFER(ptr,blen) DebugBufferFmt(__FILE__,__LINE__,(unsigned char*)ptr,blen,NULL)
+#define  DEBUG_BUFFER_FMT(ptr,blen,...) DebugBufferFmt(__FILE__,__LINE__,(unsigned char*)ptr,blen,__VA_ARGS__)
 
 
 

@@ -1992,7 +1992,10 @@ IDirect3D9*
 WINAPI
 Direct3DCreate9Callback(UINT SDKVersion)
 {
-    IDirect3D9* pv = Direct3DCreate9Next(SDKVersion);
+    IDirect3D9* pv = NULL;
+	DEBUG_INFO("Before Call Direct3DCreate9Next\n");
+	pv= Direct3DCreate9Next(SDKVersion);
+	DEBUG_INFO("After Call Direct3DCreate9Next pv(0x%p)\n",pv);
 
     if(pv)
     {
@@ -2007,15 +2010,13 @@ Direct3DCreate9Callback(UINT SDKVersion)
 
 int InitializeHook(void)
 {
-	DEBUG_INFO("Hook\n");
-	DEBUG_BUFFER(Direct3DCreate9Next,10);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
+	DEBUG_BUFFER_FMT(Direct3DCreate9Next,10,"Before Detour Direct3DCreate9Next(0x%p)",Direct3DCreate9Next);
     DetourAttach((PVOID*)&Direct3DCreate9Next, Direct3DCreate9Callback);
+	DEBUG_BUFFER_FMT(Direct3DCreate9Next,10,"After Detour Direct3DCreate9Next(0x%p)",Direct3DCreate9Next);
     DetourTransactionCommit();
 
-	DEBUG_INFO("Hook Fini\n");
-	DEBUG_BUFFER(Direct3DCreate9Next,10);
 
     return 0;
 }

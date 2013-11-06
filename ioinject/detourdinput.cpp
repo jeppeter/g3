@@ -8,6 +8,7 @@
 #include <vector>
 #include <assert.h>
 #include <output_debug.h>
+#include <detours/detours.h>
 #include "detourdinput.h"
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
@@ -1434,10 +1435,10 @@ BOOL DetourDirectInputInit(void)
     BOOL bret;
     int ret;
     /*now first to init all the critical section*/
-    InitCriticalSection(&st_DIDevice8ACS);
-    InitCriticalSection(&st_DIDevice8WCS);
-    InitCriticalSection(&st_DI8ACS);
-    InitCriticalSection(&st_DI8WCS);
+    InitializeCriticalSection(&st_DIDevice8ACS);
+    InitializeCriticalSection(&st_DIDevice8WCS);
+    InitializeCriticalSection(&st_DI8ACS);
+    InitializeCriticalSection(&st_DI8WCS);
 
     /*now to detour */
     bret = __DetourDirectInput8CallBack();

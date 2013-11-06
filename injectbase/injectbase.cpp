@@ -529,7 +529,7 @@ int InsertModuleFileName(HMODULE hModule)
     }
 
     /*now insert the dlls*/
-	DEBUG_INFO("Insert into(%s:%s)\n",pModuleFullName,pModulePartName);
+    DEBUG_INFO("Insert into(%s:%s)\n",pModuleFullName,pModulePartName);
     ret = InsertDllNames(pModuleFullName,pModulePartName);
     if(ret < 0)
     {
@@ -609,13 +609,13 @@ static int DetourCreateProcessFunctions()
     DEBUG_BUFFER(OldCreateA,5);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
+    DEBUG_BUFFER_FMT(CreateProcessWNext,10,"Before CreateProcessWNext (0x%p)",CreateProcessWNext);
     DetourAttach((PVOID*)&CreateProcessWNext,CreateProcessWCallBack);
+    DEBUG_BUFFER_FMT(CreateProcessWNext,10,"After CreateProcessWNext (0x%p)",CreateProcessWNext);
+    DEBUG_BUFFER_FMT(CreateProcessANext,10,"Before CreateProcessANext (0x%p)",CreateProcessANext);
     DetourAttach((PVOID*)&CreateProcessANext,CreateProcessACallBack);
+    DEBUG_BUFFER_FMT(CreateProcessANext,10,"After CreateProcessANext (0x%p)",CreateProcessANext);
     DetourTransactionCommit();
-    DEBUG_INFO("After Detour Code");
-    DEBUG_BUFFER(OldCreatW,5);
-    DEBUG_BUFFER(OldCreateA,5);
-    DEBUG_INFO("createprocess detour\n");
     return 0;
 }
 
