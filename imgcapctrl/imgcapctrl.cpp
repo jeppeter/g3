@@ -153,7 +153,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
     DWORD retcode=(DWORD)-1;
 
 
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     pDllStripName = strrchr(strDllName,'\\');
     if(pDllStripName == NULL)
     {
@@ -163,7 +163,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
     {
         pDllStripName ++;
     }
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
 
     processid = GetProcessId(hProc);
     DEBUG_INFO("get hProc 0x%08lx processid (%d)\n",hProc,processid);
@@ -177,7 +177,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         goto fail;
     }
 
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     pCaptureBuffer = (capture_buffer_t*)VirtualAllocEx(hHandleProc,NULL,capturesize,MEM_COMMIT,PAGE_EXECUTE_READWRITE);
     if(pCaptureBuffer == NULL)
     {
