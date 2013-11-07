@@ -421,12 +421,12 @@ void FinializeEnviron()
 
 
 
-//#define DX_DEBUG_FUNC_IN() do{HoldPointer(m_ptr);DEBUG_INFO("%s in\n",__FUNCTION__);}while(0)
-#define DX_DEBUG_FUNC_IN() do{HoldPointer(m_ptr);}while(0)
+#define DX_DEBUG_FUNC_IN() do{HoldPointer(m_ptr);DEBUG_INFO("%s in\n",__FUNCTION__);}while(0)
+//#define DX_DEBUG_FUNC_IN() do{HoldPointer(m_ptr);}while(0)
 
 
-//#define DX_DEBUG_FUNC_OUT() do{DEBUG_INFO("%s out\n",__FUNCTION__);UnHoldPointer(m_ptr);}while(0)
-#define DX_DEBUG_FUNC_OUT() do{UnHoldPointer(m_ptr);}while(0)
+#define DX_DEBUG_FUNC_OUT() do{DEBUG_INFO("%s out\n",__FUNCTION__);UnHoldPointer(m_ptr);}while(0)
+//#define DX_DEBUG_FUNC_OUT() do{UnHoldPointer(m_ptr);}while(0)
 
 
 /*************************************************************************
@@ -465,8 +465,12 @@ public:
     {
         ULONG uret,realret;
         int ret;
+        IDirect3DDevice9 *pCurPtr=NULL;
+		CDirect3DDevice9Hook *pThis=NULL;
 
         DX_DEBUG_FUNC_IN();
+        pCurPtr = m_ptr;
+		pThis = this;
         uret = m_ptr->Release();
         realret = uret;
         /*it means that is the just one ,we should return for the job*/
@@ -476,7 +480,12 @@ public:
             /*if 1 it means not release one*/
             realret = ret;
         }
+        DEBUG_INFO("[0x%p->0x%p] count %d\n",pThis,pCurPtr,realret);
         DX_DEBUG_FUNC_OUT();
+		if(realret == 0)
+		{
+			delete this;
+		}
 
         return realret;
     }
@@ -1533,13 +1542,13 @@ WINAPI
 Direct3DCreate9Callback(UINT SDKVersion)
 {
     IDirect3D9* pv = NULL;
-	DEBUG_INFO("Before Call Direct3DCreate9Next\n");
-	pv= Direct3DCreate9Next(SDKVersion);
-	DEBUG_INFO("After Call Direct3DCreate9Next pv(0x%p)\n",pv);
+    DEBUG_INFO("Before Call Direct3DCreate9Next\n");
+    pv= Direct3DCreate9Next(SDKVersion);
+    DEBUG_INFO("After Call Direct3DCreate9Next pv(0x%p)\n",pv);
 
     if(pv)
     {
-    	DEBUG_INFO("pv get 0x%p\n",pv);
+        DEBUG_INFO("pv get 0x%p\n",pv);
         pv = static_cast<IDirect3D9*>(new CDirect3D9Hook(pv));
     }
 
@@ -1552,9 +1561,9 @@ int InitializeHook(void)
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-	DEBUG_BUFFER_FMT(Direct3DCreate9Next,10,"Before Detour Direct3DCreate9Next(0x%p)",Direct3DCreate9Next);
+    DEBUG_BUFFER_FMT(Direct3DCreate9Next,10,"Before Detour Direct3DCreate9Next(0x%p)",Direct3DCreate9Next);
     DetourAttach((PVOID*)&Direct3DCreate9Next, Direct3DCreate9Callback);
-	DEBUG_BUFFER_FMT(Direct3DCreate9Next,10,"After Detour Direct3DCreate9Next(0x%p)",Direct3DCreate9Next);
+    DEBUG_BUFFER_FMT(Direct3DCreate9Next,10,"After Detour Direct3DCreate9Next(0x%p)",Direct3DCreate9Next);
     DetourTransactionCommit();
 
 
@@ -1563,12 +1572,12 @@ int InitializeHook(void)
 
 int Routine(HMODULE hModule)
 {
-	DEBUG_INFO("Initialize Routine");
-	InsertModuleFileName(hModule);
+    DEBUG_INFO("Initialize Routine");
+    InsertModuleFileName(hModule);
     InitializeEnviron();
     InitializeHook();
     RoutineDetourD11();
-	DEBUG_INFO("Initialize routine succ\n");
+    DEBUG_INFO("Initialize routine succ\n");
     return 0;
 }
 
@@ -1883,7 +1892,7 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
         }
 
 
-		writelen = 0;
+        writelen = 0;
         while(writelen < totalbytes)
         {
             bret = WriteProcessMemory(hRemoteHandle,(LPVOID)((ptr_t)pRemoteAddr + writelen),(LPCVOID)(((ptr_t)LockRect.pBits)+writelen),totalbytes-writelen,&curret);
@@ -1894,7 +1903,7 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
                            pRemoteAddr,totalbytes,ret);
                 goto fail;
             }
-			writelen += curret;
+            writelen += curret;
         }
 
         hr = pSurface->UnlockRect();
@@ -1916,7 +1925,7 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
     __except(EXCEPTION_EXECUTE_HANDLER)
     {
         ret = GetLastError() ? GetLastError() : 1;
-        DEBUG_INFO("catch exception %d\n",GetExceptionCode());
+        DEBUG_INFO("catch exception %d lockedrect %d\n",GetExceptionCode(),lockedrect);
         goto fail;
     }
     //DEBUG_INFO("\n");
@@ -1974,7 +1983,7 @@ int CaptureBufferDX9(imgcap_buffer_t* pCapture)
     if(hRemoteProc == NULL)
     {
         ret = LAST_ERROR_RETURN();
-		ERROR_INFO("\n");
+        ERROR_INFO("\n");
         goto fail;
     }
 
@@ -1984,7 +1993,7 @@ int CaptureBufferDX9(imgcap_buffer_t* pCapture)
         if(pDevice == NULL)
         {
             ret = ERROR_DEVICE_ENUMERATION_ERROR;
-			ERROR_INFO("\n");
+            ERROR_INFO("\n");
             goto fail;
         }
 
@@ -2038,11 +2047,11 @@ void* CaptureBuffer(imgcap_buffer_t *pCapture)
     ret = CaptureBufferDX9(pCapture);
     if(ret >= 0)
     {
-    	DEBUG_INFO("\n");
+        DEBUG_INFO("\n");
         return (void*) ret;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     ret = CaptureBufferDX11(pCapture);
     return (void*)ret;
 }
