@@ -2522,7 +2522,9 @@ static int DetourPCMCapFunctions(void)
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
+    DEBUG_BUFFER_FMT(CoCreateInstanceNext,10,"Before CoCreateInstanceNext (0x%p)",CoCreateInstanceNext);
     DetourAttach((PVOID*)&CoCreateInstanceNext,CoCreateInstanceCallBack);
+    DEBUG_BUFFER_FMT(CoCreateInstanceNext,10,"After CoCreateInstanceNext (0x%p)",CoCreateInstanceNext);
     DetourTransactionCommit();
 
     return 0;

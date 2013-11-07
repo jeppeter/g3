@@ -9,6 +9,7 @@
 #include <output_debug.h>
 #include <uniansi.h>
 #include <dllinsert.h>
+#include <imgcapctrl.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -365,12 +366,12 @@ void CimgctrldemoDlg::OnLoad()
     this->KillTimer(SNAPSHOT_TIME_ID);
     if(timercheck)
     {
-        if(m_SnapSecond == 0 || m_SnapSecond > 60)
+        if(m_SnapSecond == 0 || m_SnapSecond > 60000)
         {
-            AfxMessageBox(TEXT("Time should be > 0 && <= 60"));
+            AfxMessageBox(TEXT("Time should be > 0 && <= 60000"));
             goto out;
         }
-        this->SetTimer(SNAPSHOT_TIME_ID,m_SnapSecond * 1000,NULL);
+        this->SetTimer(SNAPSHOT_TIME_ID,m_SnapSecond ,NULL);
     }
     else
     {
@@ -591,34 +592,25 @@ int CimgctrldemoDlg::SnapShot()
     int format,width,height;
     DWORD curret;
     BOOL bret;
+    CImgCapController *pImgCap=NULL;
+    int curstamp;
     processid = m_CallProcessId;
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
 
-    strFormatBmp.Format(TEXT("%s.%d.bmp"),(const WCHAR*)m_strBmp,m_BmpId);
-    m_BmpId ++;
 
 #ifdef _UNICODE
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)m_strDll),&pFullDllName,&fulldllnamesize);
     if(ret < 0)
     {
         goto out;
     }
 
-    ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)strFormatBmp),&pBmpFile,&bmpfilesize);
-    if(ret < 0)
-    {
-        goto out;
-    }
-    DEBUG_INFO("pBmpFile %s (%S)\n",pBmpFile,(const WCHAR*)m_strBmp);
-
-
 #else
     pFullDllName = (const char*) m_strDll;
-    pBmpFile = (const char*) m_strBmp;
 
 #endif
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     pDllName = strrchr(pFullDllName,'\\');
     if(pDllName)
     {
@@ -628,7 +620,7 @@ int CimgctrldemoDlg::SnapShot()
     {
         pDllName = pFullDllName;
     }
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
 
     pData = (char*)malloc(datalen);
     if(pData == NULL)
@@ -638,12 +630,52 @@ int CimgctrldemoDlg::SnapShot()
         ERROR_INFO("could not open datalen %d\n",datalen);
         goto out;
     }
-	DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
+
+
+    hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION,FALSE,processid);
+    if(hProc==NULL)
+    {
+        ret = LAST_ERROR_RETURN();
+        ret = -ret;
+        ERROR_INFO("could not open process (%d) (%d)\n",processid,-ret);
+        goto out;
+    }
+
+    DEBUG_INFO("open process(%d) hProc 0x%08lx\n",processid,hProc);
+    pImgCap = new CImgCapController();
+    bret = pImgCap->Start(hProc,pDllName,20);
+    if(!bret)
+    {
+        ret = LAST_ERROR_RETURN();
+        goto out;
+    }
+
+
+
+
+    bret = pImgCap->CapImage((uint8_t*)pData,datalen,&format,&width,&height,&curstamp,&getlen);
+    if(!bret)
+    {
+        ret = LAST_ERROR_RETURN();
+        goto out;
+    }
 
 #ifdef _UNICODE
+    strFormatBmp.Format(TEXT("%s.%d.bmp"),(const WCHAR*)m_strBmp,m_BmpId);
+    m_BmpId ++;
+    ret = UnicodeToAnsi((wchar_t*)((const WCHAR*)strFormatBmp),&pBmpFile,&bmpfilesize);
+    if(ret < 0)
+    {
+        goto out;
+    }
+    DEBUG_INFO("pBmpFile %s (%S)\n",pBmpFile,(const WCHAR*)m_strBmp);
     hFile = CreateFile((wchar_t*)((const WCHAR*)strFormatBmp),GENERIC_WRITE | GENERIC_READ , FILE_SHARE_READ ,NULL,
                        OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);
 #else
+    strFormatBmp.Format(TEXT("%s.%d.bmp"),(const char*)m_strBmp,m_BmpId);
+    m_BmpId ++;
+    pBmpFile = (const char*) m_strBmp;
     hFile = CreateFile(pBmpFile,GENERIC_WRITE | GENERIC_READ , FILE_SHARE_READ ,NULL,
                        OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);
 #endif
@@ -654,56 +686,10 @@ int CimgctrldemoDlg::SnapShot()
         ERROR_INFO("could not open %s file for write (%d)\n",pBmpFile,-ret);
         goto out;
     }
-	DEBUG_INFO("\n");
-
-	hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION, FALSE, processid);
-    if(hProc==NULL)
-    {
-        ret = LAST_ERROR_RETURN();
-        ret = -ret;
-        ERROR_INFO("could not open process (%d) (%d)\n",processid,-ret);
-        goto out;
-    }
-
-	DEBUG_INFO("open process(%d) hProc 0x%08lx\n",processid,hProc);
+    DEBUG_INFO("\n");
 
 
-    while(1)
-    {
-        ret = D3DHook_CaptureImageBuffer(hProc,pDllName,pData,datalen,&format,&width,&height);
-        if(ret < 0)
-        {        	
-			DEBUG_INFO("\n");
-            goto out;
-        }
-
-        if(ret >= 0)
-        {
-            getlen = ret;
-            break;
-        }
-
-        if(datalen >= 0x8000000)
-        {
-            ret = LAST_ERROR_RETURN();
-            ret = -ret;
-            goto out;
-        }
-        if(pData)
-        {
-            free(pData);
-        }
-        pData = NULL;
-        datalen <<= 1;
-        pData = (char*)malloc(datalen);
-        if(pData == NULL)
-        {
-            ret = LAST_ERROR_RETURN();
-            ret = -ret;
-            goto out;
-        }
-    }
-
+#if 0
     writelen = 0;
     while(writelen < getlen)
     {
@@ -717,11 +703,19 @@ int CimgctrldemoDlg::SnapShot()
 
         writelen += curret;
     }
-
+#else
+    curret = writelen;
+    writelen = curret;
+#endif
     ret = 0;
 
 
 out:
+    if(pImgCap)
+    {
+        delete pImgCap;
+    }
+    pImgCap = NULL;
 #ifdef _UNICODE
     UnicodeToAnsi(NULL,&pFullDllName,&fulldllnamesize);
     UnicodeToAnsi(NULL,&pBmpFile,&bmpfilesize);
@@ -756,7 +750,7 @@ LRESULT CimgctrldemoDlg::OnHotKey(WPARAM wParam, LPARAM lParam)
 
 void CimgctrldemoDlg::OnTimer(UINT nEvent)
 {
-    DEBUG_INFO("Timer++++++++++\n");
+    //DEBUG_INFO("Timer++++++++++\n");
     if(nEvent == SNAPSHOT_TIME_ID)
     {
         SnapShot();

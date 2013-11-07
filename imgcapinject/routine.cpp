@@ -2270,10 +2270,10 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
     int lockedrect=0;
     int totalbytes=0;
     int writelen=0;
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     __try
     {
-        DEBUG_INFO("\n");
+        //DEBUG_INFO("\n");
 
         hr = pDevice->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&pBackBuffer);
         if(FAILED(hr))
@@ -2282,7 +2282,7 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
             DEBUG_INFO("could not get backbuffer(0x%08x) (%d)\n",hr,ret);
             goto fail;
         }
-        DEBUG_INFO("\n");
+        //DEBUG_INFO("\n");
         hr = pBackBuffer->GetDesc(&desc);
         if(!FAILED(hr))
         {
@@ -2306,7 +2306,7 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
             DEBUG_INFO("could not create surface (0x%08x) (%d)\n",hr,ret);
             goto fail;
         }
-        DEBUG_INFO("\n");
+        //DEBUG_INFO("\n");
 
         hr = pSurface->GetDesc(&desc);
         if(FAILED(hr))
@@ -2327,7 +2327,7 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
             DEBUG_INFO("could not get render target data (0x%08x)  (%d)\n",hr,ret);
             goto fail;
         }
-        DEBUG_INFO("\n");
+        //DEBUG_INFO("\n");
 
         /*now to lock rect for it will give the for copy memory*/
         hr = pSurface->LockRect(&LockRect,NULL, D3DLOCK_NO_DIRTY_UPDATE|D3DLOCK_NOSYSLOCK|D3DLOCK_READONLY);
@@ -2387,7 +2387,7 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
         DEBUG_INFO("catch exception %d\n",GetExceptionCode());
         goto fail;
     }
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     if(lockedrect)
     {
         assert(pSurface);

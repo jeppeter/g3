@@ -153,7 +153,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
     DWORD retcode=(DWORD)-1;
 
 
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     pDllStripName = strrchr(strDllName,'\\');
     if(pDllStripName == NULL)
     {
@@ -163,7 +163,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
     {
         pDllStripName ++;
     }
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
 
     processid = GetProcessId(hProc);
     DEBUG_INFO("get hProc 0x%08lx processid (%d)\n",hProc,processid);
@@ -177,7 +177,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         goto fail;
     }
 
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     pCaptureBuffer = (imgcap_buffer_t*)VirtualAllocEx(hHandleProc,NULL,capturesize,MEM_COMMIT,PAGE_EXECUTE_READWRITE);
     if(pCaptureBuffer == NULL)
     {
@@ -185,7 +185,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         DEBUG_INFO("virtualAllocEx (0x%08x) error(%d)\n",hHandleProc,ret);
         goto fail;
     }
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
 
     pCurCaptureBuffer =(imgcap_buffer_t*) calloc(sizeof(*pCurCaptureBuffer),1);
     if(pCurCaptureBuffer == NULL)
@@ -209,7 +209,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         goto fail;
     }
 
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     if(curret != sizeof(*pCaptureBuffer))
     {
         ret = ERROR_INVALID_PARAMETER;
@@ -217,7 +217,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         goto fail;
     }
 
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
     /*now to create remote thread*/
     ret = GetRemoteProcAddress(processid,pDllStripName,"CaptureBuffer",&pFnAddr);
     if(ret < 0)
@@ -235,7 +235,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
         DEBUG_INFO("\n");
         goto fail;
     }
-    DEBUG_INFO("\n");
+    //DEBUG_INFO("\n");
 
     stime = GetTickCount();
     etime = stime + timeout* 1000;
