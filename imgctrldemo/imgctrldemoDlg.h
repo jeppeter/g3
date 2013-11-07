@@ -30,6 +30,7 @@ private:
 	DWORD m_CallProcessId;
 	int m_BmpId;
 	int m_SnapSecond;
+	int m_RealWrite;
 	
 // й╣ож
 protected:

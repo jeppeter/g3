@@ -79,6 +79,10 @@ CimgctrldemoDlg::CimgctrldemoDlg(CWnd* pParent /*=NULL*/)
     m_strBmp = "";
     m_strParam = "";
 #endif
+    m_CallProcessId = 0;
+    m_BmpId = 0;
+    m_SnapSecond = 0;
+    m_RealWrite = 0;
 }
 
 void CimgctrldemoDlg::DoDataExchange(CDataExchange* pDX)
@@ -151,6 +155,8 @@ BOOL CimgctrldemoDlg::OnInitDialog()
     pCheck = (CButton*) this->GetDlgItem(IDC_CHECK_SHIFT);
     pCheck->SetCheck(BST_UNCHECKED);
     pCheck = (CButton*)this->GetDlgItem(IDC_CHECK_TIMER);
+    pCheck->SetCheck(BST_UNCHECKED);
+    pCheck = (CButton*)this->GetDlgItem(IDC_CHECK_REALWRITE);
     pCheck->SetCheck(BST_UNCHECKED);
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -247,6 +253,8 @@ void CimgctrldemoDlg::OnLoad()
         pEdt->GetWindowText(numstr);
 
     }
+    pCheck = (CButton*)this->GetDlgItem(IDC_CHECK_REALWRITE);
+    m_RealWrite = pCheck->GetCheck() ? 1 : 0;
 
 
 #ifdef _UNICODE
@@ -689,24 +697,23 @@ int CimgctrldemoDlg::SnapShot()
     DEBUG_INFO("\n");
 
 
-#if 0
-    writelen = 0;
-    while(writelen < getlen)
-    {
-        bret = WriteFile(hFile,(LPCVOID)((ptr_t)pData+writelen),(getlen-writelen),&curret,NULL);
-        if(!bret)
-        {
-            ret = LAST_ERROR_RETURN();
-            ret = -ret;
-            goto out;
-        }
 
-        writelen += curret;
+    if(this->m_RealWrite)
+    {
+        writelen = 0;
+        while(writelen < getlen)
+        {
+            bret = WriteFile(hFile,(LPCVOID)((ptr_t)pData+writelen),(getlen-writelen),&curret,NULL);
+            if(!bret)
+            {
+                ret = LAST_ERROR_RETURN();
+                ret = -ret;
+                goto out;
+            }
+
+            writelen += curret;
+        }
     }
-#else
-    curret = writelen;
-    writelen = curret;
-#endif
     ret = 0;
 
 
