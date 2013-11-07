@@ -24,7 +24,6 @@ public:
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV Ö§³Ö
 private:
-	int SnapShort();
 	int SnapShot();
 private:
 	DWORD m_CallProcessId;
