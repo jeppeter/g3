@@ -439,10 +439,16 @@ class CDirect3DDevice9Hook : public IDirect3DDevice9
 {
 private:
     IDirect3DDevice9* m_ptr;
-
+    int m_PresentState;
 public:
-    CDirect3DDevice9Hook(IDirect3DDevice9* ptr) : m_ptr(ptr) {}
-
+    CDirect3DDevice9Hook(IDirect3DDevice9* ptr) : m_ptr(ptr)
+    {
+        m_PresentState = 0;
+    }
+    int GetPresetState()
+    {
+        return this->m_PresentState;
+    };
 public:
     /*** IUnknown methods ***/
     COM_METHOD(HRESULT, QueryInterface)(THIS_ REFIID riid, void** ppvObj)
@@ -466,11 +472,11 @@ public:
         ULONG uret,realret;
         int ret;
         IDirect3DDevice9 *pCurPtr=NULL;
-		CDirect3DDevice9Hook *pThis=NULL;
+        CDirect3DDevice9Hook *pThis=NULL;
 
         DX_DEBUG_FUNC_IN();
         pCurPtr = m_ptr;
-		pThis = this;
+        pThis = this;
         uret = m_ptr->Release();
         realret = uret;
         /*it means that is the just one ,we should return for the job*/
@@ -482,10 +488,10 @@ public:
         }
         DEBUG_INFO("[0x%p->0x%p] count %d\n",pThis,pCurPtr,realret);
         DX_DEBUG_FUNC_OUT();
-		if(realret == 0)
-		{
-			delete this;
-		}
+        if(realret == 0)
+        {
+            delete this;
+        }
 
         return realret;
     }
@@ -599,6 +605,7 @@ public:
         HRESULT hr;
         DX_DEBUG_FUNC_IN();
         hr = m_ptr->Reset(pPresentationParameters);
+        this->m_PresentState = 0;
         DX_DEBUG_FUNC_OUT();
         return hr;
     }
@@ -607,6 +614,14 @@ public:
         HRESULT hr;
         DX_DEBUG_FUNC_IN();
         hr = m_ptr->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+        if(SUCCEEDED(hr))
+        {
+            this->m_PresentState = 1;
+        }
+        else
+        {
+            ERROR_INFO("Could not Preset 0x%08x\n",hr);
+        }
         DX_DEBUG_FUNC_OUT();
         return hr;
     }
