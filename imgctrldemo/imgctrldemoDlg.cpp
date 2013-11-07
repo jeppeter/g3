@@ -368,12 +368,12 @@ void CimgctrldemoDlg::OnLoad()
     this->KillTimer(SNAPSHOT_TIME_ID);
     if(timercheck)
     {
-        if(m_SnapSecond == 0 || m_SnapSecond > 60)
+        if(m_SnapSecond == 0 || m_SnapSecond > 60000)
         {
-            AfxMessageBox(TEXT("Time should be > 0 && <= 60"));
+            AfxMessageBox(TEXT("Time should be > 0 && <= 60000"));
             goto out;
         }
-        this->SetTimer(SNAPSHOT_TIME_ID,m_SnapSecond * 1000,NULL);
+        this->SetTimer(SNAPSHOT_TIME_ID,m_SnapSecond ,NULL);
     }
     else
     {
@@ -689,6 +689,7 @@ int CimgctrldemoDlg::SnapShot()
         goto out;
     }
 
+#if 0
     writelen = 0;
     while(writelen < getlen)
     {
@@ -702,7 +703,10 @@ int CimgctrldemoDlg::SnapShot()
 
         writelen += curret;
     }
-
+#else
+	curret = writelen;
+	writelen = curret;
+#endif
     ret = 0;
 
 

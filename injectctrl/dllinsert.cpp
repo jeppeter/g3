@@ -7,6 +7,7 @@
 #include <TlHelp32.h>
 #include <assert.h>
 #include "output_debug.h"
+#include <Psapi.h>
 
 #define LAST_ERROR_RETURN()  ((int)(GetLastError() ? GetLastError() : 1))
 
@@ -87,122 +88,211 @@ int LowerCaseName(const char* pName)
     return (pCurPtr - pName);
 }
 
+
 PVOID __GetModuleBaseAddr(unsigned int processid,const char* pDllName)
 {
-    HANDLE hsnap=INVALID_HANDLE_VALUE;
-    int ret;
+    /*first to open process*/
+    HANDLE hProc=NULL;
     BOOL bret;
-    PVOID pBaseAddr = NULL;
-    LPMODULEENTRY32 pMEntry=NULL;
+    int ret;
+    PVOID pBaseAddr=NULL;
+    HMODULE *pHModules=NULL;
+    DWORD modulesize=1024;
+    DWORD modulelen=0,moduleret=0;
+    DWORD i;
+    MODULEINFO modinfo;
+    int namesize=1024;
 #ifdef _UNICODE
-    char* pDebugString=NULL;
-    int len;
-    pDebugString = new char[sizeof(pMEntry->szModule)];
-    assert(pDebugString);
+    wchar_t *pNameWide=NULL;
+    char *pNameAnsi=NULL;
+    int ansisize = 0;
+#else
+    char *pNameAnsi=NULL;
 #endif
-    if(pDllName == NULL)
+    char *pPartName=NULL;
+
+
+
+    hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,FALSE,processid);
+    if(hProc == NULL)
     {
-        ret = ERROR_INVALID_PARAMETER;
+        ret = LAST_ERROR_RETURN();
+        ERROR_INFO("Could not Open(%d) error(%d)\n",processid,ret);
+        goto fail;
+    }
+    pHModules = (HMODULE*)calloc(sizeof(*pHModules),modulesize);
+    if(pHModules == NULL)
+    {
+        ret = LAST_ERROR_RETURN();
         goto fail;
     }
 
-	SetLastError(0);
-    hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE,processid);
-    if(hsnap == INVALID_HANDLE_VALUE)
-    {
-        ret = GetLastError() ? GetLastError() : 1;
-        DEBUG_INFO("CreateToolhelp32Snapshot process (%d) error(%d)\n",processid,ret);
-        goto fail;
-    }
 
-
-    pMEntry = new MODULEENTRY32;
-    assert(pMEntry);
-    pBaseAddr = NULL;
-    SetLastError(0);
-    memset(pMEntry,0,sizeof(*pMEntry));
-    pMEntry->dwSize = sizeof(*pMEntry);
-    DEBUG_INFO("\n");
-    for(bret = Module32First(hsnap,pMEntry); bret; bret = Module32Next(hsnap,pMEntry))
+    bret = EnumProcessModules(hProc,pHModules,modulesize*sizeof(*pHModules),&moduleret);
+    if(!bret)
     {
-#ifdef _UNICODE
-        len = wcslen(pMEntry->szModule);
-        SetLastError(0);
-        memset(pDebugString,0,sizeof(pMEntry->szModule));
-        ret = WideCharToMultiByte(CP_ACP,0,pMEntry->szModule,len,pDebugString,(len+1),NULL,NULL);
-        if(ret == 0 && GetLastError())
+        ret = LAST_ERROR_RETURN();
+        ERROR_INFO("[%d] get modulesize %d error(%d)\n",processid,modulesize,ret);
+        free(pHModules);
+        pHModules = NULL;
+        modulesize = ((moduleret +1)/ sizeof(*pHModules));
+        pHModules = (HMODULE*)calloc(sizeof(*pHModules),modulesize);
+        if(pHModules == NULL)
         {
-            ret = GetLastError();
-            ERROR_INFO("\n");
+            ret = LAST_ERROR_RETURN();
             goto fail;
         }
-        LowerCaseName(pDebugString);
-        //DEBUG_INFO("module (%s)\n",pDebugString);
-
-        if(_stricmp(pDebugString,pDllName)==0)
-#else
-        LowerCaseName(pMEntry->szModule);
-        if(_stricmp(pMEntry->szModule,pDllName)==0)
-#endif
+        bret = EnumProcessModules(hProc,pHModules,modulesize*sizeof(*pHModules),&moduleret);
+        if(!bret)
         {
-            pBaseAddr = pMEntry->modBaseAddr;
-            break;
+            ret =LAST_ERROR_RETURN();
+            ERROR_INFO("[%d] get modulesize %d error(%d)\n",processid,modulesize,ret);
+            goto fail;
         }
-        memset(pMEntry,0,sizeof(*pMEntry));
-        pMEntry->dwSize = sizeof(*pMEntry);
     }
 
+    modulelen = moduleret / sizeof(*pHModules);
 
-    if(pBaseAddr == NULL)
+#ifdef _UNICODE
+    pNameWide = (wchar_t*)calloc(sizeof(*pNameWide),namesize);
+    if(pNameWide == NULL)
     {
-        DEBUG_INFO("Error (%d) Module %s\n",GetLastError(),pDllName);
+        ret =LAST_ERROR_RETURN();
+        goto fail;
+    }
+#else  /*_UNICODE*/
+    pNameAnsi = (char*)calloc(sizeof(*pNameAnsi),namesize);
+    if(pNameAnsi == NULL)
+    {
+        ret = LAST_ERROR_RETURN();
+        goto fail;
+    }
+#endif  /*_UNICODE*/
+
+    for(i=0; i<modulelen; i++)
+    {
+#ifdef _UNICODE
+        bret = GetModuleFileNameEx(hProc,pHModules[i],pNameWide,namesize);
+#else
+        bret = GetModuleFileNameEx(hProc,pHModules[i],pNameAnsi,namesize);
+#endif
+        if(!bret)
+        {
+            ret =LAST_ERROR_RETURN();
+            ERROR_INFO("[%d] process->[%d]module(0x%08x) error(%d)\n",processid,i,pHModules[i],ret);
+            continue;
+        }
+
+#ifdef _UNICODE
+        ret = UnicodeToAnsi(pNameWide,&pNameAnsi,&ansisize);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_RETURN();
+            goto fail;
+        }
+#endif
+        pPartName = strrchr(pNameAnsi,'\\');
+        if(pPartName)
+        {
+            pPartName += 1;
+        }
+        else
+        {
+            pPartName = pNameAnsi;
+        }
+
+        if(pDllName == NULL || _stricmp(pPartName,pDllName)==0)
+        {
+            /*now get the module information*/
+            bret = GetModuleInformation(hProc,pHModules[i],&modinfo,sizeof(modinfo));
+            if(!bret)
+            {
+                ret = LAST_ERROR_RETURN();
+                ERROR_INFO("[%d]process->[%d](0x%08x) dll(%s) get info error(%d)\n",
+                           processid,i,pHModules[i],pNameAnsi,ret);
+                goto fail;
+            }
+
+            pBaseAddr = modinfo.lpBaseOfDll;
+            break;
+        }
+
+    }
+
+    if(pBaseAddr==NULL)
+    {
         ret = ERROR_MOD_NOT_FOUND;
-        DEBUG_INFO("\n");
+        ERROR_INFO("[%d] not found %s\n",processid,pDllName);
         goto fail;
     }
 
 #ifdef _UNICODE
-    if(pDebugString)
+    if(pNameWide)
     {
-        delete [] pDebugString;
+        free(pNameWide);
     }
-    pDebugString = NULL;
-#endif
-
-    /*ok ,we find ,so we should close handle*/
-    if(pMEntry)
+    pNameWide = NULL;
+    UnicodeToAnsi(NULL,&pNameAnsi,&ansisize);
+#else  /*_UNICODE*/
+    if(pNameAnsi)
     {
-        delete pMEntry;
+        free(pNameAnsi);
     }
-    pMEntry = NULL;
+    pNameAnsi = NULL;
+#endif  /*_UNICODE*/
+    namesize = 0;
 
-    if(hsnap != INVALID_HANDLE_VALUE)
+    if(pHModules)
     {
-        CloseHandle(hsnap);
+        free(pHModules);
     }
-    hsnap = INVALID_HANDLE_VALUE;
+    pHModules = NULL;
+    modulelen = 0;
+    modulesize = 0;
+    moduleret = 0;
+
+    if(hProc)
+    {
+        CloseHandle(hProc);
+    }
+    hProc = NULL;
 
 
+    SetLastError(0);
     return pBaseAddr;
 fail:
-#ifdef _UNICODE
-    if(pDebugString)
-    {
-        delete [] pDebugString;
-    }
-    pDebugString = NULL;
-#endif
-    if(pMEntry)
-    {
-        delete pMEntry;
-    }
-    pMEntry = NULL;
+    assert(ret > 0);
 
-    if(hsnap != INVALID_HANDLE_VALUE)
+#ifdef _UNICODE
+    if(pNameWide)
     {
-        CloseHandle(hsnap);
+        free(pNameWide);
     }
-    hsnap = INVALID_HANDLE_VALUE;
+    pNameWide = NULL;
+    UnicodeToAnsi(NULL,&pNameAnsi,&ansisize);
+#else  /*_UNICODE*/
+    if(pNameAnsi)
+    {
+        free(pNameAnsi);
+    }
+    pNameAnsi = NULL;
+#endif  /*_UNICODE*/
+    namesize = 0;
+
+    if(pHModules)
+    {
+        free(pHModules);
+    }
+    pHModules = NULL;
+    modulelen = 0;
+    modulesize = 0;
+    moduleret = 0;
+
+    if(hProc)
+    {
+        CloseHandle(hProc);
+    }
+    hProc = NULL;
     SetLastError(ret);
     return NULL;
 }
