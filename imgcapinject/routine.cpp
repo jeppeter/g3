@@ -1655,7 +1655,7 @@ AVPixelFormat __TransD3DFORMAT(D3DFORMAT format)
         avformat = AV_PIX_FMT_RGB24;
         break;
     case D3DFMT_A8R8G8B8:
-        avformat = AV_PIX_FMT_ARGB;
+        avformat = AV_PIX_FMT_BGRA;
         break;
     case D3DFMT_X8R8G8B8:
         avformat = PIX_FMT_0RGB;
