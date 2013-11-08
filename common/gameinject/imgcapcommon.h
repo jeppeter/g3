@@ -20,6 +20,8 @@ enum IMGCAPPER_OPERATION
 typedef struct
 {
     unsigned int processid;
+	int getresult;
+	int filledlen;
     void * data;
     unsigned int datalen;
     unsigned int format;

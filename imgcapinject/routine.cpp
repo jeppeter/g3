@@ -26,6 +26,8 @@ extern "C" {
 }
 #endif
 
+#define  ENDSCENE_HOOK_ENABLED  1
+
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
 #define LAST_ERROR_RETURN()  (GetLastError() ? GetLastError() : 1)
 
@@ -55,6 +57,16 @@ static CRITICAL_SECTION st_PointerCS;
 static IDirect3D9* (WINAPI* Direct3DCreate9Next)(UINT SDKVersion)
     = Direct3DCreate9;
 
+#ifdef ENDSCENE_HOOK_ENABLED
+static CRITICAL_SECTION st_BufferCS;
+static imgcap_buffer_t* st_pHandleCapBuffer=NULL;
+static int st_CapBufferHandlein=0;
+static HANDLE st_hCapBufferEvent=NULL;
+static int st_CapBufferInited=0;
+static int EndSceneCaptureBuffer(IDirect3DDevice9* pDevice);
+static int RemoveImgBuffer(int force);
+static imgcap_buffer_t* GetImgBuffer();
+#endif /*ENDSCENE_HOOK_ENABLED*/
 
 IDirect3DDevice9* GrapPointer(unsigned int& idx)
 {
@@ -405,28 +417,64 @@ void FreeAllPointers()
 }
 
 
+
+
 int InitializeEnviron()
 {
     InitializeCriticalSection(&st_PointerCS);
     assert(st_DirectShowPointers.size()==0);
     assert(st_DirectShowPointerState.size() == 0);
+#ifdef ENDSCENE_HOOK_ENABLED
+    InitializeCriticalSection(&st_BufferCS);
+    st_hCapBufferEvent = GetEvent(NULL,1);
+    if(st_hCapBufferEvent)
+    {
+        st_CapBufferInited = 1;
+    }
+#endif /*ENDSCENE_HOOK_ENABLED*/
     return 0;
 }
 
 void FinializeEnviron()
 {
+#ifdef  ENDSCENE_HOOK_ENABLED
+    int res;
+    int initok=0;
+    if(st_CapBufferInited)
+    {
+        st_CapBufferInited = 0;
+        initok = 1;
+    }
+
+    if(initok)
+    {
+        /*now to get for the job*/
+        while(1)
+        {
+            /*if we remove the buffer ,so it is ok*/
+            res = RemoveImgBuffer(0);
+            if(res > 0)
+            {
+                break;
+            }
+            SchedOut();
+        }
+        CloseHandle(st_hCapBufferEvent);
+        st_hCapBufferEvent = NULL;
+    }
+#endif /*ENDSCENE_HOOK_ENABLED*/
     FreeAllPointers();
     /*we do not delete critical section ,so we should not give the critical section ok*/
 }
 
 
 
-#define DX_DEBUG_FUNC_IN() do{HoldPointer(m_ptr);DEBUG_INFO("%s in\n",__FUNCTION__);}while(0)
-//#define DX_DEBUG_FUNC_IN() do{HoldPointer(m_ptr);}while(0)
+//#define DX_DEBUG_FUNC_IN() do{HoldPointer(m_ptr);DEBUG_INFO("%s in\n",__FUNCTION__);}while(0)
+#define DX_DEBUG_FUNC_IN() do{HoldPointer(m_ptr);}while(0)
 
 
-#define DX_DEBUG_FUNC_OUT() do{DEBUG_INFO("%s out\n",__FUNCTION__);UnHoldPointer(m_ptr);}while(0)
-//#define DX_DEBUG_FUNC_OUT() do{UnHoldPointer(m_ptr);}while(0)
+//#define DX_DEBUG_FUNC_OUT() do{DEBUG_INFO("%s out\n",__FUNCTION__);UnHoldPointer(m_ptr);}while(0)
+#define DX_DEBUG_FUNC_OUT() do{UnHoldPointer(m_ptr);}while(0)
 
 
 /*************************************************************************
@@ -439,16 +487,11 @@ class CDirect3DDevice9Hook : public IDirect3DDevice9
 {
 private:
     IDirect3DDevice9* m_ptr;
-    int m_PresentState;
 public:
     CDirect3DDevice9Hook(IDirect3DDevice9* ptr) : m_ptr(ptr)
     {
-        m_PresentState = 0;
+        ;
     }
-    int GetPresetState()
-    {
-        return this->m_PresentState;
-    };
 public:
     /*** IUnknown methods ***/
     COM_METHOD(HRESULT, QueryInterface)(THIS_ REFIID riid, void** ppvObj)
@@ -605,7 +648,6 @@ public:
         HRESULT hr;
         DX_DEBUG_FUNC_IN();
         hr = m_ptr->Reset(pPresentationParameters);
-        this->m_PresentState = 0;
         DX_DEBUG_FUNC_OUT();
         return hr;
     }
@@ -614,14 +656,6 @@ public:
         HRESULT hr;
         DX_DEBUG_FUNC_IN();
         hr = m_ptr->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
-        if(SUCCEEDED(hr))
-        {
-            this->m_PresentState = 1;
-        }
-        else
-        {
-            ERROR_INFO("Could not Preset 0x%08x\n",hr);
-        }
         DX_DEBUG_FUNC_OUT();
         return hr;
     }
@@ -820,6 +854,12 @@ public:
         HRESULT hr;
         DX_DEBUG_FUNC_IN();
         hr = m_ptr->EndScene();
+#ifdef 	ENDSCENE_HOOK_ENABLED
+        if(SUCCEEDED(hr))
+        {
+            EndSceneCaptureBuffer(m_ptr);
+        }
+#endif /*ENDSCENE_HOOK_ENABLED*/
         DX_DEBUG_FUNC_OUT();
         return hr;
     }
@@ -1986,6 +2026,223 @@ fail:
 }
 
 
+
+EXTERN_C __declspec(dllexport) void* CaptureBuffer(imgcap_buffer_t *pCapture);
+
+extern "C" int CaptureBufferDX11(imgcap_buffer_t* pCapture);
+int CaptureBufferDX9(imgcap_buffer_t* pCapture);
+void* CaptureBuffer(imgcap_buffer_t *pCapture)
+{
+    int ret;
+
+    ret = CaptureBufferDX9(pCapture);
+    if(ret >= 0)
+    {
+        DEBUG_INFO("\n");
+        return (void*) ret;
+    }
+
+    DEBUG_INFO("\n");
+    ret = CaptureBufferDX11(pCapture);
+    return (void*)ret;
+}
+
+void AceCrash() {}
+
+#ifdef ENDSCENE_HOOK_ENABLED
+/************************************************************
+*  this is the handle for endscene hook and done
+*
+************************************************************/
+
+static int EndSceneCaptureBuffer(IDirect3DDevice9* pDevice)
+{
+    int ret,olderr;
+    HANDLE hRemoteProc=NULL;
+    imgcap_buffer_t* pCapture=NULL;
+
+    /*to pretend we do not modify the last error*/
+    olderr = GetLastError();
+
+    pCapture = GetImgBuffer();
+    if(pCapture == NULL)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        goto fail;
+    }
+	/*we get event ,so it is ok */
+	assert(st_hCapBufferEvent);
+
+    hRemoteProc = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION ,FALSE,pCapture->processid);
+    if(hRemoteProc == NULL)
+    {
+        ret = LAST_ERROR_RETURN();
+        ERROR_INFO("Open Process[%d] error(%d)\n",pCapture->processid,ret);
+        goto fail;
+    }
+
+    ret = __CaptureBufferDX9(pDevice,hRemoteProc,pCapture->data,pCapture->datalen,&(pCapture->format),&(pCapture->width),&(pCapture->height));
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_RETURN();
+        ERROR_INFO("Capture [0x%p] Error(%d)\n",pDevice,ret);
+        goto fail;
+    }
+
+    pCapture->filledlen = ret;
+
+    if(hRemoteProc)
+    {
+        CloseHandle(hRemoteProc);
+    }
+    hRemoteProc = NULL;
+
+    pCapture->getresult = 0;
+    SetEvent(st_hCapBufferEvent);
+    SetLastError(olderr);
+    return 0;
+fail:
+    assert(ret > 0);
+    if(hRemoteProc)
+    {
+        CloseHandle(hRemoteProc);
+    }
+    hRemoteProc = NULL;
+    if(pCapture)
+    {
+        pCapture->getresult = ret;
+        SetEvent(st_hCapBufferEvent);
+    }
+    pCapture = NULL;
+    SetLastError(olderr);
+    return -ret;
+
+}
+
+static int InsertImgBuffer(imgcap_buffer_t* pCapBuffer)
+{
+    int ret = -1;
+
+    EnterCriticalSection(&st_BufferCS);
+    if(st_pHandleCapBuffer == NULL)
+    {
+    	assert(st_CapBufferHandlein == 0);
+        ret = 1;
+        st_pHandleCapBuffer = pCapBuffer;
+    }
+    LeaveCriticalSection(&st_BufferCS);
+
+    return ret;
+}
+
+static imgcap_buffer_t* GetImgBuffer()
+{
+    imgcap_buffer_t* pCapBuffer =NULL;
+
+    EnterCriticalSection(&st_BufferCS);
+    if(st_CapBufferHandlein == 0 && st_pHandleCapBuffer)
+    {
+        pCapBuffer = st_pHandleCapBuffer;
+        st_CapBufferHandlein = 1;
+    }
+    LeaveCriticalSection(&st_BufferCS);
+    return pCapBuffer;
+}
+
+static int RemoveImgBuffer(int force)
+{
+    int ret = -1;
+
+    EnterCriticalSection(&st_BufferCS);
+    if(force)
+    {
+        st_pHandleCapBuffer = NULL;
+        st_CapBufferHandlein = 0;
+        ret = 1;
+    }
+    else if(st_CapBufferHandlein == 0)
+    {
+        st_pHandleCapBuffer = NULL;
+        st_CapBufferHandlein = 0;
+        ret = 1;
+    }
+    LeaveCriticalSection(&st_BufferCS);
+    return ret;
+}
+
+int CaptureBufferDX9(imgcap_buffer_t* pCapture)
+{
+    int ret;
+    DWORD dret;
+    int res;
+
+    if(st_hCapBufferEvent == NULL || st_CapBufferInited == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        return -ret;
+    }
+
+    /*now to set img buffer */
+    ret = InsertImgBuffer(pCapture);
+    if(ret < 0)
+    {
+        ret = ERROR_ALREADY_ASSIGNED;
+        return -ret;
+    }
+
+    /*now we should wait at least 100 millisecond ,if we wait timeout ,so we should remove the img buffer and not let it do,
+       if we are not */
+
+    dret = WaitForSingleObjectEx(st_hCapBufferEvent,100,TRUE);
+    if(dret != WAIT_OBJECT_0)
+    {
+        ret = LAST_ERROR_RETURN();
+        goto fail;
+    }
+
+    /*now we should remove it*/
+    res = RemoveImgBuffer(1);
+    assert(res > 0);
+
+    /*now we should test whether it is ok in the job*/
+    if(pCapture->getresult != 0)
+    {
+        ret = pCapture->getresult;
+        ERROR_INFO("capture error %d\n",ret);
+        SetLastError(ret);
+        return -ret;
+    }
+
+
+    return pCapture->filledlen;
+
+fail:
+    assert(ret > 0);
+
+    while(1)
+    {
+        res = RemoveImgBuffer(0);
+        if(res > 0)
+        {
+            break;
+        }
+
+        /*now we can not remove img buffer ,so we should wait for it handled*/
+        dret = WaitForSingleObjectEx(st_hCapBufferEvent,100,TRUE);
+        if(dret == WAIT_OBJECT_0)
+        {
+            break;
+        }
+    }
+
+    res = RemoveImgBuffer(1);
+    assert(res > 0);
+    SetLastError(ret);
+    return -ret;
+}
+
+
+#else   /*ENDSCENE_HOOK_ENABLED*/
 int CaptureBufferDX9(imgcap_buffer_t* pCapture)
 {
     IDirect3DDevice9* pDevice=NULL;
@@ -2051,24 +2308,5 @@ fail:
     SetLastError(ret);
     return -ret;
 }
+#endif  /*ENDSCENE_HOOK_ENABLED*/
 
-EXTERN_C __declspec(dllexport) void* CaptureBuffer(imgcap_buffer_t *pCapture);
-
-extern "C" int CaptureBufferDX11(imgcap_buffer_t* pCapture);
-void* CaptureBuffer(imgcap_buffer_t *pCapture)
-{
-    int ret;
-
-    ret = CaptureBufferDX9(pCapture);
-    if(ret >= 0)
-    {
-        DEBUG_INFO("\n");
-        return (void*) ret;
-    }
-
-    DEBUG_INFO("\n");
-    ret = CaptureBufferDX11(pCapture);
-    return (void*)ret;
-}
-
-void AceCrash() {}
