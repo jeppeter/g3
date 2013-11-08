@@ -40,3 +40,9 @@ BOOL InitIoInject(HMODULE hModule)
 
 }
 
+
+BOOL IoInjectDummyExport(void)
+{
+	return TRUE;
+}
+
