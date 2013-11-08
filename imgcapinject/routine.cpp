@@ -1867,6 +1867,7 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
     int lockedrect=0;
     int totalbytes=0;
     int writelen=0;
+	RECT caprect;
     //DEBUG_INFO("\n");
     __try
     {
@@ -1926,8 +1927,13 @@ int __CaptureBufferDX9(IDirect3DDevice9* pDevice,HANDLE hRemoteHandle,void* pRem
         }
         //DEBUG_INFO("\n");
 
+		caprect.left = 0;
+		caprect.top = 0;
+		caprect.right = desc.Width;
+		caprect.bottom = desc.Height;
         /*now to lock rect for it will give the for copy memory*/
-        hr = pSurface->LockRect(&LockRect,NULL, D3DLOCK_NO_DIRTY_UPDATE|D3DLOCK_NOSYSLOCK|D3DLOCK_READONLY);
+        //hr = pSurface->LockRect(&LockRect,NULL, D3DLOCK_NO_DIRTY_UPDATE|D3DLOCK_NOSYSLOCK|D3DLOCK_READONLY);
+        hr = pSurface->LockRect(&LockRect,&caprect, D3DLOCK_NO_DIRTY_UPDATE|D3DLOCK_NOSYSLOCK|D3DLOCK_READONLY);
         if(FAILED(hr))
         {
             ret = LAST_ERROR_RETURN();
