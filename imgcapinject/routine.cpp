@@ -1576,6 +1576,7 @@ public:
             }
             else
             {
+            	DEBUG_INFO("returndevice 0x%p\n",*ppReturnedDeviceInterface);
                 *ppReturnedDeviceInterface = static_cast<IDirect3DDevice9*>(new CDirect3DDevice9Hook(*ppReturnedDeviceInterface));
             }
 
