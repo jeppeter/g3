@@ -325,10 +325,12 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
     hThread=NULL;
     if(pCaptureBuffer)
     {
-        bret = VirtualFreeEx(hHandleProc,pCaptureBuffer,capturesize,MEM_DECOMMIT);
+        //bret = VirtualFreeEx(hHandleProc,pCaptureBuffer,capturesize,MEM_DECOMMIT);
+        bret = VirtualFreeEx(hHandleProc,pCaptureBuffer,0,MEM_RELEASE);
         if(!bret)
         {
-            ERROR_INFO("could not free %p size %d on %x error (%d)\n",pCaptureBuffer,capturesize,hHandleProc,GetLastError());
+            //ERROR_INFO("could not free %p size %d on %x error (%d)\n",pCaptureBuffer,capturesize,hHandleProc,GetLastError());
+            ERROR_INFO("could not free %p size %d on %x error (%d)\n",pCaptureBuffer,0,hHandleProc,GetLastError());
         }
     }
     if(pCurCaptureBuffer)
@@ -352,10 +354,12 @@ fail:
     hThread=NULL;
     if(pCaptureBuffer)
     {
-        bret = VirtualFreeEx(hHandleProc,pCaptureBuffer,capturesize,MEM_DECOMMIT);
+        //bret = VirtualFreeEx(hHandleProc,pCaptureBuffer,capturesize,MEM_DECOMMIT);
+        bret = VirtualFreeEx(hHandleProc,pCaptureBuffer,0,MEM_RELEASE);
         if(!bret)
         {
-            ERROR_INFO("could not free %p size %d on %x error (%d)\n",pCaptureBuffer,capturesize,hHandleProc,GetLastError());
+            //ERROR_INFO("could not free %p size %d on %x error (%d)\n",pCaptureBuffer,capturesize,hHandleProc,GetLastError());
+            ERROR_INFO("could not free %p size %d on %x error (%d)\n",pCaptureBuffer,0,hHandleProc,GetLastError());
         }
     }
     if(pCurCaptureBuffer)

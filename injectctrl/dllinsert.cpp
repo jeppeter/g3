@@ -317,10 +317,12 @@ BOOL __ReallocateSize(PVOID* ppBuffer,int buflen,int*pBufsize)
     if(*ppBuffer)
     {
         SetLastError(0);
-        bret = VirtualFreeEx(GetCurrentProcess(),*ppBuffer,bufsize,MEM_DECOMMIT);
+        //bret = VirtualFreeEx(GetCurrentProcess(),*ppBuffer,bufsize,MEM_DECOMMIT);
+        bret = VirtualFreeEx(GetCurrentProcess(),*ppBuffer,0,MEM_RELEASE);
         if(!bret)
         {
-            DEBUG_INFO("Free 0x%p [%d] error(%d)\n",*ppBuffer,bufsize,GetLastError());
+            //DEBUG_INFO("Free 0x%p [%d] error(%d)\n",*ppBuffer,bufsize,GetLastError());
+            DEBUG_INFO("Free 0x%p [%d] error(%d)\n",*ppBuffer,0,GetLastError());
         }
     }
     *ppBuffer = pBuffer;
@@ -924,10 +926,12 @@ extern "C" int CallRemoteFunc(unsigned int processid,void* pFnAddr,const char* p
     hThread = NULL;
     if(pRemoteAddr)
     {
-        bret = VirtualFreeEx(hProcess,pRemoteAddr,remotesize,MEM_DECOMMIT);
+        //bret = VirtualFreeEx(hProcess,pRemoteAddr,remotesize,MEM_DECOMMIT);
+        bret = VirtualFreeEx(hProcess,pRemoteAddr,0,MEM_RELEASE);
         if(!bret)
         {
-            DEBUG_INFO("could not free 0x%p (%d) (%d)\n",pRemoteAddr,remotesize,GetLastError());
+            //DEBUG_INFO("could not free 0x%p (%d) (%d)\n",pRemoteAddr,remotesize,GetLastError());
+            DEBUG_INFO("could not free 0x%p (%d) (%d)\n",pRemoteAddr,0,GetLastError());
         }
     }
     pRemoteAddr = NULL;
@@ -947,10 +951,12 @@ fail:
     hThread = NULL;
     if(pRemoteAddr)
     {
-        bret = VirtualFreeEx(hProcess,pRemoteAddr,remotesize,MEM_DECOMMIT);
+        //bret = VirtualFreeEx(hProcess,pRemoteAddr,remotesize,MEM_DECOMMIT);
+        bret = VirtualFreeEx(hProcess,pRemoteAddr,0,MEM_RELEASE);
         if(!bret)
         {
-            DEBUG_INFO("could not free 0x%p (%d) (%d)\n",pRemoteAddr,remotesize,GetLastError());
+            //DEBUG_INFO("could not free 0x%p (%d) (%d)\n",pRemoteAddr,remotesize,GetLastError());
+            DEBUG_INFO("could not free 0x%p (%d) (%d)\n",pRemoteAddr,0,GetLastError());
         }
     }
     pRemoteAddr = NULL;

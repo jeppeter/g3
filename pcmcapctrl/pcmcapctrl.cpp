@@ -65,7 +65,7 @@ BOOL CPcmCapController::__SetOperationInner(pcmcap_control_t * pControl,DWORD *p
     int timeout=4;
     DWORD retcode;
 
-	DEBUG_INFO("operation %d\n",pControl->operation);
+    DEBUG_INFO("operation %d\n",pControl->operation);
 
     pControl->timeout = timeout;
     /*now to call the */
@@ -85,7 +85,7 @@ BOOL CPcmCapController::__SetOperationInner(pcmcap_control_t * pControl,DWORD *p
         goto fail;
     }
 
-	DEBUG_INFO("startevt (%s) endevt (%s)\n",pControl->startevt_name, pControl->stopevt_name);
+    DEBUG_INFO("startevt (%s) endevt (%s)\n",pControl->startevt_name, pControl->stopevt_name);
     bret = WriteProcessMemory(this->m_hProc,pRemoteAlloc,pControl,sizeof(*pControl),&retsize);
     if(!bret)
     {
@@ -102,7 +102,7 @@ BOOL CPcmCapController::__SetOperationInner(pcmcap_control_t * pControl,DWORD *p
         goto fail;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     /*now to call remote address*/
     hThread = CreateRemoteThread(this->m_hProc,NULL,0,(LPTHREAD_START_ROUTINE)pRemoteFunc,pRemoteAlloc,0,&threadid);
     if(hThread == NULL)
@@ -131,9 +131,9 @@ BOOL CPcmCapController::__SetOperationInner(pcmcap_control_t * pControl,DWORD *p
             goto fail;
         }
 
-		DEBUG_INFO("\n");
-        dret = WaitForSingleObject(hThread,lefttick);		
-		DEBUG_INFO("dret %d\n",dret);
+        DEBUG_INFO("\n");
+        dret = WaitForSingleObject(hThread,lefttick);
+        DEBUG_INFO("dret %d\n",dret);
         if(dret == WAIT_OBJECT_0)
         {
             bret = GetExitCodeThread(hThread,&retcode);
@@ -158,12 +158,15 @@ BOOL CPcmCapController::__SetOperationInner(pcmcap_control_t * pControl,DWORD *p
     hThread = NULL;
 
     assert(pRemoteAlloc);
-    bres = VirtualFreeEx(this->m_hProc,pRemoteAlloc,sizeof(*pControl),MEM_DECOMMIT);
+    //bres = VirtualFreeEx(this->m_hProc,pRemoteAlloc,sizeof(*pControl),MEM_DECOMMIT);
+    bres = VirtualFreeEx(this->m_hProc,pRemoteAlloc,0,MEM_RELEASE);
     if(!bres)
     {
         res = LAST_ERROR_CODE();
+        //ERROR_INFO("could not free (0x%x) process %d handle remoteaddr 0x%p size %d error(%d)\n",
+        //           this->m_hProc,this->m_ProcessId,pRemoteAlloc,sizeof(*pControl),ret);
         ERROR_INFO("could not free (0x%x) process %d handle remoteaddr 0x%p size %d error(%d)\n",
-                   this->m_hProc,this->m_ProcessId,pRemoteAlloc,sizeof(*pControl),ret);
+                   this->m_hProc,this->m_ProcessId,pRemoteAlloc,0,ret);
     }
 
     pRemoteAlloc = NULL;
@@ -212,12 +215,15 @@ fail:
     hThread = NULL;
     if(pRemoteAlloc)
     {
-        bres = VirtualFreeEx(this->m_hProc,pRemoteAlloc,sizeof(*pControl),MEM_DECOMMIT);
+        //bres = VirtualFreeEx(this->m_hProc,pRemoteAlloc,sizeof(*pControl),MEM_DECOMMIT);
+        bres = VirtualFreeEx(this->m_hProc,pRemoteAlloc,0,MEM_RELEASE);
         if(!bres)
         {
             res = LAST_ERROR_CODE();
+            //ERROR_INFO("could not free (0x%x) handle remoteaddr 0x%p size %d error(%d)\n",
+            //           this->m_hProc,pRemoteAlloc,sizeof(*pControl),ret);
             ERROR_INFO("could not free (0x%x) handle remoteaddr 0x%p size %d error(%d)\n",
-                       this->m_hProc,pRemoteAlloc,sizeof(*pControl),ret);
+                       this->m_hProc,pRemoteAlloc,0,ret);
         }
     }
     pRemoteAlloc = NULL;
@@ -774,7 +780,7 @@ BOOL CPcmCapController::__SetOperationBoth()
     strncpy_s((char*)pControl->freelist_semnamebase, sizeof(pControl->freelist_semnamebase), (const char*)this->m_strFreeEvtBaseName, _TRUNCATE);
     strncpy_s((char*)pControl->filllist_semnamebase, sizeof(pControl->filllist_semnamebase), (const char*)this->m_strFillEvtBaseName, _TRUNCATE);
     strncpy_s((char*)pControl->startevt_name, sizeof(pControl->startevt_name), (const char*)this->m_strStartEvtBaseName, _TRUNCATE);
-	DEBUG_INFO("control start %s start evtname %s\n", pControl->startevt_name, this->m_strStartEvtBaseName);
+    DEBUG_INFO("control start %s start evtname %s\n", pControl->startevt_name, this->m_strStartEvtBaseName);
     strncpy_s((char*)pControl->stopevt_name, sizeof(pControl->stopevt_name), (const char*)this->m_strStopEvtBaseName, _TRUNCATE);
 
     bret = this->__SetOperationInner(pControl,&retcode);
@@ -827,7 +833,7 @@ BOOL CPcmCapController::__SetOperationCapture()
     strncpy_s((char*)pControl->freelist_semnamebase, sizeof(pControl->freelist_semnamebase), (const char*)this->m_strFreeEvtBaseName, _TRUNCATE);
     strncpy_s((char*)pControl->filllist_semnamebase, sizeof(pControl->filllist_semnamebase), (const char*)this->m_strFillEvtBaseName, _TRUNCATE);
     strncpy_s((char*)pControl->startevt_name, sizeof(pControl->startevt_name), (const char*)this->m_strStartEvtBaseName, _TRUNCATE);
-	DEBUG_INFO("control start %s start evtname %s\n", pControl->startevt_name, this->m_strStartEvtBaseName);
+    DEBUG_INFO("control start %s start evtname %s\n", pControl->startevt_name, this->m_strStartEvtBaseName);
     strncpy_s((char*)pControl->stopevt_name, sizeof(pControl->stopevt_name), (const char*)this->m_strStopEvtBaseName, _TRUNCATE);
 
     bret = this->__SetOperationInner(pControl,&retcode);
