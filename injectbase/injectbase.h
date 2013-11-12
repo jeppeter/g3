@@ -26,6 +26,9 @@
 
 
 INJECTBASE_API int InsertModuleFileName(HMODULE hModule);
+INJECTBASE_API void SetUnHandlerExceptionDetour();
+
+
 
 int InjectBaseModuleInit(HMODULE hModule);
 void InjectBaseModuleFini(HMODULE hModule);

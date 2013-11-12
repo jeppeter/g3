@@ -651,11 +651,16 @@ int InjectBaseModuleInit(HMODULE hModule)
         return 0;
     }
     DEBUG_INFO("\n");
-    SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
+    SetUnHandlerExceptionDetour();
 
 
     return 0;
 
+}
+
+void SetUnHandlerExceptionDetour()
+{
+	//SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
 }
 
 void InjectBaseModuleFini(HMODULE hModule)
@@ -663,7 +668,7 @@ void InjectBaseModuleFini(HMODULE hModule)
     if(st_InjectModuleInited)
     {
         ClearAllDllNames();
-        SetUnhandledExceptionFilter(NULL);
+        //SetUnhandledExceptionFilter(NULL);
     }
     return;
 }

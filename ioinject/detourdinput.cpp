@@ -10,6 +10,7 @@
 #include <output_debug.h>
 #include <detours/detours.h>
 #include "detourdinput.h"
+#include <injectbase.h>
 
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
@@ -112,7 +113,7 @@ public:
         DIRECT_INPUT_DEVICE_8A_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_DEVICE_8A_OUT();
-		DEBUG_INFO("uret = %d\n",uret);
+        DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInputDevice8AHook(this->m_ptr);
@@ -511,7 +512,7 @@ public:
         DIRECT_INPUT_DEVICE_8W_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_DEVICE_8W_OUT();
-		DEBUG_INFO("uret = %d\n",uret);
+        DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInputDevice8WHook(this->m_ptr);
@@ -907,7 +908,7 @@ public:
         DIRECT_INPUT_8A_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_8A_OUT();
-		DEBUG_INFO("uret = %d\n",uret);
+        DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInput8AHook(this->m_ptr);
@@ -1177,7 +1178,7 @@ public:
         DIRECT_INPUT_8W_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_8W_OUT();
-		DEBUG_INFO("uret = %d\n",uret);
+        DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInput8WHook(this->m_ptr);
@@ -1194,6 +1195,7 @@ public:
                                      LPUNKNOWN pUnkOuter)
     {
         HRESULT hr;
+        SetUnHandlerExceptionDetour();
         DIRECT_INPUT_8W_IN();
         hr = m_ptr->CreateDevice(rguid,lplpDirectInputDevice,pUnkOuter);
         if(SUCCEEDED(hr))
@@ -1446,10 +1448,10 @@ BOOL DetourDirectInputInit(void)
 {
     BOOL bret;
     int ret;
-	DEBUG_INFO("st_IOInjectInit = %d\n",st_IOInjectInit);
+    DEBUG_INFO("st_IOInjectInit = %d\n",st_IOInjectInit);
     if(st_IOInjectInit > 0)
     {
-    	DEBUG_INFO("\n");
+        DEBUG_INFO("\n");
         return TRUE;
     }
     /*now first to init all the critical section*/
