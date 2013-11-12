@@ -23,6 +23,8 @@ BOOL InitIoInject(HMODULE hModule)
     BOOL bret;
     int ret;
 
+	DEBUG_INFO("st_IoInjectInited = %d\n",st_IoInjectInited);
+
     bret = DetourDirectInputInit();
     if(!bret)
     {

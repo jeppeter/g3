@@ -14,17 +14,20 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                        LPVOID lpReserved
 					 )
 {
-	DEBUG_INFO("\n");
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
+		DEBUG_INFO("hModule %d Pid %d\n",hModule,GetCurrentProcessId());
 		InitIoInject(hModule);
 		break;
 	case DLL_THREAD_ATTACH:
+		DEBUG_INFO("hModule %d Pid %d\n",hModule,GetCurrentProcessId());
 		break;
 	case DLL_THREAD_DETACH:
+		DEBUG_INFO("hModule %d Pid %d\n",hModule,GetCurrentProcessId());
 		break;
 	case DLL_PROCESS_DETACH:
+		DEBUG_INFO("hModule %d Pid %d\n",hModule,GetCurrentProcessId());
 		FiniIoInject(hModule);
 		break;
 	}

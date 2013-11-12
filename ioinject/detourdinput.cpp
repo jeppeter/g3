@@ -79,8 +79,8 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
 }
 
 
-#define  DIRECT_INPUT_DEVICE_8A_IN()  do{DEBUG_INFO("Device8A::%s in\n",__FUNCTION__);}while(0)
-#define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DEBUG_INFO("Device8A::%s out\n",__FUNCTION__);}while(0)
+#define  DIRECT_INPUT_DEVICE_8A_IN()  do{DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 
 
 class CDirectInputDevice8AHook : public IDirectInputDevice8A
@@ -112,6 +112,7 @@ public:
         DIRECT_INPUT_DEVICE_8A_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_DEVICE_8A_OUT();
+		DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInputDevice8AHook(this->m_ptr);
@@ -477,8 +478,8 @@ ULONG UnRegisterDirectInputDevice8WHook(IDirectInputDevice8W* ptr)
 }
 
 
-#define  DIRECT_INPUT_DEVICE_8W_IN()  do{DEBUG_INFO("Device8W::%s in\n",__FUNCTION__);}while(0)
-#define  DIRECT_INPUT_DEVICE_8W_OUT()  do{DEBUG_INFO("Device8W::%s out\n",__FUNCTION__);}while(0)
+#define  DIRECT_INPUT_DEVICE_8W_IN()  do{DEBUG_INFO("Device8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8W_OUT()  do{DEBUG_INFO("Device8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 
 
 class CDirectInputDevice8WHook : public IDirectInputDevice8W
@@ -510,6 +511,7 @@ public:
         DIRECT_INPUT_DEVICE_8W_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_DEVICE_8W_OUT();
+		DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInputDevice8WHook(this->m_ptr);
@@ -874,8 +876,8 @@ ULONG UnRegisterDirectInput8AHook(IDirectInput8A* ptr)
     return uret;
 }
 
-#define  DIRECT_INPUT_8A_IN() do{DEBUG_INFO("Input8A::%s in\n",__FUNCTION__);}while(0)
-#define  DIRECT_INPUT_8A_OUT() do{DEBUG_INFO("Input8A::%s out\n",__FUNCTION__);}while(0)
+#define  DIRECT_INPUT_8A_IN() do{DEBUG_INFO("Input8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_8A_OUT() do{DEBUG_INFO("Input8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 class CDirectInput8AHook :public IDirectInput8A
 {
 private:
@@ -905,6 +907,7 @@ public:
         DIRECT_INPUT_8A_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_8A_OUT();
+		DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInput8AHook(this->m_ptr);
@@ -1142,8 +1145,8 @@ ULONG UnRegisterDirectInput8WHook(IDirectInput8W* ptr)
 
 
 
-#define  DIRECT_INPUT_8W_IN()  do{DEBUG_INFO("Input8W::%s in\n",__FUNCTION__);}while(0)
-#define  DIRECT_INPUT_8W_OUT()  do{DEBUG_INFO("Input8W::%s out\n",__FUNCTION__);}while(0)
+#define  DIRECT_INPUT_8W_IN()  do{DEBUG_INFO("Input8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_8W_OUT()  do{DEBUG_INFO("Input8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 
 class CDirectInput8WHook : IDirectInput8W
 {
@@ -1174,6 +1177,7 @@ public:
         DIRECT_INPUT_8W_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_8W_OUT();
+		DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInput8WHook(this->m_ptr);
@@ -1402,7 +1406,7 @@ HRESULT WINAPI DirectInput8CreateCallBack(HINSTANCE hinst, DWORD dwVersion, REFI
                 IDirectInput8W* pPtrW = (IDirectInput8W*) *ppvOut;
                 pHookW = RegisterDirectInput8WHook(pPtrW);
                 assert(pHookW);
-                DEBUG_INFO("IDirectInput8W(0x%p) => CDirectInput8AHook(0x%p)\n",pPtrW,pHookW);
+                DEBUG_INFO("IDirectInput8W(0x%p) => CDirectInput8WHook(0x%p)\n",pPtrW,pHookW);
                 *ppvOut = pHookW;
             }
         }
@@ -1427,12 +1431,12 @@ void DetourDirectInputFini(void)
 
 BOOL __DetourDirectInput8CallBack(void)
 {
-	DEBUG_BUFFER_FMT(DirectInput8CreateNext,10,"Before DirectInput8CreateNext(0x%p)",DirectInput8CreateNext);
+    DEBUG_BUFFER_FMT(DirectInput8CreateNext,10,"Before DirectInput8CreateNext(0x%p)",DirectInput8CreateNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&DirectInput8CreateNext,DirectInput8CreateCallBack);
     DetourTransactionCommit();
-	DEBUG_BUFFER_FMT(DirectInput8CreateNext,10,"After DirectInput8CreateNext(0x%p)",DirectInput8CreateNext);
+    DEBUG_BUFFER_FMT(DirectInput8CreateNext,10,"After DirectInput8CreateNext(0x%p)",DirectInput8CreateNext);
 
     return TRUE;
 }
@@ -1442,6 +1446,12 @@ BOOL DetourDirectInputInit(void)
 {
     BOOL bret;
     int ret;
+	DEBUG_INFO("st_IOInjectInit = %d\n",st_IOInjectInit);
+    if(st_IOInjectInit > 0)
+    {
+    	DEBUG_INFO("\n");
+        return TRUE;
+    }
     /*now first to init all the critical section*/
     InitializeCriticalSection(&st_DIDevice8ACS);
     InitializeCriticalSection(&st_DIDevice8WCS);
@@ -1458,7 +1468,7 @@ BOOL DetourDirectInputInit(void)
         goto fail;
     }
 
-
+    DEBUG_INFO("Initialize IoInject succ\n");
     st_IOInjectInit = 1;
     return TRUE;
 
