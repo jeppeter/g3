@@ -598,6 +598,9 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->GetDeviceState(cbData,lpvData);
+		if (hr == DI_OK)
+			{
+			}
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -701,6 +704,11 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->SetCooperativeLevel(hwnd,dwFlags);
+        if(hr == DI_OK)
+        {
+            DINPUT_DEBUG_INFO("<0x%p> hwnd 0x%08x dwLevel 0x%08x\n",this->m_ptr,
+                              hwnd,dwFlags);
+        }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -810,6 +818,7 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->Poll();
+        DINPUT_DEBUG_INFO("<0X%p> Poll Return 0x%08x\n",this->m_ptr,hr);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
