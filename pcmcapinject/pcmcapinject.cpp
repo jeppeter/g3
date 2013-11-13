@@ -2497,7 +2497,7 @@ HRESULT WINAPI  CoCreateInstanceCallBack(
 )
 {
     HRESULT hr;
-    SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
+    SetUnHandlerExceptionDetour();
     hr = CoCreateInstanceNext(rclsid,
                               pUnkOuter,dwClsContext,riid,ppv);
     if(SUCCEEDED(hr))

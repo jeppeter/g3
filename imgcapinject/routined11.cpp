@@ -9,6 +9,7 @@
 #include <StackWalker.h>
 #include <imgcapcommon.h>
 #include "routined11.h"
+#include <injectbase.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -4019,20 +4020,12 @@ HRESULT  WINAPI D3D11CreateDeviceAndSwapChainCallBack(
     return hr;
 }
 
-LONG WINAPI DetourApplicationCrashHandler(EXCEPTION_POINTERS *pException)
-{
-    StackWalker sw;
-    sw.ShowCallstack(GetCurrentThread(), pException->ContextRecord,NULL,NULL);
-    return EXCEPTION_EXECUTE_HANDLER;
-}
 
 
 static HRESULT WINAPI CreateDXGIFactory1Callback(REFIID riid, void **ppFactory)
 {
     HRESULT hr;
-    LPTOP_LEVEL_EXCEPTION_FILTER pOrigExpFilter=NULL;
-    pOrigExpFilter = SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
-    DEBUG_INFO("origin exception filter 0x%p\n",pOrigExpFilter);
+    SetUnHandlerExceptionDetour();
 
 	DEBUG_INFO("Call CreateDXGIFactory1Next before\n");
     hr = CreateDXGIFactory1Next(riid,ppFactory);
