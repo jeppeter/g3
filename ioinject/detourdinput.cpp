@@ -15,6 +15,9 @@
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
 
+#define DINPUT_DEBUG_INFO  DEBUG_INFO
+#define DINPUT_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
+
 static int st_IOInjectInit=0;
 
 #pragma comment(lib,"dinput8.lib")
@@ -81,8 +84,8 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
 }
 
 
-#define  DIRECT_INPUT_DEVICE_8A_IN()  do{DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
-#define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 
 
 class CDirectInputDevice8AHook : public IDirectInputDevice8A
@@ -91,7 +94,10 @@ private:
     IDirectInputDevice8A* m_ptr;
     IID m_iid;
 public:
-    CDirectInputDevice8AHook(IDirectInputDevice8A* ptr,REFIID riid) : m_ptr(ptr) {m_iid = riid;};
+    CDirectInputDevice8AHook(IDirectInputDevice8A* ptr,REFIID riid) : m_ptr(ptr)
+    {
+        m_iid = riid;
+    };
 public:
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
     {
@@ -115,7 +121,7 @@ public:
         DIRECT_INPUT_DEVICE_8A_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_DEVICE_8A_OUT();
-        DEBUG_INFO("uret = %d\n",uret);
+        DINPUT_DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInputDevice8AHook(this->m_ptr);
@@ -483,17 +489,20 @@ ULONG UnRegisterDirectInputDevice8WHook(IDirectInputDevice8W* ptr)
 }
 
 
-#define  DIRECT_INPUT_DEVICE_8W_IN()  do{DEBUG_INFO("Device8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
-#define  DIRECT_INPUT_DEVICE_8W_OUT()  do{DEBUG_INFO("Device8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8W_IN()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8W_OUT()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 
 
 class CDirectInputDevice8WHook : public IDirectInputDevice8W
 {
 private:
     IDirectInputDevice8W* m_ptr;
-	IID m_iid;
+    IID m_iid;
 public:
-    CDirectInputDevice8WHook(IDirectInputDevice8W* ptr,REFIID riid) : m_ptr(ptr) { m_iid = riid;};
+    CDirectInputDevice8WHook(IDirectInputDevice8W* ptr,REFIID riid) : m_ptr(ptr)
+    {
+        m_iid = riid;
+    };
 public:
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
     {
@@ -517,7 +526,7 @@ public:
         DIRECT_INPUT_DEVICE_8W_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_DEVICE_8W_OUT();
-        DEBUG_INFO("uret = %d\n",uret);
+        DINPUT_DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInputDevice8WHook(this->m_ptr);
@@ -607,6 +616,73 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->SetDataFormat(lpdf);
+        if(hr == DI_OK)
+        {
+            if(this->m_iid == GUID_SysMouse)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysMouse Format\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysKeyboard)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysKeyboard Format\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_Joystick)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> Joystick Format\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysMouseEm)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysMouseEm Format\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysMouseEm2)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysMouseEm2 Format\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysKeyboardEm)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysKeyboardEm Format\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysKeyboardEm2)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysKeyboardEm2 Format\n",this->m_ptr);
+            }
+
+            if(lpdf == &c_dfDIMouse)
+            {
+                DINPUT_DEBUG_INFO("c_dfDIMouse\n");
+            }
+            else if(lpdf == &c_dfDIMouse2)
+            {
+                DINPUT_DEBUG_INFO("c_dfDIMouse2\n");
+            }
+            else if(lpdf == &c_dfDIKeyboard)
+            {
+                DINPUT_DEBUG_INFO("c_dfDIKeyboard\n");
+            }
+            else if(lpdf == &c_dfDIJoystick)
+            {
+                DINPUT_DEBUG_INFO(" c_dfDIJoystick\n");
+            }
+            else if(lpdf == &c_dfDIJoystick2)
+            {
+                DINPUT_DEBUG_INFO(" c_dfDIJoystick2\n");
+            }
+            if(lpdf->dwSize)
+            {
+                DINPUT_DEBUG_BUFFER_FMT(lpdf,lpdf->dwSize,"<0x%p> format",this->m_ptr);
+            }
+
+            if(lpdf->rgodf && lpdf->dwObjSize)
+            {
+                DINPUT_DEBUG_BUFFER_FMT(lpdf->rgodf,lpdf->dwObjSize,"<0x%p> flag 0x%08x datasize 0x%08x numobjs 0x%08x",this->m_ptr,lpdf->dwFlags,lpdf->dwDataSize,lpdf->dwNumObjs);
+            }
+
+
+        }
+        else
+        {
+            ERROR_INFO("<0x%p> SetDataFormat Error\n",this->m_ptr);
+        }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -882,8 +958,8 @@ ULONG UnRegisterDirectInput8AHook(IDirectInput8A* ptr)
     return uret;
 }
 
-#define  DIRECT_INPUT_8A_IN() do{DEBUG_INFO("Input8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
-#define  DIRECT_INPUT_8A_OUT() do{DEBUG_INFO("Input8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_8A_IN() do{DINPUT_DEBUG_INFO("Input8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_8A_OUT() do{DINPUT_DEBUG_INFO("Input8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 class CDirectInput8AHook :public IDirectInput8A
 {
 private:
@@ -914,7 +990,7 @@ public:
         DIRECT_INPUT_8A_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_8A_OUT();
-        DEBUG_INFO("uret = %d\n",uret);
+        DINPUT_DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInput8AHook(this->m_ptr);
@@ -939,52 +1015,52 @@ public:
             if(rguid == GUID_SysMouse)
             {
                 pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("sysmouse 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
+                DINPUT_DEBUG_INFO("sysmouse 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
             }
             else if(rguid == GUID_SysKeyboard)
             {
                 pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("syskeyboard 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
+                DINPUT_DEBUG_INFO("syskeyboard 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
             }
             else if(rguid == GUID_Joystick)
             {
                 pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("joystick 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
+                DINPUT_DEBUG_INFO("joystick 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
             }
             else if(rguid == GUID_SysMouseEm)
             {
                 pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("sysmouseem 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
+                DINPUT_DEBUG_INFO("sysmouseem 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
             }
             else if(rguid == GUID_SysMouseEm2)
             {
                 pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("sysmouseem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
+                DINPUT_DEBUG_INFO("sysmouseem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
             }
             else if(rguid == GUID_SysKeyboardEm)
             {
                 pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("syskeyboardem 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
+                DINPUT_DEBUG_INFO("syskeyboardem 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
             }
             else if(rguid == GUID_SysKeyboardEm2)
             {
                 pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("syskeyboardem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
+                DINPUT_DEBUG_INFO("syskeyboardem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
             }
 
 
-            DEBUG_INFO("rguid %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
-                       rguid.Data1,
-                       rguid.Data2,
-                       rguid.Data3,
-                       rguid.Data4[0],
-                       rguid.Data4[1],
-                       rguid.Data4[2],
-                       rguid.Data4[3],
-                       rguid.Data4[4],
-                       rguid.Data4[5],
-                       rguid.Data4[6],
-                       rguid.Data4[7]);
+            DINPUT_DEBUG_INFO("rguid %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                              rguid.Data1,
+                              rguid.Data2,
+                              rguid.Data3,
+                              rguid.Data4[0],
+                              rguid.Data4[1],
+                              rguid.Data4[2],
+                              rguid.Data4[3],
+                              rguid.Data4[4],
+                              rguid.Data4[5],
+                              rguid.Data4[6],
+                              rguid.Data4[7]);
 
             if(pHookA)
             {
@@ -1152,8 +1228,8 @@ ULONG UnRegisterDirectInput8WHook(IDirectInput8W* ptr)
 
 
 
-#define  DIRECT_INPUT_8W_IN()  do{DEBUG_INFO("Input8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
-#define  DIRECT_INPUT_8W_OUT()  do{DEBUG_INFO("Input8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_8W_IN()  do{DINPUT_DEBUG_INFO("Input8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_8W_OUT()  do{DINPUT_DEBUG_INFO("Input8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 
 class CDirectInput8WHook : IDirectInput8W
 {
@@ -1184,7 +1260,7 @@ public:
         DIRECT_INPUT_8W_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_8W_OUT();
-        DEBUG_INFO("uret = %d\n",uret);
+        DINPUT_DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInput8WHook(this->m_ptr);
@@ -1210,52 +1286,52 @@ public:
             if(rguid == GUID_SysMouse)
             {
                 pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("sysmouse 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
+                DINPUT_DEBUG_INFO("sysmouse 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
             }
             else if(rguid == GUID_SysKeyboard)
             {
                 pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("syskeyboard 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
+                DINPUT_DEBUG_INFO("syskeyboard 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
             }
             else if(rguid == GUID_Joystick)
             {
                 pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("joystick 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
+                DINPUT_DEBUG_INFO("joystick 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
             }
             else if(rguid == GUID_SysMouseEm)
             {
                 pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("sysmouseem 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
+                DINPUT_DEBUG_INFO("sysmouseem 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
             }
             else if(rguid == GUID_SysMouseEm2)
             {
                 pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("sysmouseem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
+                DINPUT_DEBUG_INFO("sysmouseem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
             }
             else if(rguid == GUID_SysKeyboardEm)
             {
                 pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("syskeyboardem 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
+                DINPUT_DEBUG_INFO("syskeyboardem 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
             }
             else if(rguid == GUID_SysKeyboardEm2)
             {
                 pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
-                DEBUG_INFO("syskeyboardem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
+                DINPUT_DEBUG_INFO("syskeyboardem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
             }
 
 
-            DEBUG_INFO("rguid %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
-                       rguid.Data1,
-                       rguid.Data2,
-                       rguid.Data3,
-                       rguid.Data4[0],
-                       rguid.Data4[1],
-                       rguid.Data4[2],
-                       rguid.Data4[3],
-                       rguid.Data4[4],
-                       rguid.Data4[5],
-                       rguid.Data4[6],
-                       rguid.Data4[7]);
+            DINPUT_DEBUG_INFO("rguid %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                              rguid.Data1,
+                              rguid.Data2,
+                              rguid.Data3,
+                              rguid.Data4[0],
+                              rguid.Data4[1],
+                              rguid.Data4[2],
+                              rguid.Data4[3],
+                              rguid.Data4[4],
+                              rguid.Data4[5],
+                              rguid.Data4[6],
+                              rguid.Data4[7]);
 
             if(pHookW)
             {
@@ -1383,29 +1459,29 @@ HRESULT WINAPI DirectInput8CreateCallBack(HINSTANCE hinst, DWORD dwVersion, REFI
     if(hr == DI_OK)
     {
         /*now successful ,so we should do this for the out*/
-        DEBUG_INFO("riidltf %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
-                   riidltf.Data1,
-                   riidltf.Data2,
-                   riidltf.Data3,
-                   riidltf.Data4[0],
-                   riidltf.Data4[1],
-                   riidltf.Data4[2],
-                   riidltf.Data4[3],
-                   riidltf.Data4[4],
-                   riidltf.Data4[5],
-                   riidltf.Data4[6],
-                   riidltf.Data4[7]);
-        DEBUG_INFO("dwVersion is 0x%08x\n",dwVersion);
+        DINPUT_DEBUG_INFO("riidltf %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                          riidltf.Data1,
+                          riidltf.Data2,
+                          riidltf.Data3,
+                          riidltf.Data4[0],
+                          riidltf.Data4[1],
+                          riidltf.Data4[2],
+                          riidltf.Data4[3],
+                          riidltf.Data4[4],
+                          riidltf.Data4[5],
+                          riidltf.Data4[6],
+                          riidltf.Data4[7]);
+        DINPUT_DEBUG_INFO("dwVersion is 0x%08x\n",dwVersion);
         if(ppvOut)
         {
-            DEBUG_INFO("*ppvOut 0x%p\n",*ppvOut);
+            DINPUT_DEBUG_INFO("*ppvOut 0x%p\n",*ppvOut);
             if(riidltf == IID_IDirectInput8A)
             {
                 CDirectInput8AHook* pHookA = NULL;
                 IDirectInput8A* pPtrA = (IDirectInput8A*)*ppvOut;
                 pHookA = RegisterDirectInput8AHook(pPtrA);
                 assert(pHookA);
-                DEBUG_INFO("IDirectInput8A(0x%p) =>CDirectInput8AHook(0x%p)\n",pPtrA,pHookA);
+                DINPUT_DEBUG_INFO("IDirectInput8A(0x%p) =>CDirectInput8AHook(0x%p)\n",pPtrA,pHookA);
                 *ppvOut = pHookA;
             }
             else if(riidltf == IID_IDirectInput8W)
@@ -1414,13 +1490,13 @@ HRESULT WINAPI DirectInput8CreateCallBack(HINSTANCE hinst, DWORD dwVersion, REFI
                 IDirectInput8W* pPtrW = (IDirectInput8W*) *ppvOut;
                 pHookW = RegisterDirectInput8WHook(pPtrW);
                 assert(pHookW);
-                DEBUG_INFO("IDirectInput8W(0x%p) => CDirectInput8WHook(0x%p)\n",pPtrW,pHookW);
+                DINPUT_DEBUG_INFO("IDirectInput8W(0x%p) => CDirectInput8WHook(0x%p)\n",pPtrW,pHookW);
                 *ppvOut = pHookW;
             }
         }
         if(punkOuter)
         {
-            DEBUG_INFO("*punkOuter 0x%p\n",*punkOuter);
+            DINPUT_DEBUG_INFO("*punkOuter 0x%p\n",*punkOuter);
         }
 
     }
@@ -1454,10 +1530,10 @@ BOOL DetourDirectInputInit(void)
 {
     BOOL bret;
     int ret;
-    DEBUG_INFO("st_IOInjectInit = %d\n",st_IOInjectInit);
+    DINPUT_DEBUG_INFO("st_IOInjectInit = %d\n",st_IOInjectInit);
     if(st_IOInjectInit > 0)
     {
-        DEBUG_INFO("\n");
+        DINPUT_DEBUG_INFO("\n");
         return TRUE;
     }
     /*now first to init all the critical section*/
@@ -1476,7 +1552,7 @@ BOOL DetourDirectInputInit(void)
         goto fail;
     }
 
-    DEBUG_INFO("Initialize IoInject succ\n");
+    DINPUT_DEBUG_INFO("Initialize IoInject succ\n");
     st_IOInjectInit = 1;
     return TRUE;
 
