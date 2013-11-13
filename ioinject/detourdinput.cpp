@@ -598,9 +598,51 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->GetDeviceState(cbData,lpvData);
-		if (hr == DI_OK)
-			{
-			}
+        if(hr == DI_OK)
+        {
+            LPCDIDATAFORMAT lpdf=(LPCDIDATAFORMAT)lpvData;
+            if(this->m_iid == GUID_SysMouse)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysMouse data\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysKeyboard)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysKeyboard data\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_Joystick)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> Joystick data\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysMouseEm)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysMouseEm data\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysMouseEm2)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysMouseEm2 data\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysKeyboardEm)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysKeyboardEm data\n",this->m_ptr);
+            }
+            else if(this->m_iid == GUID_SysKeyboardEm2)
+            {
+                DINPUT_DEBUG_INFO("<0x%p> SysKeyboardEm2 data\n",this->m_ptr);
+            }
+            if(lpdf->dwSize)
+            {
+                DINPUT_DEBUG_BUFFER_FMT(lpdf,lpdf->dwSize,"<0x%p> format",this->m_ptr);
+            }
+
+            if(lpdf->rgodf && lpdf->dwObjSize)
+            {
+                DINPUT_DEBUG_BUFFER_FMT(lpdf->rgodf,lpdf->dwObjSize,"<0x%p> flag 0x%08x datasize 0x%08x numobjs 0x%08x",this->m_ptr,lpdf->dwFlags,lpdf->dwDataSize,lpdf->dwNumObjs);
+            }
+        }
+        else
+        {
+            DINPUT_DEBUG_INFO("<0x%p> size(0x%08x) return 0x%08x\n",this->m_ptr,cbData,hr);
+        }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
