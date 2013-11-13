@@ -600,10 +600,10 @@ public:
         hr = m_ptr->GetDeviceState(cbData,lpvData);
         if(hr == DI_OK)
         {
-            LPCDIDATAFORMAT lpdf=(LPCDIDATAFORMAT)lpvData;
             if(this->m_iid == GUID_SysMouse)
             {
                 DINPUT_DEBUG_INFO("<0x%p> SysMouse data\n",this->m_ptr);
+				DINPUT_DEBUG_BUFFER_FMT(lpvData,cbData,NULL);
             }
             else if(this->m_iid == GUID_SysKeyboard)
             {
@@ -628,15 +628,6 @@ public:
             else if(this->m_iid == GUID_SysKeyboardEm2)
             {
                 DINPUT_DEBUG_INFO("<0x%p> SysKeyboardEm2 data\n",this->m_ptr);
-            }
-            if(lpdf->dwSize)
-            {
-                DINPUT_DEBUG_BUFFER_FMT(lpdf,lpdf->dwSize,"<0x%p> format",this->m_ptr);
-            }
-
-            if(lpdf->rgodf && lpdf->dwObjSize)
-            {
-                DINPUT_DEBUG_BUFFER_FMT(lpdf->rgodf,lpdf->dwObjSize,"<0x%p> flag 0x%08x datasize 0x%08x numobjs 0x%08x",this->m_ptr,lpdf->dwFlags,lpdf->dwDataSize,lpdf->dwNumObjs);
             }
         }
         else
