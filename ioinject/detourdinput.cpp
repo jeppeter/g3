@@ -18,6 +18,16 @@
 #define DINPUT_DEBUG_INFO  DEBUG_INFO
 #define DINPUT_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
 
+#define SYS_MOUSE_STATE_SIZE   0x10
+#define SYS_MOUSE_MOVE_UP      (-1)
+#define SYS_MOUSE_MOVE_LEFT    (-1)
+#define SYS_MOUSE_MOVE_DOWN    (1)
+#define SYS_MOUSE_MOVE_RIGHT   (1)
+#define SYS_MOUSE_LEFT_BTN     (0)
+#define SYS_MOUSE_RIGHT_BTN    (1)
+#define SYS_MOUSE_WHEEL_BTN_FORWARD  (1)
+#define SYS_MOUSE_WHEEL_BTN_BACKWARD (-1)
+
 static int st_IOInjectInit=0;
 
 #pragma comment(lib,"dinput8.lib")
@@ -602,8 +612,20 @@ public:
         {
             if(this->m_iid == GUID_SysMouse)
             {
+                DIMOUSESTATE* pMouseState = (DIMOUSESTATE*)lpvData;
                 DINPUT_DEBUG_INFO("<0x%p> SysMouse data\n",this->m_ptr);
-				DINPUT_DEBUG_BUFFER_FMT(lpvData,cbData,NULL);
+                if(cbData >= sizeof(*pMouseState))
+                {
+                    DINPUT_DEBUG_INFO("lx %ld ly %ld lz %ld rgbbutton[0] 0x%02x rgbbutton[1] 0x%02x rgbbutton[2] 0x%02x rgbbutton[3] 0x%02x\n",
+                                      pMouseState->lX,
+                                      pMouseState->lY,
+                                      pMouseState->lZ,
+                                      pMouseState->rgbButtons[0],
+                                      pMouseState->rgbButtons[1],
+                                      pMouseState->rgbButtons[2],
+                                      pMouseState->rgbButtons[3]);
+                }
+                DINPUT_DEBUG_BUFFER_FMT(lpvData,cbData,NULL);
             }
             else if(this->m_iid == GUID_SysKeyboard)
             {
