@@ -154,20 +154,42 @@ private:
         return ret;
     }
 
-	
+    int __UpdateMouseEventStateNoLock(EVENT_LIST_t* pEventList)
+    {
+        DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
+
+		
+    }
+
+    int __UpdateKeyboardEventStateNoLock(EVENT_LIST_t* pEventList)
+    {
+        unsigned char* pKeyboardState = this->m_StateBuf;
+    }
+
+    int __UpdateMouseAfter()
+    {
+        DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
+
+        pMouseState->lX = 0;
+        pMouseState->lY = 0;
+        pMouseState->lZ = 0;
+		return 0;
+    }
+
+
 
     int __UpdateEventStateNoLock(EVENT_LIST_t* pEventList)
     {
-        DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
-        unsigned char* pKeyboardState = this->m_StateBuf;
         int ret = 0;
 
         if(this->__IsMouseDevice())
         {
             /*now if the device is mouse ,so we should make sure it is*/
+            return this->__UpdateMouseEventStateNoLock(pEventList);
         }
         else if(this->__IsKeyboardDevice())
         {
+            return this->__UpdateKeyboardEventStateNoLock(pEventList);
         }
 
         return ret;
