@@ -75,11 +75,12 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     return uret;
 }
 
-typedef struct
+static void IoFreeEventList(EVENT_LIST_t* pEventList)
 {
-	HANDLE m_hEvent;
-	unsigned char* m_pNotify;
-} IO_NOTIFY_t,*PIO_NOTIFY_t;
+    return ;
+}
+
+
 
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
@@ -93,15 +94,164 @@ class CDirectInputDevice8AHook : public IDirectInputDevice8A
 private:
     IDirectInputDevice8A* m_ptr;
     IID m_iid;
-	unsigned char m_StateBuf[MAX_STATE_BUFFER_SIZE];
-	int m_StateSize;
-	CRITICAL_SECTION m_StateCS;
-	std::vector<> ;
+    unsigned char m_StateBuf[MAX_STATE_BUFFER_SIZE];
+    int m_StateSize;
+    CRITICAL_SECTION m_StateCS;
+    std::vector<EVENT_LIST_t> m_EventList;
+private:
+    EVENT_LIST_t* __GetEventList()
+    {
+        EVENT_LIST_t *pEventList=NULL;
+        EnterCriticalSection(&(this->m_StateCS));
+        if(this->m_EventList.size() > 0)
+        {
+            pEventList = this->m_EventList[0];
+            this->m_EventList.erase(this->m_EventList.begin());
+        }
+        LeaveCriticalSection(&(this->m_StateCS));
+        return pEventList;
+    }
+
+    int __InsertEventList(EVENT_LIST_t* pEventList,int insertback)
+    {
+        int ret = 0;
+        EnterCriticalSection(&(this->m_StateCS));
+        if(insertback)
+        {
+            this->m_EventList.push_back(pEventList);
+        }
+        else
+        {
+            this->m_EventList.insert(this->m_EventList.begin(),pEventList);
+        }
+        ret = 1;
+        LeaveCriticalSection(&(this->m_StateCS));
+        return ret;
+    }
+
+    int __UpdateEventStateNoLock(EVENT_LIST_t* pEventList)
+    {
+    	
+    }
+
+    HRESULT __UpdateEventState(DWORD cbData,PVOID pData)
+    {
+        int ret;
+        int totalret=0;
+		HRESULT hr=DI_OK;
+        std::vector<EVENT_LIST_t*> HandledEventList;
+        EVENT_LIST_t* pEventList=NULL;
+        EnterCriticalSection(&(this->m_StateCS));
+        while(this->m_EventList.size() > 0)
+        {
+            assert(pEventList == NULL);
+            pEventList = this->m_EventList[0];
+            this->m_EventList.erase(this->m_EventList.begin());
+            ret = this->__UpdateEventStateNoLock(pEventList);
+            if(ret < 0)
+            {
+                totalret = LAST_ERROR_CODE();
+				hr = E_PENDING;
+                ERROR_INFO("could not update <0x%p> eventlist error(%d)\n",pEventList,totalret);
+            }
+            HandledEventList.push_back(pEventList);
+            pEventList = NULL;
+        }
+
+        /*now we should update it*/
+        if(cbData < this->m_StateSize)
+        {
+            totalret = ERROR_INSUFFICIENT_BUFFER;
+			hr = DIERR_INVALIDPARAM;
+            ERROR_INFO("<0x%p> cbData %d size(%d)\n",this->m_ptr,cbData,this->m_StateSize);
+        }
+        else if(this->m_StateSize > 0)
+        {
+            CopyMemory(pData,this->m_StateBuf,cbData);
+        }
+        else
+        {
+        	hr = DIERR_INPUTLOST;
+        }
+        LeaveCriticalSection(&(this->m_StateCS));
+
+        /*now we should free event*/
+        while(HandledEventList.size() > 0)
+        {
+            assert(pEventList == NULL);
+            pEventList = HandledEventList[0];
+            HandledEventList.erase(HandledEventList.begin());
+            ret = IoFreeEventList(pEventList);
+			/*we should event to handle this*/
+            assert(ret >= 0);
+            pEventList = NULL;
+        }
+
+		assert(HandledEventList.size() == 0);
+
+        SetLastError(totalret);
+        return hr;
+    }
+
 public:
     CDirectInputDevice8AHook(IDirectInputDevice8A* ptr,REFIID riid) : m_ptr(ptr)
     {
         m_iid = riid;
+        ZeroMemory(m_StateBuf,sizeof(m_StateBuf));
+        if(riid == GUID_SysMouse ||
+                riid == GUID_SysMouseEm ||
+                riid == GUID_SysMouseEm2)
+        {
+            m_StateSize = sizeof(DIMOUSESTATE);
+        }
+        else if(riid == GUID_SysKeyboard ||
+                riid == GUID_SysKeyboardEm ||
+                riid == GUID_SysKeyboardEm2)
+        {
+            m_StateSize = 0x100;
+        }
+        else
+        {
+            m_StateSize = 0;
+        }
+        InitializeCriticalSection(&m_StateCS);
     };
+
+    ~CDirectInputDevice8AHook()
+    {
+        this->FreeEventList();
+        DeleteCriticalSection(&(m_StateCS));
+        ZeroMemory(&(m_StateBuf),sizeof(m_StateBuf));
+        m_StateSize = 0;
+        m_iid = IID_NULL;
+    }
+
+
+    int PutEventList(EVENT_LIST_t* pEventList)
+    {
+        return this->__InsertEventList(pEventList,1);
+    }
+
+
+    void FreeEventList()
+    {
+        EVENT_LIST_t* pEventList=NULL;
+
+        while(1)
+        {
+            pEventList = this->__GetEventList();
+            if(pEventList == NULL)
+            {
+                break;
+            }
+            IoFreeEventList(pEventList);
+        }
+        /*to make the buffer not set*/
+        EnterCritcalSection(&(this->m_StateCS));
+        ZeroMemory(&(m_StateBuf),sizeof(m_StateBuf));
+        LeaveCriticalSection(&(this->m_StateCS));
+        return ;
+    }
 public:
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
     {
