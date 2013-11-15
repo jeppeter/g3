@@ -25,6 +25,17 @@
 #include <timeticks.h>
 
 
+typedef struct
+{
+    HANDLE m_hFillEvt;
+    int m_Error;
+    int m_Idx;
+    pcmcap_ptr_t m_BaseAddr;
+    pcmcap_ptr_t m_Offset;
+    unsigned int size;
+} EVENT_LIST_t;
+
+
 INJECTBASE_API int InsertModuleFileName(HMODULE hModule);
 INJECTBASE_API void SetUnHandlerExceptionDetour();
 
