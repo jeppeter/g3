@@ -81,6 +81,26 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
 }
 
 
+static int st_CodeMapDik[256] =
+{
+    DIK_A             ,DIK_B              ,DIK_C              ,DIK_D              ,DIK_E              ,  /*5*/
+    DIK_F             ,DIK_G              ,DIK_H              ,DIK_I              ,DIK_J              ,  /*10*/
+    DIK_K             ,DIK_L              ,DIK_M              ,DIK_N              ,DIK_O              ,  /*15*/
+    DIK_P             ,DIK_Q              ,DIK_R              ,DIK_S              ,DIK_T              ,  /*20*/
+    DIK_U             ,DIK_V              ,DIK_W              ,DIK_X              ,DIK_Y              ,  /*25*/
+    DIK_Z             ,DIK_0              ,DIK_1              ,DIK_2              ,DIK_3              ,  /*30*/
+    DIK_4             ,DIK_5              ,DIK_6              ,DIK_7              ,DIK_8              ,  /*35*/
+    DIK_9             ,DIK_ESCAPE         ,DIK_MINUS          ,DIK_EQUALS         ,DIK_BACK           ,  /*40*/
+    DIK_TAB           ,DIK_LBRACKET       ,DIK_RBRACKET       ,DIK_RETURN         ,DIK_LCONTROL       ,  /*45*/
+    DIK_SEMICOLON     ,DIK_APOSTROPHE     ,DIK_GRAVE          ,DIK_LSHIFT         ,DIK_BACKSLASH      ,  /*50*/
+    DIK_COMMA         ,DIK_PERIOD         ,DIK_SLASH          ,DIK_MULTIPLY       ,DIK_RSHIFT         ,  /*55*/
+    DIK_LMENU         ,DIK_SPACE          ,DIK_CAPITAL        ,DIK_F1             ,DIK_F2             ,  /*60*/
+    DIK_F3            ,DIK_F4             ,DIK_F5             ,DIK_F6             ,DIK_F7             ,  /*65*/
+    DIK_F8            ,DIK_F9             ,DIK_F10            ,DIK_F11            ,DIK_F12            ,  /*70*/
+    DIK_NUMLOCK       ,DIK_SCROLL         ,DIK_NUMPAD7        ,DIK_NUMPAD8        ,DIK_NUMPAD9        ,  /*75*/
+    DIK_SUBTRACT      ,DIK_NUMPAD4        ,DIK_NUMPAD5        ,DIK_NUMPAD6        ,DIK_ADD            ,  /*80*/
+};
+
 
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
@@ -158,7 +178,7 @@ private:
     {
         DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
 
-		
+
     }
 
     int __UpdateKeyboardEventStateNoLock(EVENT_LIST_t* pEventList)
@@ -173,7 +193,7 @@ private:
         pMouseState->lX = 0;
         pMouseState->lY = 0;
         pMouseState->lZ = 0;
-		return 0;
+        return 0;
     }
 
 
