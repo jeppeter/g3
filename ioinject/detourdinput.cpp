@@ -12,6 +12,23 @@
 #include "detourdinput.h"
 #include <injectbase.h>
 
+#define  DEBUG_MODE       1
+#undef   DEBUG_MODE
+
+#define  EMULATION_MODE   1
+//#undef   EMULATION_MODE
+
+#if defined(DEBUG_MODE) && defined(EMULATION_MODE)
+#error "could not define DEBUG_MODE and EMULATION_MODE"
+#endif
+
+#if defined(DEBUG_MODE)
+#elif defined(EMULATION_MODE)
+#else
+#error "must specify EMULATION_MODE or DEBUG_MODE"
+#endif
+
+
 #define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
 #define COM_METHOD(TYPE, METHOD) TYPE STDMETHODCALLTYPE METHOD
 
@@ -108,9 +125,9 @@ these are the keyboard defines
 #define SYS_KEYBOARD_RMOUSE      0xdd /*right mouse click emulation */
 #define SYS_KEYBOARD_RCTRL       0x9d /*right ctrl*/
 #define SYS_KEYBOARD_CAPS        0x3a /*caps lock*/
-#define SYS_KEYBOARD_SPACE       0x39 
+#define SYS_KEYBOARD_SPACE       0x39
 #define SYS_KEYBOARD_INS         0x52 /*insert*/
-#define SYS_KEYBOARD_HOME        0x47 
+#define SYS_KEYBOARD_HOME        0x47
 #define SYS_KEYBOARD_PAGEUP      0x49
 #define SYS_KEYBOARD_DEL         0x53
 #define SYS_KEYBOARD_END         0x4f
@@ -158,6 +175,7 @@ static int st_IOInjectInit=0;
 *  to make the IDirectInputDevice8A hook
 *
 *****************************************/
+#ifdef DEBUG_MODE
 class CDirectInputDevice8AHook;
 
 static std::vector<IDirectInputDevice8A*> st_DIDevice8AVecs;
@@ -726,7 +744,7 @@ public:
         {
             if(this->m_iid == GUID_SysMouse)
             {
-#if 0				
+#if 0
                 DIMOUSESTATE* pMouseState = (DIMOUSESTATE*)lpvData;
                 DINPUT_DEBUG_INFO("<0x%p> SysMouse data\n",this->m_ptr);
                 if(cbData >= sizeof(*pMouseState))
@@ -741,11 +759,11 @@ public:
                                       pMouseState->rgbButtons[3]);
                 }
                 DINPUT_DEBUG_BUFFER_FMT(lpvData,cbData,NULL);
-#endif				
+#endif
             }
             else if(this->m_iid == GUID_SysKeyboard)
             {
-				DINPUT_DEBUG_BUFFER_FMT(lpvData,cbData,"<0x%p> SysKeyboard data\n",this->m_ptr);
+                DINPUT_DEBUG_BUFFER_FMT(lpvData,cbData,"<0x%p> SysKeyboard data\n",this->m_ptr);
             }
             else if(this->m_iid == GUID_Joystick)
             {
@@ -1622,6 +1640,13 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
     return pHookW;
 }
 
+#endif
+
+/*********************************************
+* emulation mode for direct input
+*********************************************/
+#ifdef EMULATION_MODE
+#endif
 
 
 /*****************************************
