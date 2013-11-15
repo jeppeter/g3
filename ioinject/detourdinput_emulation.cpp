@@ -89,6 +89,7 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
 #define  MAX_STATE_BUFFER_SIZE   256
 
 
+
 class CDirectInputDevice8AHook : public IDirectInputDevice8A
 {
 private:
@@ -99,6 +100,30 @@ private:
     CRITICAL_SECTION m_StateCS;
     std::vector<EVENT_LIST_t> m_EventList;
 private:
+    int __IsMouseDevice()
+    {
+        int ret = 0;
+        if(this->m_iid	== GUID_SysMouse ||
+                this->m_iid == GUID_SysMouseEm ||
+                this->m_iid == GUID_SysMouseEm2)
+        {
+            ret = 1;
+        }
+
+        return ret;
+    }
+
+    int __IsKeyboardDevice()
+    {
+        int ret = 0;
+        if(this->m_iid == GUID_SysKeyboard ||
+                this->m_iid == GUID_SysKeyboardEm ||
+                this->m_iid == GUID_SysKeyboardEm2)
+        {
+            ret = 1;
+        }
+        return ret;
+    }
     EVENT_LIST_t* __GetEventList()
     {
         EVENT_LIST_t *pEventList=NULL;
@@ -129,16 +154,30 @@ private:
         return ret;
     }
 
+	
+
     int __UpdateEventStateNoLock(EVENT_LIST_t* pEventList)
     {
-    	
+        DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
+        unsigned char* pKeyboardState = this->m_StateBuf;
+        int ret = 0;
+
+        if(this->__IsMouseDevice())
+        {
+            /*now if the device is mouse ,so we should make sure it is*/
+        }
+        else if(this->__IsKeyboardDevice())
+        {
+        }
+
+        return ret;
     }
 
     HRESULT __UpdateEventState(DWORD cbData,PVOID pData)
     {
         int ret;
         int totalret=0;
-		HRESULT hr=DI_OK;
+        HRESULT hr=DI_OK;
         std::vector<EVENT_LIST_t*> HandledEventList;
         EVENT_LIST_t* pEventList=NULL;
         EnterCriticalSection(&(this->m_StateCS));
@@ -151,7 +190,7 @@ private:
             if(ret < 0)
             {
                 totalret = LAST_ERROR_CODE();
-				hr = E_PENDING;
+                hr = E_PENDING;
                 ERROR_INFO("could not update <0x%p> eventlist error(%d)\n",pEventList,totalret);
             }
             HandledEventList.push_back(pEventList);
@@ -162,16 +201,18 @@ private:
         if(cbData < this->m_StateSize)
         {
             totalret = ERROR_INSUFFICIENT_BUFFER;
-			hr = DIERR_INVALIDPARAM;
+            hr = DIERR_INVALIDPARAM;
             ERROR_INFO("<0x%p> cbData %d size(%d)\n",this->m_ptr,cbData,this->m_StateSize);
         }
         else if(this->m_StateSize > 0)
         {
             CopyMemory(pData,this->m_StateBuf,cbData);
-        }
+            if(this->m_iid ==)
+            }
         else
         {
-        	hr = DIERR_INPUTLOST;
+            /*we pretend it is ok*/
+            ZeroMemory(pData,cbData);
         }
         LeaveCriticalSection(&(this->m_StateCS));
 
@@ -182,12 +223,12 @@ private:
             pEventList = HandledEventList[0];
             HandledEventList.erase(HandledEventList.begin());
             ret = IoFreeEventList(pEventList);
-			/*we should event to handle this*/
+            /*we should event to handle this*/
             assert(ret >= 0);
             pEventList = NULL;
         }
 
-		assert(HandledEventList.size() == 0);
+        assert(HandledEventList.size() == 0);
 
         SetLastError(totalret);
         return hr;
