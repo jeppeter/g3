@@ -4,15 +4,38 @@ class CDirectInputDevice8AHook;
 class CDirectInputDevice8WHook;
 
 
+static std::vector<IDirectInputDevice8A*> st_Key8AVecs;
+static std::vector<CDirectInputDevice8AHook*> st_Key8AHookVecs;
+static std::vector<IDirectInputDevcie8A*> st_Mouse8AVes;
+static std::vector<CDirectInputDevice8AHook*> st_Mouse8AHookVecs;
+static std::vector<IDirectInputDevice8A*> st_NotSet8AVecs;
+static std::vector<CDirectInputDevice8AHook*> st_NotSet8AHookVecs;
 
-static std::vector<IDirectInputDevice8A*> st_DIDevice8AVecs;
-static std::vector<CDirectInputDevice8AHook*> st_CDIDevice8AHookVecs;
-static CRITICAL_SECTION st_DIDevice8ACS;
 
-#define EQUAL_DI_DEVICE_8A_VECS() \
+static std::vector<IDirectInputDevice8W*> st_Key8WVecs;
+static std::vector<CDirectInputDevice8WHook*> st_Key8WHookVecs;
+static std::vector<IDirectInputDevice8W*> st_Mouse8WVecs;
+static std::vector<CDirectInputDevice8WHook*> st_Mouse8WHookVecs;
+static std::vector<IDirectInputDevice8W*> st_NotSet8WVecs;
+static std::vector<CDirectInputDevice8WHook*> st_NotSet8WHookVecs;
+
+static CRITICAL_SECTION st_Dinput8DeviceCS;
+
+#define EQUAL_DEVICE_8A_VECS() \
 do\
 {\
-	assert(st_DIDevice8AVecs.size() == st_CDIDevice8AHookVecs.size());\
+	assert(st_Key8AVecs.size() == st_Key8AHookVecs.size());\
+	assert(st_Mouse8AVes.size() == st_Mouse8AHookVecs.size());\
+	assert(st_NotSet8AVecs.size() == st_NotSet8AHookVecs.size());\
+}while(0)
+
+
+#define  EQUAL_DEVICE_8W_VECS()  \
+do\
+{\
+	assert(st_Key8WVecs.size() == st_Key8WHookVecs.size());\
+	assert(st_Mouse8WVecs.size() == st_Mouse8WHookVecs.size());\
+	assert(st_NotSet8WVecs.size() == st_NotSet8WHookVecs.size());\
 }while(0)
 
 ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
@@ -21,7 +44,7 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     ULONG uret=1;
     unsigned int i;
 
-    EnterCriticalSection(&st_DIDevice8ACS);
+    EnterCriticalSection(&st_Dinput8DeviceCS);
     EQUAL_DI_DEVICE_8A_VECS();
     for(i=0; i<st_DIDevice8AVecs.size() ; i++)
     {
@@ -41,7 +64,7 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     {
         ERROR_INFO("could not find 0x%p DirectInputDevice8A\n",ptr);
     }
-    LeaveCriticalSection(&st_DIDevice8ACS);
+    LeaveCriticalSection(&st_Dinput8DeviceCS);
 
 
     uret = 1;
@@ -52,9 +75,17 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     return uret;
 }
 
+typedef struct
+{
+	HANDLE m_hEvent;
+	unsigned char* m_pNotify;
+} IO_NOTIFY_t,*PIO_NOTIFY_t;
+
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
 #define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+
+#define  MAX_STATE_BUFFER_SIZE   256
 
 
 class CDirectInputDevice8AHook : public IDirectInputDevice8A
@@ -62,6 +93,10 @@ class CDirectInputDevice8AHook : public IDirectInputDevice8A
 private:
     IDirectInputDevice8A* m_ptr;
     IID m_iid;
+	unsigned char m_StateBuf[MAX_STATE_BUFFER_SIZE];
+	int m_StateSize;
+	CRITICAL_SECTION m_StateCS;
+	std::vector<> ;
 public:
     CDirectInputDevice8AHook(IDirectInputDevice8A* ptr,REFIID riid) : m_ptr(ptr)
     {
