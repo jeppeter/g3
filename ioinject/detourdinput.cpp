@@ -183,6 +183,7 @@ static int st_IOInjectInit=0;
 * emulation mode for direct input
 *********************************************/
 #ifdef EMULATION_MODE
+#include "detourdinput_emulation.cpp"
 #endif
 
 
