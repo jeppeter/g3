@@ -156,6 +156,8 @@ enum KEYBOARD_CODE
     KEYBOARD_CODE_MY_COMPUTER,                                                   
     KEYBOARD_CODE_MAIL,
     KEYBOARD_CODE_MEDIA_SELECT,
+
+   KEYBOARD_CODE_NULL = 255
 };
 
 

@@ -111,9 +111,38 @@ static int st_CodeMapDik[256] =
     DIK_DOWN          ,DIK_NEXT                 ,DIK_INSERT              ,DIK_DELETE                ,DIK_LWIN        ,    /*130*/
     DIK_RWIN            ,DIK_APPS                 ,DIK_POWER             ,DIK_SLEEP                   ,DIK_WAKE       ,    /*135*/
     DIK_WEBSEARCH,DIK_WEBFAVORITES,DIK_WEBREFRESH  ,DIK_WEBSTOP            ,DIK_WEBFORWARD,  /*140*/
-    DIK_WEBBACK    ,DIK_MYCOMPUTER  ,DIK_MAIL                ,DIK_MEDIASELECT                                           /*144*/
+    DIK_WEBBACK    ,DIK_MYCOMPUTER  ,DIK_MAIL                ,DIK_MEDIASELECT     ,0xff                            ,  /*144*/
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
+    0xff
 };
 
+
+static int st_DIKMapCode[256] = {
+    KEYBOARD_CODE_NULL               ,KEYBOARD_CODE_ESCAPE              ,KEYBOARD_CODE_1                      ,KEYBOARD_CODE_2                 ,KEYBOARD_CODE_3                   ,  /*5*/
+    KEYBOARD_CODE_4                      ,KEYBOARD_CODE_5                        ,KEYBOARD_CODE_6                      ,KEYBOARD_CODE_7                 ,KEYBOARD_CODE_8                   ,  /*10*/ 
+    KEYBOARD_CODE_9                      ,KEYBOARD_CODE_0                        ,
+    };
 
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
