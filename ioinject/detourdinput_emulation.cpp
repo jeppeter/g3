@@ -141,7 +141,9 @@ static int st_CodeMapDik[256] =
 static int st_DIKMapCode[256] = {
     KEYBOARD_CODE_NULL               ,KEYBOARD_CODE_ESCAPE              ,KEYBOARD_CODE_1                      ,KEYBOARD_CODE_2                 ,KEYBOARD_CODE_3                   ,  /*5*/
     KEYBOARD_CODE_4                      ,KEYBOARD_CODE_5                        ,KEYBOARD_CODE_6                      ,KEYBOARD_CODE_7                 ,KEYBOARD_CODE_8                   ,  /*10*/ 
-    KEYBOARD_CODE_9                      ,KEYBOARD_CODE_0                        ,
+    KEYBOARD_CODE_9                      ,KEYBOARD_CODE_0                        ,KEYBOARD_CODE_MINUS            ,KEYBOARD_CODE_EQUALS      ,KEYBOARD_CODE_BACK            ,  /*15*/
+    KEYBOARD_CODE_TAB                  ,KEYBOARD_CODE_Q                       ,KEYBOARD_CODE_W                    ,KEYBOARD_CODE_E                  ,KEYBOARD_CODE_R                   ,  /*20*/
+    KEYBOARD_CODE_T                       ,
     };
 
 
