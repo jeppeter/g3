@@ -80,6 +80,7 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     return ;
 }
 
+#define DIK_NULL  0xff
 
 static int st_CodeMapDik[256] =
 {
@@ -111,30 +112,30 @@ static int st_CodeMapDik[256] =
     DIK_DOWN          ,DIK_NEXT                 ,DIK_INSERT              ,DIK_DELETE                ,DIK_LWIN        ,    /*130*/
     DIK_RWIN            ,DIK_APPS                 ,DIK_POWER             ,DIK_SLEEP                   ,DIK_WAKE       ,    /*135*/
     DIK_WEBSEARCH,DIK_WEBFAVORITES,DIK_WEBREFRESH  ,DIK_WEBSTOP            ,DIK_WEBFORWARD,  /*140*/
-    DIK_WEBBACK    ,DIK_MYCOMPUTER  ,DIK_MAIL                ,DIK_MEDIASELECT     ,0xff                            ,  /*144*/
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff                      ,0xff                             ,0xff                          ,0xff                              ,0xff                            ,
-    0xff
+    DIK_WEBBACK    ,DIK_MYCOMPUTER  ,DIK_MAIL                ,DIK_MEDIASELECT     ,DIK_NULL                        ,  /*144*/
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NULL
 };
 
 
