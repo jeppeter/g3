@@ -143,7 +143,13 @@ static int st_DIKMapCode[256] = {
     KEYBOARD_CODE_4                      ,KEYBOARD_CODE_5                        ,KEYBOARD_CODE_6                      ,KEYBOARD_CODE_7                 ,KEYBOARD_CODE_8                   ,  /*10*/ 
     KEYBOARD_CODE_9                      ,KEYBOARD_CODE_0                        ,KEYBOARD_CODE_MINUS            ,KEYBOARD_CODE_EQUALS      ,KEYBOARD_CODE_BACK            ,  /*15*/
     KEYBOARD_CODE_TAB                  ,KEYBOARD_CODE_Q                       ,KEYBOARD_CODE_W                    ,KEYBOARD_CODE_E                  ,KEYBOARD_CODE_R                   ,  /*20*/
-    KEYBOARD_CODE_T                       ,
+    KEYBOARD_CODE_T                       ,KEYBOARD_CODE_Y                        ,KEYBOARD_CODE_U                     ,KEYBOARD_CODE_I                   ,KEYBOARD_CODE_O                  ,  /*25*/
+    KEYBOARD_CODE_P                       ,KEYBOARD_CODE_LBRACKET         ,KEYBOARD_CODE_RBRACKET      ,KEYBOARD_CODE_RETURN      ,KEYBOARD_CODE_LCONTROL   ,  /*30*/
+    KEYBOARD_CODE_A                       ,KEYBOARD_CODE_S                        ,KEYBOARD_CODE_D                     ,KEYBOARD_CODE_F                  ,KEYBOARD_CODE_G                  ,  /*35*/
+    KEYBOARD_CODE_H                       ,KEYBOARD_CODE_J                         ,KEYBOARD_CODE_K                     ,KEYBOARD_CODE_L                  ,KEYBOARD_CODE_SEMICOLON,  /*40*/
+    KEYBOARD_CODE_APOSTROPHE   ,KEYBOARD_CODE_GRAVE              ,KEYBOARD_CODE_LSHIFT            ,KEYBOARD_CODE_BACKSLASH,KEYBOARD_CODE_Z                   ,  /*45*/
+    KEYBOARD_CODE_X                        ,KEYBOARD_CODE_C                       ,KEYBOARD_CODE_V                      ,KEYBOARD_CODE_B                 ,KEYBOARD_CODE_N                  ,   /*50*/
+    KEYBOARD_CODE_M                       ,KEYBOARD_CODE_COMMA          ,KEYBOARD_CODE_PERIOD            ,KEYBOARD_CODE_SLASH        ,KEYBOARD_CODE_RSHIFT         ,   /*55*/
     };
 
 
