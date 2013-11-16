@@ -150,6 +150,11 @@ static int st_DIKMapCode[256] = {
     KEYBOARD_CODE_APOSTROPHE   ,KEYBOARD_CODE_GRAVE              ,KEYBOARD_CODE_LSHIFT            ,KEYBOARD_CODE_BACKSLASH,KEYBOARD_CODE_Z                   ,  /*45*/
     KEYBOARD_CODE_X                        ,KEYBOARD_CODE_C                       ,KEYBOARD_CODE_V                      ,KEYBOARD_CODE_B                 ,KEYBOARD_CODE_N                  ,   /*50*/
     KEYBOARD_CODE_M                       ,KEYBOARD_CODE_COMMA          ,KEYBOARD_CODE_PERIOD            ,KEYBOARD_CODE_SLASH        ,KEYBOARD_CODE_RSHIFT         ,   /*55*/
+    KEYBOARD_CODE_NUM_MULTIPLY,KEYBOARD_CODE_LALT                ,KEYBOARD_CODE_SPACE             ,KEYBOARD_CODE_CAPITAL     ,KEYBOARD_CODE_F1                 ,   /*60*/
+    KEYBOARD_CODE_F2                       ,KEYBOARD_CODE_F3                    ,KEYBOARD_CODE_F4                    ,KEYBOARD_CODE_F5               ,KEYBOARD_CODE_F6                 ,   /*65*/
+    KEYBOARD_CODE_F7                       ,KEYBOARD_CODE_F8                    ,KEYBOARD_CODE_F9                    ,KEYBOARD_CODE_F10             ,KEYBOARD_CODE_NUMLOCK   ,   /*70*/
+    KEYBOARD_CODE_SCROLL              ,KEYBOARD_CODE_NUM_7            ,KEYBOARD_CODE_NUM_8           ,KEYBOARD_CODE_NUM_9      ,KEYBOARD_CODE_SUBTRACT   ,   /*75*/
+    KEYBOARD_CODE_NUM_4              ,KEYBOARD_CODE_NUM_5           ,KEYBOARD_CODE_NUM_6            ,KEYBOARD_CODE_NUM_ADD,KEYBOARD_CODE_NUM_1        ,   /*80*/
     };
 
 
