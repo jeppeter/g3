@@ -139,9 +139,10 @@ static int st_CodeMapDik[256] =
 };
 
 
-static int st_DIKMapCode[256] = {
+static int st_DIKMapCode[256] =
+{
     KEYBOARD_CODE_NULL               ,KEYBOARD_CODE_ESCAPE              ,KEYBOARD_CODE_1                      ,KEYBOARD_CODE_2                 ,KEYBOARD_CODE_3                   ,  /*5*/
-    KEYBOARD_CODE_4                      ,KEYBOARD_CODE_5                        ,KEYBOARD_CODE_6                      ,KEYBOARD_CODE_7                 ,KEYBOARD_CODE_8                   ,  /*10*/ 
+    KEYBOARD_CODE_4                      ,KEYBOARD_CODE_5                        ,KEYBOARD_CODE_6                      ,KEYBOARD_CODE_7                 ,KEYBOARD_CODE_8                   ,  /*10*/
     KEYBOARD_CODE_9                      ,KEYBOARD_CODE_0                        ,KEYBOARD_CODE_MINUS            ,KEYBOARD_CODE_EQUALS      ,KEYBOARD_CODE_BACK            ,  /*15*/
     KEYBOARD_CODE_TAB                  ,KEYBOARD_CODE_Q                       ,KEYBOARD_CODE_W                    ,KEYBOARD_CODE_E                  ,KEYBOARD_CODE_R                   ,  /*20*/
     KEYBOARD_CODE_T                       ,KEYBOARD_CODE_Y                        ,KEYBOARD_CODE_U                     ,KEYBOARD_CODE_I                   ,KEYBOARD_CODE_O                  ,  /*25*/
@@ -192,7 +193,7 @@ static int st_DIKMapCode[256] = {
     KEYBOARD_CODE_NULL                  ,KEYBOARD_CODE_NULL                ,KEYBOARD_CODE_NULL                  ,KEYBOARD_CODE_NULL          ,KEYBOARD_CODE_NULL          ,             /*250*/
     KEYBOARD_CODE_NULL                  ,KEYBOARD_CODE_NULL                ,KEYBOARD_CODE_NULL                  ,KEYBOARD_CODE_NULL          ,KEYBOARD_CODE_NULL          ,             /*255*/
     KEYBOARD_CODE_NULL
-    };
+};
 
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
@@ -200,6 +201,11 @@ static int st_DIKMapCode[256] = {
 
 #define  MAX_STATE_BUFFER_SIZE   256
 
+#define  LEFTBUTTON_IDX      0
+#define  RIGHTBUTTON_IDX     1
+#define  MIDBUTTON_IDX       2
+#define  SET_BIT(c)  ((c)=0x80)
+#define  CLEAR_BIT(c)  ((c)=0x00)
 
 
 class CDirectInputDevice8AHook : public IDirectInputDevice8A
@@ -269,22 +275,158 @@ private:
     int __UpdateMouseEventStateNoLock(EVENT_LIST_t* pEventList)
     {
         DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
+        LPDEVICEEVENT pDevEvent = NULL;
+        int ret;
+
+        /*now to make the event list handle*/
+        if(pEventList->size < sizeof(*pDevEvent))
+        {
+            ret = ERROR_INVALID_PARAMTER;
+            ERROR_INFO("eventsize %d < sizeof(%d)\n",pEventList->size,sizeof(*pEventList));
+            SetLastError(ret);
+            return -ret;
+        }
+
+        pDevEvent = (LPDEVICEEVENT)(pEventList->m_BaseAddr + pEventList->m_Offset);
+        __try
+        {
+            assert(pDevEvent->devtype == DEVICE_TYPE_MOUSE);
+            switch(pDevEvent->event.mouse.event)
+            {
+            case MOUSE_CODE_MOUSE:
+                pMouseState->lX += pDevEvent->event.mouse.x;
+                pMouseState->lY += pDevEvent->event.mouse.y;
+                break;
+            case MOUSE_EVENT_KEYDOWN:
+                switch(pDevEvent->event.mouse.code)
+                {
+                case MOUSE_CODE_LEFTBUTTON:
+                    SET_BIT(pMouseState->rgbButtons[LEFTBUTTON_IDX]);
+                    break;
+                case MOUSE_CODE_RIGHTBUTTON:
+                    SET_BIT(pMouseState->rgbButtons[RIGHTBUTTON_IDX]);
+                    break;
+                case MOUSE_CODE_MIDDLEBUTTON:
+                    SET_BIT(pMouseState->rgbButtons[MIDBUTTON_IDX]);
+                    break;
+                default:
+                    ret = ERROR_INVALID_PARAMETER;
+                    ERROR_INFO("Mouse KeyDown code %d\n",pDevEvent->event.mouse.code);
+                    goto fail;
+                }
+                break;
+            case MOUSE_EVENT_KEYUP:
+                switch(pDevEvent->event.mouse.code)
+                {
+                case MOUSE_CODE_LEFTBUTTON:
+                    CLEAR_BIT(pMouseState->rgbButtons[LEFTBUTTON_IDX]);
+                    break;
+                case MOUSE_CODE_RIGHTBUTTON:
+                    CLEAR_BIT(pMouseState->rgbButtons[RIGHTBUTTON_IDX]);
+                    break;
+                case MOUSE_CODE_MIDDLEBUTTON:
+                    CLEAR_BIT(pMouseState->rgbButtons[MIDBUTTON_IDX]);
+                    break;
+                default:
+                    ret = ERROR_INVALID_PARAMETER;
+                    ERROR_INFO("Mouse KeyUp code %d\n",pDevEvent->event.mouse.code);
+                    goto fail;
+                }
+                break;
+            case MOUSE_EVENT_SLIDE:
+                pMouseState->lZ += pDevEvent->event.mouse.x;
+                break;
+            default:
+                ret = ERROR_INVALID_PARAMETER;
+                goto fail;
+            }
+        }
+
+        __except(EXCEPTION_EXECUTE_HANDLER)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+
+        SetLastError(0);
+        return 0;
 
 
+fail:
+        assert(ret > 0);
+        SetLastError(ret);
+        return -ret;
     }
 
     int __UpdateKeyboardEventStateNoLock(EVENT_LIST_t* pEventList)
     {
         unsigned char* pKeyboardState = this->m_StateBuf;
+        LPDEVICEEVENT pDevEvent= NULL;
+        int idx;
+        int ret;
+
+        /*now we  should test for the size*/
+        if(pEventList->size < sizeof(*pDevEvent))
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            SetLastError(ret);
+            return -ret;
+        }
+
+        pDevEvent = (LPDEVICEEVENT)(pEventList->m_BaseAddr + pEventList->m_Offset);
+
+        __try
+        {
+            if(pDevEvent->event.keyboard.code > KEYBOARD_CODE_NULL)
+            {
+                ret = ERROR_INVALID_PARAMETER;
+                ERROR_INFO("keyboard code (%d)\n",pDevEvent->event.keyboard.code);
+                goto fail;
+            }
+
+            idx = st_CodeMapDik[pDevEvent->event.keyboard.code];
+            assert(idx <= DIK_NULL);
+            switch(pDevEvent->event.keyboard.event)
+            {
+            case KEYBOARD_EVENT_DOWN:
+                SET_BIT(pKeyboardState[idx]);
+                break;
+            case KEYBOARD_EVENT_UP:
+                CLEAR_BIT(pKeyboardState[idx]);
+                break;
+            default:
+                ret = ERROR_INVALID_PARAMETER;
+                ERROR_INFO("keyboard event (%d)\n",pDevEvent->event.keyboard.event);
+                goto fail;
+            }
+
+        }
+
+        __except(EXCEPTION_EXECUTE_HANDLER)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+
+        SetLastError(0);
+        return 0;
+
+
+fail:
+        assert(ret > 0);
+        SetLastError(ret);
+        return -ret;
     }
 
     int __UpdateMouseAfter()
     {
         DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
 
+        EnterCriticalSection(&(this->m_StateCS));
         pMouseState->lX = 0;
         pMouseState->lY = 0;
         pMouseState->lZ = 0;
+        LeaveCriticalSection(&(this->m_StateCS));
         return 0;
     }
 
@@ -521,7 +663,15 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
-        hr = m_ptr->GetDeviceState(cbData,lpvData);
+        hr = this->__UpdateEventState(cbData,lpvData);
+        if(hr == DI_OK)
+        {
+            if(this->__IsMouseDevice())
+            {
+                /*if mouse device will doing ,so we should do this handle*/
+                this->__UpdateMouseAfter();
+            }
+        }
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
