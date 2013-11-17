@@ -21,6 +21,9 @@ static std::vector<CDirectInputDevice8WHook*> st_NotSet8WHookVecs;
 
 static CRITICAL_SECTION st_Dinput8DeviceCS;
 
+#define IS_IID_MOUSE(riid)  (( (riid)	== GUID_SysMouse ||(riid) == GUID_SysMouseEm ||(riid) == GUID_SysMouseEm2 ))
+#define IS_IID_KEYBOARD(riid) (((riid) == GUID_SysKeyboard ||(riid) == GUID_SysKeyboardEm ||(riid) == GUID_SysKeyboardEm2))
+
 #define EQUAL_DEVICE_8A_VECS() \
 do\
 {\
@@ -258,9 +261,7 @@ private:
     int __IsMouseDevice()
     {
         int ret = 0;
-        if(this->m_iid	== GUID_SysMouse ||
-                this->m_iid == GUID_SysMouseEm ||
-                this->m_iid == GUID_SysMouseEm2)
+        if(IS_IID_MOUSE((this->m_iid)))
         {
             ret = 1;
         }
@@ -271,9 +272,7 @@ private:
     int __IsKeyboardDevice()
     {
         int ret = 0;
-        if(this->m_iid == GUID_SysKeyboard ||
-                this->m_iid == GUID_SysKeyboardEm ||
-                this->m_iid == GUID_SysKeyboardEm2)
+        if(IS_IID_KEYBOARD(this->m_iid))
         {
             ret = 1;
         }
@@ -375,6 +374,7 @@ private:
                 break;
             default:
                 ret = ERROR_INVALID_PARAMETER;
+                ERROR_INFO("Mouse error event(%d)\n",pDevEvent->event.mouse.event);
                 goto fail;
             }
         }
@@ -433,7 +433,7 @@ fail:
                 break;
             default:
                 ret = ERROR_INVALID_PARAMETER;
-                ERROR_INFO("keyboard event (%d)\n",pDevEvent->event.keyboard.event);
+                ERROR_INFO("<0x%p> keyboard event (%d)\n",this->m_ptr,pDevEvent->event.keyboard.event);
                 goto fail;
             }
 
@@ -493,6 +493,7 @@ fail:
         HRESULT hr=DI_OK;
         std::vector<EVENT_LIST_t*> HandledEventList;
         EVENT_LIST_t* pEventList=NULL;
+
         EnterCriticalSection(&(this->m_StateCS));
         while(this->m_EventList.size() > 0)
         {
@@ -699,14 +700,21 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
-        hr = this->__UpdateEventState(cbData,lpvData);
-        if(hr == DI_OK)
+        if(this->__IsMouseDevice() || this->__IsKeyboardDevice())
         {
-            if(this->__IsMouseDevice())
+            hr = this->__UpdateEventState(cbData,lpvData);
+            if(hr == DI_OK)
             {
-                /*if mouse device will doing ,so we should do this handle*/
-                this->__UpdateMouseAfter();
+                if(this->__IsMouseDevice())
+                {
+                    /*if mouse device will doing ,so we should do this handle*/
+                    this->__UpdateMouseAfter();
+                }
             }
+        }
+        else
+        {
+            hr = this->m_ptr->GetDeviceState(cbData,lpvData);
         }
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
@@ -913,6 +921,9 @@ public:
 
 };
 
+
+#define  IS_IID_MOUSE(riid) (((riid) == ))
+
 CDirectInputDevice8AHook* RegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr,REFIID riid)
 {
     CDirectInputDevice8AHook* pHookA=NULL;
@@ -920,32 +931,79 @@ CDirectInputDevice8AHook* RegisterDirectInputDevice8AHook(IDirectInputDevice8A* 
     unsigned int i;
 
 
-    EnterCriticalSection(&st_DIDevice8ACS);
-    EQUAL_DI_DEVICE_8A_VECS();
-    for(i=0; i<st_DIDevice8AVecs.size() ; i++)
+    EnterCriticalSection(&st_Dinput8DeviceCS);
+    EQUAL_DEVICE_8A_VECS();
+    if(IS_IID_MOUSE(riid))
     {
-        if(st_DIDevice8AVecs[i] == ptr)
+        for(i=0; i<st_Mouse8AVes.size(); i++)
         {
-            findidx = i;
-            break;
+            if(st_Mouse8AVes[i] == ptr)
+            {
+                findidx = i;
+                break;
+            }
+        }
+
+        if(findidx >= 0)
+        {
+            pHookA = st_Mouse8AHookVecs[findidx];
+        }
+        else
+        {
+            pHookA = CDirectInputDevice8AHook(ptr,riid);
+            st_Mouse8AVes.push_back(ptr);
+            st_Mouse8AHookVecs.push_back(pHookA);
+            ptr->AddRef();
         }
     }
-
-    if(findidx >= 0)
+    else if(IS_IID_KEYBOARD(riid))
     {
-        pHookA = st_CDIDevice8AHookVecs[findidx];
+        for(i=0; i<st_Key8AVecs.size(); i++)
+        {
+            if(st_Key8AVecs[i] == ptr)
+            {
+                findidx = i;
+                break;
+            }
+        }
+
+        if(findidx >= 0)
+        {
+            pHookA = st_Key8AHookVecs[findidx];
+        }
+        else
+        {
+            pHookA = CDirectInputDevice8AHook(ptr,riid);
+            st_Key8AVecs.push_back(ptr);
+            st_Key8AHookVecs.push_back(pHookA);
+            ptr->AddRef();
+        }
     }
     else
     {
-        pHookA = new CDirectInputDevice8AHook(ptr,riid);
-        st_CDIDevice8AHookVecs.push_back(pHookA);
-        st_DIDevice8AVecs.push_back(ptr);
+        for(i=0; i<st_NotSet8AVecs.size(); i++)
+        {
+            if(st_NotSet8AVecs[i] == ptr)
+            {
+                findidx = i;
+                break;
+            }
+        }
 
-        /*to add reference ,it will give release ok*/
-        ptr->AddRef();
+        if(findidx >= 0)
+        {
+            pHookA = st_NotSet8AHookVecs[findidx];
+        }
+        else
+        {
+            pHookA = CDirectInputDevice8AHook(ptr,riid);
+            st_NotSet8AVecs.push_back(ptr);
+            st_NotSet8AHookVecs.push_back(pHookA);
+            ptr->AddRef();
+        }
     }
 
-    LeaveCriticalSection(&st_DIDevice8ACS);
+    LeaveCriticalSection(&st_Dinput8DeviceCS);
 
     return pHookA;
 }
