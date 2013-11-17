@@ -45,10 +45,12 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     unsigned int i;
 
     EnterCriticalSection(&st_Dinput8DeviceCS);
-    EQUAL_DI_DEVICE_8A_VECS();
-    for(i=0; i<st_DIDevice8AVecs.size() ; i++)
+    EQUAL_DEVICE_8A_VECS();
+
+    findidx = -1;
+    for(i=0; i<st_Key8AVecs.size() ; i++)
     {
-        if(st_DIDevice8AVecs[i] == ptr)
+        if(st_Key8AVecs[i] == ptr)
         {
             findidx = i;
             break;
@@ -57,12 +59,47 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
 
     if(findidx >= 0)
     {
-        st_DIDevice8AVecs.erase(st_DIDevice8AVecs.begin()+findidx);
-        st_CDIDevice8AHookVecs.erase(st_CDIDevice8AHookVecs.begin() + findidx);
+        st_Key8AHookVecs.erase(st_Key8AHookVecs.begin() + findidx);
+        st_Key8AVecs.erase(st_Key8AVecs.begin() + findidx);
     }
     else
     {
-        ERROR_INFO("could not find 0x%p DirectInputDevice8A\n",ptr);
+        findidx = -1;
+        for(i=0; i<st_Mouse8AVes.size() ; i++)
+        {
+            if(st_Mouse8AVes[i] == ptr)
+            {
+                findidx = i;
+                break;
+            }
+        }
+
+        if(findidx >= 0)
+        {
+            st_Mouse8AVes.erase(st_Mouse8AVes.begin() + findidx);
+            st_Mouse8AHookVecs.erase(st_Mouse8AHookVecs.begin() + findidx);
+        }
+        else
+        {
+            for(i=0; i<st_NotSet8AVecs.size(); i++)
+            {
+                if(st_NotSet8AVecs[i] == ptr)
+                {
+                    findidx = i;
+                    break;
+                }
+            }
+
+            if(findidx >= 0)
+            {
+                st_NotSet8AVecs.erase(st_NotSet8AVecs.begin() + findidx);
+                st_NotSet8AHookVecs.erase(st_NotSet8AHookVecs.begin() + findidx);
+            }
+            else
+            {
+                ERROR_INFO("<0x%p> not found for dinput device\n",ptr);
+            }
+        }
     }
     LeaveCriticalSection(&st_Dinput8DeviceCS);
 
