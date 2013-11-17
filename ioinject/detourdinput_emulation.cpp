@@ -520,8 +520,7 @@ fail:
         else if(this->m_StateSize > 0)
         {
             CopyMemory(pData,this->m_StateBuf,cbData);
-            if(this->m_iid ==)
-            }
+        }
         else
         {
             /*we pretend it is ok*/
