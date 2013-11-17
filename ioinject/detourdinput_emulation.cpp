@@ -135,43 +135,43 @@ static int st_CodeMapDik[256] =
     DIK_LMENU         ,DIK_SPACE          ,DIK_CAPITAL        ,DIK_F1             ,DIK_F2             ,  /*60*/
     DIK_F3            ,DIK_F4             ,DIK_F5             ,DIK_F6             ,DIK_F7             ,  /*65*/
     DIK_F8            ,DIK_F9             ,DIK_F10            ,DIK_F11            ,DIK_F12            ,  /*70*/
-    DIK_NUMLOCK       ,DIK_SCROLL            ,DIK_NUMPAD7        ,DIK_NUMPAD8        ,DIK_NUMPAD9        ,  /*75*/
+    DIK_NUMLOCK       ,DIK_SCROLL         ,DIK_NUMPAD7        ,DIK_NUMPAD8        ,DIK_NUMPAD9        ,  /*75*/
     DIK_SUBTRACT      ,DIK_NUMPAD4        ,DIK_NUMPAD5        ,DIK_NUMPAD6        ,DIK_ADD            ,  /*80*/
-    DIK_NUMPAD1       ,DIK_NUMPAD2        ,DIK_NUMPAD3        ,DIK_NUMPAD0        ,DIK_DECIMAL    ,  /*85*/
-    DIK_OEM_102       ,DIK_F13                    ,DIK_F14                    ,DIK_F15                    ,DIK_KANA          ,  /*90*/
-    DIK_ABNT_C1       ,DIK_CONVERT          ,DIK_NOCONVERT    ,DIK_YEN                    ,DIK_ABNT_C2    ,  /*95*/
-    DIK_NUMPADEQUALS  ,DIK_PREVTRACK,DIK_AT                     ,DIK_COLON              ,DIK_UNDERLINE,  /*100*/
-    DIK_KANJI         ,DIK_STOP                  ,DIK_AX                     ,DIK_UNLABELED       ,DIK_NEXTTRACK,  /*105*/
-    DIK_NUMPADENTER   ,DIK_RCONTROL   ,DIK_MUTE               ,DIK_CALCULATOR     ,DIK_PLAYPAUSE,  /*110*/
-    DIK_MEDIASTOP     ,DIK_VOLUMEDOWN,DIK_VOLUMEUP     ,DIK_WEBHOME         ,DIK_NUMPADCOMMA,   /*115*/
-    DIK_DIVIDE        ,DIK_SYSRQ                ,DIK_RMENU            ,DIK_PAUSE                 ,DIK_HOME       ,   /*120*/
-    DIK_UP            ,DIK_PRIOR                ,DIK_LEFT                  ,DIK_RIGHT                  ,DIK_END          ,    /*125*/
-    DIK_DOWN          ,DIK_NEXT                 ,DIK_INSERT              ,DIK_DELETE                ,DIK_LWIN        ,    /*130*/
-    DIK_RWIN          ,DIK_APPS                 ,DIK_POWER             ,DIK_SLEEP                   ,DIK_WAKE       ,    /*135*/
-    DIK_WEBSEARCH     ,DIK_WEBFAVORITES,DIK_WEBREFRESH  ,DIK_WEBSTOP            ,DIK_WEBFORWARD,  /*140*/
-    DIK_WEBBACK       ,DIK_MYCOMPUTER  ,DIK_MAIL                ,DIK_MEDIASELECT     ,DIK_NULL                        ,  /*144*/
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL          ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
-    DIK_NULL                  ,DIK_NULL                         ,DIK_NULL                      ,DIK_NULL                          ,DIK_NULL                        ,
+    DIK_NUMPAD1       ,DIK_NUMPAD2        ,DIK_NUMPAD3        ,DIK_NUMPAD0        ,DIK_DECIMAL        ,  /*85*/
+    DIK_OEM_102       ,DIK_F13            ,DIK_F14            ,DIK_F15            ,DIK_KANA           ,  /*90*/
+    DIK_ABNT_C1       ,DIK_CONVERT        ,DIK_NOCONVERT      ,DIK_YEN            ,DIK_ABNT_C2        ,  /*95*/
+    DIK_NUMPADEQUALS  ,DIK_PREVTRACK      ,DIK_AT             ,DIK_COLON          ,DIK_UNDERLINE      ,  /*100*/
+    DIK_KANJI         ,DIK_STOP           ,DIK_AX             ,DIK_UNLABELED      ,DIK_NEXTTRACK      ,  /*105*/
+    DIK_NUMPADENTER   ,DIK_RCONTROL       ,DIK_MUTE           ,DIK_CALCULATOR     ,DIK_PLAYPAUSE      ,  /*110*/
+    DIK_MEDIASTOP     ,DIK_VOLUMEDOWN     ,DIK_VOLUMEUP       ,DIK_WEBHOME        ,DIK_NUMPADCOMMA    ,  /*115*/
+    DIK_DIVIDE        ,DIK_SYSRQ          ,DIK_RMENU          ,DIK_PAUSE          ,DIK_HOME           ,  /*120*/
+    DIK_UP            ,DIK_PRIOR          ,DIK_LEFT           ,DIK_RIGHT          ,DIK_END            ,  /*125*/
+    DIK_DOWN          ,DIK_NEXT           ,DIK_INSERT         ,DIK_DELETE         ,DIK_LWIN           ,  /*130*/
+    DIK_RWIN          ,DIK_APPS           ,DIK_POWER          ,DIK_SLEEP          ,DIK_WAKE           ,  /*135*/
+    DIK_WEBSEARCH     ,DIK_WEBFAVORITES   ,DIK_WEBREFRESH     ,DIK_WEBSTOP        ,DIK_WEBFORWARD     ,  /*140*/
+    DIK_WEBBACK       ,DIK_MYCOMPUTER     ,DIK_MAIL           ,DIK_MEDIASELECT    ,DIK_NULL           ,  /*144*/
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
+    DIK_NULL          ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,DIK_NULL           ,
     DIK_NULL
 };
 
