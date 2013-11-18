@@ -153,7 +153,7 @@ typedef struct
     unsigned int m_WholeListNum;
     unsigned int packsize;
     int m_GetWholeListNum;
-    pcmcap_thread_control_t m_ThreadControl;
+    thread_control_t m_ThreadControl;
     HANDLE *m_pFreeEvt;
     EVENT_LIST_t *m_pWholeList;
     std::vector<EVENT_LIST_t*>* m_pFreeList;
@@ -318,7 +318,7 @@ static int ChangeToFreeList(PCM_EVTS_t* pPCMEvts,int idx)
 
 typedef DWORD(WINAPI *ThreadFunc_t)(LPVOID param);
 
-void __InitThreadControl(pcmcap_thread_control_t* pThreadControl)
+void __InitThreadControl(thread_control_t* pThreadControl)
 {
     pThreadControl->thread = NULL;
     pThreadControl->threadid = 0;
@@ -327,7 +327,7 @@ void __InitThreadControl(pcmcap_thread_control_t* pThreadControl)
     pThreadControl->exited = 1;
 }
 
-void __StopThread(pcmcap_thread_control_t* pThreadControl,int force)
+void __StopThread(thread_control_t* pThreadControl,int force)
 {
     int ret;
     BOOL bret;
@@ -384,7 +384,7 @@ void __StopThread(pcmcap_thread_control_t* pThreadControl,int force)
 }
 
 
-int __StartThread(pcmcap_thread_control_t* pThreadControl,ThreadFunc_t pStartFunc,void* pParam)
+int __StartThread(thread_control_t* pThreadControl,ThreadFunc_t pStartFunc,void* pParam)
 {
     int ret;
 

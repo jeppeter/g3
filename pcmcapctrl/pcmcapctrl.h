@@ -63,7 +63,7 @@ private:
 	unsigned int m_iBufNum;
 	unsigned int m_iBufBlockSize;
 	
-	pcmcap_thread_control_t m_tThreadControl;
+	thread_control_t m_tThreadControl;
 
 	HANDLE m_hMapFile;
 	unsigned char * m_pMapBuffer;

@@ -188,7 +188,7 @@ typedef enum IO_MOUSE_EVENT
 typedef struct 
 {
 	int devtype;
-	int devid;
+	ptr_t devid;
 	union
 	{
 		struct
@@ -207,6 +207,8 @@ typedef struct
 
 	} event;
 } DEVICEEVENT, *LPDEVICEEVENT;
+
+
 
 
 

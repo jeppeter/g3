@@ -2,6 +2,7 @@
 #define  __PCMCAPCOMMON_H__
 
 #include <windows.h>
+#include <injectcommon.h>
 
 #define    PCMCAPPER_OPERATION_NONE      0 	// 不对进程声音进行抓取或播放的动作
 #define    PCMCAPPER_OPERATION_CAPTURE   1	// 对进程声音进行抓取的动作
@@ -50,14 +51,6 @@ typedef struct
 	unsigned char stopevt_name[128];         /*for stop event notify name*/
 } pcmcap_control_t;
 
-typedef struct
-{
-	HANDLE thread;
-	unsigned long threadid;
-	HANDLE exitevt;
-	int running;
-	int exited;	
-} pcmcap_thread_control_t;
 
 #endif /*__PCM_CAP_COMMON_H__*/
 
