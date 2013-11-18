@@ -19,6 +19,13 @@
 void FiniIoInject(HMODULE hModule);
 BOOL InitIoInject(HMODULE hModule);
 
+typedef struct
+{
+	unsigned char memsharename[256];
+	int memsharesize;	
+	int memsharesectsize;                       /**/
+} IO_CAP_CONTROL_t,*PIO_CAP_CONTROL_t;
+
 IOINJECT_API BOOL IoInjectDummyExport(void);
 
 #endif /*__IO_INJECT_H__*/

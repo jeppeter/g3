@@ -136,7 +136,7 @@ DWORD CIOController::__ThreadImpl()
                     goto out;
                 }
                 ERROR_INFO("Change <%d> not commit\n",idx);
-				SchedOut();
+                SchedOut();
             }
         }
         else if(dret == (WAIT_OBJECT_0+waitnum - 1))
@@ -168,6 +168,61 @@ DWORD WINAPI CIOController::ThreadProc(LPVOID pParam)
     return pThis->__ThreadImpl();
 }
 
+void CIOController::__ReleaseAllEvents()
+{
+    PIO_CAP_EVENTS_t pIoCapEvent=NULL;
+    unsigned int i;
+    /*we make sure in the exited thread mode call this function*/
+    assert(this->m_BackGroundThread.exited > 0);
+
+    /*now free input evts*/
+    this->m_InputEvts.clear();
+    this->m_FreeEvts.clear();
+
+    if(this->m_pIoCapEvents)
+    {
+        free(this->m_pIoCapEvents);
+    }
+    this->m_pIoCapEvents = NULL;
+
+    if(this->m_pFreeTotalEvts)
+    {
+        for(i=0; i<this->m_BufferNum; i++)
+        {
+            if(this->m_pFreeTotalEvts[i])
+            {
+                CloseHandle(this->m_pFreeTotalEvts[i]);
+            }
+            this->m_pFreeTotalEvts[i] = NULL;
+        }
+
+        free(this->m_pFreeTotalEvts);
+    }
+    this->m_pFreeTotalEvts = NULL;
+
+
+
+    if(this->m_pInputTotalEvts)
+    {
+        for(i=0; i<this->m_BufferNum; i++)
+        {
+            if(this->m_pInputTotalEvts[i])
+            {
+                CloseHandle(this->m_pInputTotalEvts[i]);
+            }
+            this->m_pInputTotalEvts[i] = NULL;
+        }
+        free(this->m_pInputTotalEvts);
+    }
+    this->m_pInputTotalEvts = NULL;
+
+	return ;
+}
+
+int CIOController::__AllocateAllEvents()
+{
+	/*now we should */	
+}
 
 VOID CIOController::Stop()
 {
@@ -175,6 +230,6 @@ VOID CIOController::Stop()
     this->m_Started = 0;
 
     /*now we should stop thread*/
-	this->__StopBackGroundThread();
-	/*now we should call stop the injected thread and it will ok*/
+    this->__StopBackGroundThread();
+    /*now we should call stop the injected thread and it will ok*/
 }

@@ -32,6 +32,8 @@ private:
 	int __ChangeInputToFreeThread(DWORD idx);
 	DWORD __ThreadImpl();
 	static DWORD WINAPI ThreadProc(LPVOID pParam);
+	void __ReleaseAllEvents();
+	int __AllocateAllEvents();
 
 private:
 	HANDLE m_hProc;
@@ -46,8 +48,8 @@ private:
 	unsigned char m_FreeEvtBaseName[256];
 	HANDLE *m_pFreeTotalEvts;
 	unsigned char m_InputEvtBaseName[256];
-	HANDLE *m_pSendTotalEvts;
-	PIO_CAP_EVENTS_t m_pIoEvents;
+	HANDLE *m_pInputTotalEvts;
+	PIO_CAP_EVENTS_t m_pIoCapEvents;
 	std::vector<PIO_CAP_EVENTS_t> m_InputEvts;
 	std::vector<PIO_CAP_EVENTS_t> m_FreeEvts;
 };
