@@ -8,7 +8,6 @@
 #define    PCMCAPPER_OPERATION_RENDER    2 	// 对进程声音进行播放的动作（播放交给系统去完成，不予干预）
 #define    PCMCAPPER_OPERATION_BOTH   	 3  // 对上述两者同时进行
 
-typedef unsigned long pcmcap_ptr_t;
 
 typedef struct
 {

@@ -6,6 +6,7 @@
 #include <memshare.h>
 #include <evt.h>
 #include <sched.h>
+#include <injectcommon.h>
 
 #ifdef _DEBUG
 #define  PCMCAP_DLL_NAME                 "pcmcapinjectd.dll"
@@ -735,7 +736,7 @@ void CPcmCapController::__AudioRenderBuffer(int idx)
     assert(this->m_pMapBuffer);
     assert(idx >= 0 && idx < (int)this->m_iBufNum);
 
-    pItem = (pcmcap_buffer_t*)((pcmcap_ptr_t)this->m_pMapBuffer + (idx)*this->m_iBufBlockSize);
+    pItem = (pcmcap_buffer_t*)((ptr_t)this->m_pMapBuffer + (idx)*this->m_iBufBlockSize);
 
     if(this->m_pPcmCapperCb)
     {

@@ -2,6 +2,7 @@
 #define __IMGCAPCOMMON_H__
 
 #include <stdint.h>
+#include <injectcommon.h>
 
 enum IMGCAPPER_STATE
 {
@@ -29,7 +30,6 @@ typedef struct
     unsigned int height;
 } imgcap_buffer_t;
 
-typedef unsigned long ptr_t;
 
 #endif /*__DLL_CAPTURE_H__*/
 

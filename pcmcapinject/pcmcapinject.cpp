@@ -601,7 +601,7 @@ PCM_EVTS_t* __AllocatePCMEvts(unsigned int num,int packsize,char* pMapFileName,c
             ERROR_INFO("[%d] open %s fill event error(%d)\n",i,evname,ret);
             goto fail;
         }
-        pPCMEvt->m_pWholeList[i].m_BaseAddr =(pcmcap_ptr_t) pPCMEvt->m_pMemBase;
+        pPCMEvt->m_pWholeList[i].m_BaseAddr =(ptr_t) pPCMEvt->m_pMemBase;
         pPCMEvt->m_pWholeList[i].m_Error = 0;
         pPCMEvt->m_pWholeList[i].m_Idx = i;
         pPCMEvt->m_pWholeList[i].m_Offset = (packsize)*i;
@@ -789,7 +789,7 @@ int WriteSendBuffer(IAudioRenderClient *pClient,unsigned char* pBuffer,int numpa
         PutFreeList(pEventList);
         return 0;
     }
-    pAudioBuffer = (pcmcap_buffer_t*)((pcmcap_ptr_t)pEventList->m_BaseAddr+pEventList->m_Offset);
+    pAudioBuffer = (pcmcap_buffer_t*)((ptr_t)pEventList->m_BaseAddr+pEventList->m_Offset);
     ret = WriteShareMem((unsigned char*)pAudioBuffer,0,(unsigned char*)&audioformat,sizeof(audioformat));
     if(ret < 0)
     {
@@ -1095,8 +1095,8 @@ static int DetourVirtualFuncTable(CRITICAL_SECTION* pCS,int* pChanged,void**ppNe
     if(pChanged && *pChanged == 0)
     {
         /*now to make sure */
-        pcmcap_ptr_t** vptrptr = (pcmcap_ptr_t **)pObject;
-        pcmcap_ptr_t* vptr = *vptrptr;
+        ptr_t** vptrptr = (ptr_t **)pObject;
+        ptr_t* vptr = *vptrptr;
         for(i=0; i<=virtfuncnum; i++)
         {
             DEBUG_INFO("[%s]0x%p virtfuncnum[%d] 0x%p\n",pTypeName,pObject,i,vptr[i]);
@@ -1117,8 +1117,8 @@ static int DetourVirtualFuncTable(CRITICAL_SECTION* pCS,int* pChanged,void**ppNe
     }
     else
     {
-        pcmcap_ptr_t** vptrptr = (pcmcap_ptr_t **)pObject;
-        pcmcap_ptr_t* vptr = *vptrptr;
+        ptr_t** vptrptr = (ptr_t **)pObject;
+        ptr_t* vptr = *vptrptr;
         unsigned char* pCode;
         pCode = (unsigned char*)vptr[virtfuncnum];
         if(*pCode != 0xe9)

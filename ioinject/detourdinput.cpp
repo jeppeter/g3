@@ -36,127 +36,7 @@
 #define DINPUT_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
 
 
-/****************************************************
-these are the mouse defines
-****************************************************/
-#define SYS_MOUSE_STATE_SIZE   0x10
-#define SYS_MOUSE_MOVE_UP      (-1)
-#define SYS_MOUSE_MOVE_LEFT    (-1)
-#define SYS_MOUSE_MOVE_DOWN    (1)
-#define SYS_MOUSE_MOVE_RIGHT   (1)
-#define SYS_MOUSE_LEFT_BTN     (0)
-#define SYS_MOUSE_RIGHT_BTN    (1)
-#define SYS_MOUSE_WHEEL_BTN_FORWARD  (1)
-#define SYS_MOUSE_WHEEL_BTN_BACKWARD (-1)
 
-/****************************************************
-these are the keyboard defines
-****************************************************/
-#define SYS_KEYBOARD_STATE_SIZE  256
-#define SYS_KEYBOARD_ESC         0x01      /*escape*/
-#define SYS_KEYBOARD_A           0x1e
-#define SYS_KEYBOARD_B           0x30
-#define SYS_KEYBOARD_C           0x2e
-#define SYS_KEYBOARD_D           0x20
-#define SYS_KEYBOARD_E           0x12
-#define SYS_KEYBOARD_F           0x21
-#define SYS_KEYBOARD_G           0x22
-#define SYS_KEYBOARD_H           0x23
-#define SYS_KEYBOARD_I           0x17
-#define SYS_KEYBOARD_J           0x24
-#define SYS_KEYBOARD_K           0x25
-#define SYS_KEYBOARD_L           0x26
-#define SYS_KEYBOARD_M           0x32
-#define SYS_KEYBOARD_N           0x31
-#define SYS_KEYBOARD_O           0x18
-#define SYS_KEYBOARD_P           0x19
-#define SYS_KEYBOARD_Q           0x10
-#define SYS_KEYBOARD_R           0x13
-#define SYS_KEYBOARD_S           0x1f
-#define SYS_KEYBOARD_T           0x14
-#define SYS_KEYBOARD_U           0x16
-#define SYS_KEYBOARD_V           0x2f
-#define SYS_KEYBOARD_W           0x11
-#define SYS_KEYBOARD_X           0x2d
-#define SYS_KEYBOARD_Y           0x15
-#define SYS_KEYBOARD_Z           0x2c
-#define SYS_KEYBOARD_F1          0x3b
-#define SYS_KEYBOARD_F2          0x3c
-#define SYS_KEYBOARD_F3          0x3d
-#define SYS_KEYBOARD_F4          0x3e
-#define SYS_KEYBOARD_F5          0x3f
-#define SYS_KEYBOARD_F6          0x40
-#define SYS_KEYBOARD_F7          0x41
-#define SYS_KEYBOARD_F8          0x42
-#define SYS_KEYBOARD_F9          0x43
-#define SYS_KEYBOARD_F10         0x44
-#define SYS_KEYBOARD_F11         0x57
-#define SYS_KEYBOARD_F12         0x58
-#define SYS_KEYBOARD_1           0x02
-#define SYS_KEYBOARD_2           0x03
-#define SYS_KEYBOARD_3           0x04
-#define SYS_KEYBOARD_4           0x05
-#define SYS_KEYBOARD_5           0x06
-#define SYS_KEYBOARD_6           0x07
-#define SYS_KEYBOARD_7           0x08
-#define SYS_KEYBOARD_8           0x09
-#define SYS_KEYBOARD_9           0x0a
-#define SYS_KEYBOARD_0           0x0b
-#define SYS_KEYBOARD_APOSTTRO    0x29 /*`*/
-#define SYS_KEYBOARD_HIFEN       0x0c /*-*/
-#define SYS_KEYBOARD_EQUAL       0x0d /*=*/
-#define SYS_KEYBOARD_BACKSPACE   0x0e /*backspace*/
-#define SYS_KEYBOARD_TAB         0x0f /*tab*/
-#define SYS_KEYBOARD_MID_LQUOTE  0x1a /*[*/
-#define SYS_KEYBOARD_MID_RQUOTE  0x1b /*]*/
-#define SYS_KEYBOARD_BACK_SLASH  0x2b /*\\*/
-#define SYS_KEYBOARD_SEMICOLON   0x27 /*;*/
-#define SYS_KEYBOARD_QUOTE       0x33 /*'*/
-#define SYS_KEYBOARD_LSHIFT      0x2a /* left shift*/
-#define SYS_KEYBOARD_COMMA       0x33 /*,*/
-#define SYS_KEYBOARD_DOT         0x34 /*.*/
-#define SYS_KEYBOARD_RSHIFT      0x36 /* right shift*/
-#define SYS_KEYBOARD_ENTER       0x1c /* enter */
-#define SYS_KEYBOARD_LCTRL       0x1d /* left ctrl*/
-#define SYS_KEYBOARD_LWIN        0xdb /*left win */
-#define SYS_KEYBOARD_LALT        0x38 /*left alt*/
-#define SYS_KEYBOARD_RALT        0xb8 /*right alt*/
-#define SYS_KEYBOARD_RWIN        0xdc /*right win*/
-#define SYS_KEYBOARD_RMOUSE      0xdd /*right mouse click emulation */
-#define SYS_KEYBOARD_RCTRL       0x9d /*right ctrl*/
-#define SYS_KEYBOARD_CAPS        0x3a /*caps lock*/
-#define SYS_KEYBOARD_SPACE       0x39
-#define SYS_KEYBOARD_INS         0x52 /*insert*/
-#define SYS_KEYBOARD_HOME        0x47
-#define SYS_KEYBOARD_PAGEUP      0x49
-#define SYS_KEYBOARD_DEL         0x53
-#define SYS_KEYBOARD_END         0x4f
-#define SYS_KEYBOARD_PAGEDOWN    0x51
-#define SYS_KEYBOARD_UP          0x48
-#define SYS_KEYBOARD_DOWN        0x50
-#define SYS_KEYBOARD_LEFT        0x4b
-#define SYS_KEYBOARD_RIGHT       0x4d
-#define SYS_KEYBOARD_NUM         0x45
-#define SYS_KEYBOARD_PRNSCRN     0xb7 /*print screen*/
-#define SYS_KEYBOARD_SCROLL      0x46
-#define SYS_KEYBOARD_PAUSEBREAK  0xc5 /*pause break*/
-#define SYS_KEYBOARD_SLASH       0x35 /*/*/
-#define SYS_KEYBOARD_NUM_SLASH   0xb5 /* / on numpad*/
-#define SYS_KEYBOARD_NUM_STAR    0x37 /* * on numpad*/
-#define SYS_KEYBOARD_NUM_MINUS   0x4a /* - on numpad*/
-#define SYS_KEYBOARD_NUM_7       0x47 /* 7 on numpad*/
-#define SYS_KEYBOARD_NUM_8       0x48 /* 8 on numpad*/
-#define SYS_KEYBOARD_NUM_9       0x49 /* 9 on numpad*/
-#define SYS_KEYBOARD_NUM_4       0x4b /* 4 on numpad*/
-#define SYS_KEYBOARD_NUM_5       0x4c /* 5 on numpad*/
-#define SYS_KEYBOARD_NUM_6       0x4d /* 6 on numpad*/
-#define SYS_KEYBOARD_NUM_1       0x4f /* 1 on numpad*/
-#define SYS_KEYBOARD_NUM_2       0x50 /* 2 on numpad*/
-#define SYS_KEYBOARD_NUM_3       0x51 /* 3 on numpad*/
-#define SYS_KEYBOARD_NUM_0       0x52 /* 0 on numpad*/
-#define SYS_KEYBOARD_NUM_DOT     0x53 /* . on numpad*/
-#define SYS_KEYBOARD_NUM_PLUS    0x4e /* + on numpad*/
-#define SYS_KEYBOARD_NUM_ENTER   0x9c /* enter on numpad*/
 
 
 static int st_IOInjectInit=0;
@@ -279,9 +159,15 @@ BOOL DetourDirectInputInit(void)
         DINPUT_DEBUG_INFO("\n");
         return TRUE;
     }
+#ifdef 	DEBUG_MODE
     /*now first to init all the critical section*/
     InitializeCriticalSection(&st_DIDevice8ACS);
     InitializeCriticalSection(&st_DIDevice8WCS);
+#endif
+
+#ifdef  EMULATION_MODE
+    InitializeCriticalSection(&st_Dinput8DeviceCS);
+#endif
     InitializeCriticalSection(&st_DI8ACS);
     InitializeCriticalSection(&st_DI8WCS);
 
