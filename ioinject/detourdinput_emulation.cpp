@@ -2471,13 +2471,79 @@ typedef struct
 
 int IoInjectInput(PEVENT_LIST_t pEvent)
 {
-    int ret=0;
-	
+    int ret=0,res;
+    LPDEVICEEVENT pDevEvent=NULL;
+    int findidx=-1;
+    unsigned int i;
+
+    pDevEvent = (LPDEVICEEVENT)(pEvent->m_BaseAddr+pEvent->m_Offset);
     /*now make sure*/
     EnterCriticalSection(&(st_Dinput8DeviceCS));
 
-	
+    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        for(i=0; i<st_Key8WHookVecs.size(); i++)
+        {
+            if(st_Key8WVecs[i] == pDevEvent->devid)
+            {
+                findidx = i;
+                res = st_Key8WHookVecs[i]->PutEventList(pEvent);
+                assert(res >= 0);
+                ret = 1;
+                break;
+            }
+        }
 
+        if(findidx < 0)
+        {
+            for(i=0; i<st_Key8AHookVecs.size(); i++)
+            {
+                if(st_Key8AVecs[i] == pDevEvent->devid)
+                {
+                    findidx = i;
+                    res = st_Key8AHookVecs[i]->PutEventList(pEvent);
+                    assert(res >= 0);
+                    ret = 1;
+                    break;
+                }
+            }
+        }
+    }
+    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
+    {
+        for(i=0; i<st_Mouse8WHookVecs.size() ; i++)
+        {
+            if(st_Mouse8WVecs[i] == pDevEvent->devid)
+            {
+                findidx = i;
+                res = st_Mouse8WHookVecs[i]->PutEventList(pEvent);
+                assert(res >= 0);
+                ret = 1;
+                break;
+            }
+        }
+
+        if(findidx < 0)
+        {
+            for(i=0; i<st_Mouse8AHookVecs.size(); i++)
+            {
+                if(st_Mouse8AVes[i] == pDevEvent->devid)
+                {
+                    findidx = i;
+                    res = st_Mouse8AHookVecs[i]->PutEventList(pEvent);
+                    assert(res >= 0);
+                    ret = 1;
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+    	/*now we do not support this*/
+		ERROR_INFO("not supported type %d\n",pDevEvent->devtype);
+    	ret = 0;
+    }
     LeaveCriticalSection(&(st_Dinput8DeviceCS));
     return ret;
 }
