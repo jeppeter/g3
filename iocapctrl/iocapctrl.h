@@ -4,6 +4,13 @@
 
 #include <iocapcommon.h>
 
+
+typedef struct
+{
+	HANDLE hEvent;
+	LPDEVICEEVENT pEvent;
+} IO_CAP_EVENTS_t,*PIO_CAP_EVENTS_t;
+
 class CIOController
 {
 public:
@@ -19,13 +26,23 @@ public:
 	BOOL PushEvent(DEVICEEVENT * pDevEvt);
 
 private:
+	void __StopBackGroundThread();
+	int __StartBackGroundThread();
+
+private:
 	HANDLE m_hProc;
 	thread_control_t m_BackGroundThread;
 	CRITICAL_SECTION m_EvtCS;
+	int m_Started;
+	int m_BufferNum;
+	int m_BufferSectSize;
+	int m_BufferTotalSize;
+	void *m_pMemShareBase;
 	HANDLE *m_pTotalEvts;
 	int m_TotalEventNum;
-	std::vector<HANDLE*> m_InputEvts;
-	std::vector<HANDLE*> m_FreeEvts;
+	PIO_CAP_EVENTS_t m_pIoEvents;
+	std::vector<PIO_CAP_EVENTS_t> m_InputEvts;
+	std::vector<PIO_CAP_EVENTS_t> m_FreeEvts;
 };
 
 
