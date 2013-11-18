@@ -2,15 +2,15 @@
 #ifndef __IO_CAP_COMMON_H__
 #define __IO_CAP_COMMON_H__
 
-enum IO_DEVICE_TYPE
+typedef enum IO_DEVICE_TYPE
 {
     DEVICE_TYPE_KEYBOARD = 0,
     DEVICE_TYPE_MOUSE,
     DEVICE_TYPE_GAMEPAD,
     DEVICE_TYPE_STEERWHEEL,
-} ;
+} IO_DEVICE_TYPE_t,*PIO_DEVICE_TYPE_t;
 
-enum IO_KEYBOARD_CODE
+typedef enum IO_KEYBOARD_CODE
 {
     KEYBOARD_CODE_A = 0,
     KEYBOARD_CODE_B,
@@ -158,31 +158,31 @@ enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_MEDIA_SELECT,
 
    KEYBOARD_CODE_NULL = 255
-};
+} IO_KEYBOARD_CODE_t,*PIO_KEYBOARD_CODE_t;
 
 
-enum IO_KEYBOARD_EVENT
+typedef enum IO_KEYBOARD_EVENT
 {
 	KEYBOARD_EVENT_DOWN = 0, 
 	KEYBOARD_EVENT_UP, 
-};
+} IO_KEYBOARD_EVENT_t,*PIO_KEYBOARD_EVENT_t;
 
-enum IO_MOUSE_CODE
+typedef enum IO_MOUSE_CODE
 {
 	MOUSE_CODE_MOUSE = 0,			//moving
 	MOUSE_CODE_LEFTBUTTON, 
 	MOUSE_CODE_RIGHTBUTTON, 
 	MOUSE_CODE_MIDDLEBUTTON, 
-};
+} IO_MOUSE_CODE_t,*PIO_MOUSE_CODE_t;
 
 
-enum IO_MOUSE_EVENT
+typedef enum IO_MOUSE_EVENT
 {
 	MOUSE_EVENT_KEYDOWN = 0, 
 	MOUSE_EVENT_KEYUP, 
 	MOUSE_EVNET_MOVING, 
 	MOUSE_EVENT_SLIDE,			// SLIDE
-};
+} IO_MOUSE_EVENT_t,*PIO_MOUSE_EVENT_t;
 
 
 typedef struct 
@@ -193,14 +193,14 @@ typedef struct
 	{
 		struct
 		{
-			int code;		// keyboard code
-			int event;		// keyboard event
+			IO_KEYBOARD_CODE_t code;		// keyboard code
+			IO_KEYBOARD_EVENT_t event;		// keyboard event
 		} keyboard;
 
 		struct
 		{
-			int code;		
-			int event;		
+			IO_MOUSE_CODE_t code;		
+			IO_MOUSE_EVENT_t event;		
 			int x;			// for start
 			int y;			// for add 
 		} mouse;	
