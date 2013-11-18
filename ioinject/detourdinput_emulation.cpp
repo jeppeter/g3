@@ -2471,34 +2471,75 @@ typedef struct
 
 int IoInjectInput(PEVENT_LIST_t pEvent)
 {
+    int ret=0;
 	
+    /*now make sure*/
+    EnterCriticalSection(&(st_Dinput8DeviceCS));
+
+	
+
+    LeaveCriticalSection(&(st_Dinput8DeviceCS));
+    return ret;
 }
 
 int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWORD idx)
 {
-    int ret = 0,findidx = -1;
+    int ret = 0,findidx = -1,res;
     unsigned int i;
     PEVENT_LIST_t pEvent=NULL;
-    EnterCriticalSection(&(pStatus->m_ListCS));
-    for(i=0; i<pStatus->m_pFreeList.size() ; i++)
+    if(pStatus->m_Started)
     {
-        if(pStatus->m_pFreeList[i]->m_Idx == idx)
+        EnterCriticalSection(&(pStatus->m_ListCS));
+        for(i=0; i<pStatus->m_pFreeList.size() ; i++)
         {
-            pEvent = pStatus->m_pFreeList[i];
-            findidx = i;
-            ret = 1;
-            break;
+            if(pStatus->m_pFreeList[i]->m_Idx == idx)
+            {
+                pEvent = pStatus->m_pFreeList[i];
+                findidx = i;
+                ret = 1;
+                break;
+            }
         }
-    }
 
-    /*now we should change the status*/
-    if(findidx >= 0)
-    {
-        pStatus->m_pFreeList.erase(pStatus->m_pFreeList.begin() + findidx);
-        pStatus->m_pInputList.push_back(pEvent);
-		
+        /*now we should change the status*/
+        if(findidx >= 0)
+        {
+            pStatus->m_pFreeList.erase(pStatus->m_pFreeList.begin() + findidx);
+            pStatus->m_pInputList.push_back(pEvent);
+
+            res = IoInjectInput(pEvent);
+            if(res <= 0)
+            {
+                /*now it is not the right time to insert into the device ,so we input it back ,and it will give */
+                SetEvent(pEvent->m_hFillEvt);
+                pStatus->m_pInputList.pop_back();
+                pStatus->m_pFreeList.push(pEvent);
+            }
+        }
+        LeaveCriticalSection(&(pStatus->m_ListCS));
     }
-    LeaveCriticalSection(&(pStatus->m_ListCS));
+    else
+    {
+        /*it is started not ,so we should make it just handled it*/
+        EnterCriticalSection(&(pStatus->m_ListCS));
+        for(i=0; i<pStatus->m_pFreeList.size() ; i++)
+        {
+            if(pStatus->m_pFreeList[i]->m_Idx == idx)
+            {
+                pEvent = pStatus->m_pFreeList[i];
+                findidx = i;
+                ret = 1;
+                break;
+            }
+        }
+
+        if(findidx >= 0)
+        {
+            SetEvent(pEvent->m_hFillEvt);
+        }
+
+        LeaveCriticalSection(&(pStatus->m_ListCS));
+    }
     return ret;
 }
 
