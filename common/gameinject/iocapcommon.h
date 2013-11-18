@@ -2,6 +2,8 @@
 #ifndef __IO_CAP_COMMON_H__
 #define __IO_CAP_COMMON_H__
 
+#include <injectcommon.h>
+
 typedef enum IO_DEVICE_TYPE
 {
     DEVICE_TYPE_KEYBOARD = 0,

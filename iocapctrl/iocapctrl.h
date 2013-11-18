@@ -20,6 +20,7 @@ public:
 
 private:
 	HANDLE m_hProc;
+	thread_control_t m_BackGroundThread;
 };
 
 

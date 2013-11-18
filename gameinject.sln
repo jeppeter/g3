@@ -46,6 +46,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ioinject", "ioinject\ioinje
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ioctrldemo", "ioctrldemo\ioctrldemo.vcxproj", "{8615E715-F1E1-45E2-9AEC-3CD531439894}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "iocapctrl", "iocapctrl\iocapctrl.vcxproj", "{09533139-1483-448E-97BF-1463B3F411BA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -92,6 +94,10 @@ Global
 		{8615E715-F1E1-45E2-9AEC-3CD531439894}.Debug|Win32.Build.0 = Debug|Win32
 		{8615E715-F1E1-45E2-9AEC-3CD531439894}.Release|Win32.ActiveCfg = Release|Win32
 		{8615E715-F1E1-45E2-9AEC-3CD531439894}.Release|Win32.Build.0 = Release|Win32
+		{09533139-1483-448E-97BF-1463B3F411BA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{09533139-1483-448E-97BF-1463B3F411BA}.Debug|Win32.Build.0 = Debug|Win32
+		{09533139-1483-448E-97BF-1463B3F411BA}.Release|Win32.ActiveCfg = Release|Win32
+		{09533139-1483-448E-97BF-1463B3F411BA}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
