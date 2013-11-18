@@ -21,6 +21,11 @@ public:
 private:
 	HANDLE m_hProc;
 	thread_control_t m_BackGroundThread;
+	CRITICAL_SECTION m_EvtCS;
+	HANDLE *m_pTotalEvts;
+	int m_TotalEventNum;
+	std::vector<HANDLE*> m_InputEvts;
+	std::vector<HANDLE*> m_FreeEvts;
 };
 
 
