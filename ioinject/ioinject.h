@@ -33,7 +33,7 @@ typedef struct
 	unsigned char inputevtbasename[256];
 } IO_CAP_CONTROL_t,*PIO_CAP_CONTROL_t;
 
-IOINJECT_API BOOL IoInjectControl(PIO_CAP_CONTROL_t pControl);
+IOINJECT_API int IoInjectControl(PIO_CAP_CONTROL_t pControl);
 
 #endif /*__IO_INJECT_H__*/
 

@@ -43,8 +43,8 @@ BOOL InitIoInject(HMODULE hModule)
 }
 
 
-BOOL IoInjectDummyExport(void)
+int IoInjectControl(PIO_CAP_CONTROL_t pControl)
 {
-	return TRUE;
+	return 0;
 }
 
