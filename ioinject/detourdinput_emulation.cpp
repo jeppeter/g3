@@ -2451,6 +2451,120 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
 }
 
 
+typedef struct
+{
+    unsigned int m_Started;
+    thread_control_t m_ThreadControl;
+    unsigned int m_Bufnumm;
+    unsigned char m_MemShareBaseName[IO_NAME_MAX_SIZE];
+    void* m_pMemShareBase;
+    unsigned char m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
+    HANDLE *m_pFreeEvts;
+    unsigned char m_InputEvtBaseName[IO_NAME_MAX_SIZE];
+    HANDLE *m_pInputEvts;
+    EVENT_LIST_t* m_pEventListArray;
+    CRITICAL_SECTION m_ListCS;
+    std::vector<EVENT_LIST_t*> m_pFreeList;
+    std::vector<EVENT_LIST_t*> m_pInputList;
+} DETOUR_DIRECTINPUT_STATUS_t,*PDETOUR_DIRECTINPUT_STATUS_t;
+
+
+int IoInjectInput(PEVENT_LIST_t pEvent)
+{
+	
+}
+
+int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWORD idx)
+{
+    int ret = 0,findidx = -1;
+    unsigned int i;
+    PEVENT_LIST_t pEvent=NULL;
+    EnterCriticalSection(&(pStatus->m_ListCS));
+    for(i=0; i<pStatus->m_pFreeList.size() ; i++)
+    {
+        if(pStatus->m_pFreeList[i]->m_Idx == idx)
+        {
+            pEvent = pStatus->m_pFreeList[i];
+            findidx = i;
+            ret = 1;
+            break;
+        }
+    }
+
+    /*now we should change the status*/
+    if(findidx >= 0)
+    {
+        pStatus->m_pFreeList.erase(pStatus->m_pFreeList.begin() + findidx);
+        pStatus->m_pInputList.push_back(pEvent);
+		
+    }
+    LeaveCriticalSection(&(pStatus->m_ListCS));
+    return ret;
+}
+
+DWORD WINAPI DetourDirectInputThreadImpl(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+{
+    HANDLE *pWaitHandles=NULL;
+    unsigned int waitnum=0;
+    DWORD dret,idx;
+    int ret;
+
+    assert(pStatus->m_Bufnumm > 0);
+    /*for add into num*/
+    waitnum = (pStatus->m_Bufnumm + 1);
+    pWaitHandles = calloc(sizeof(*pWaitHandles),waitnum);
+    if(pWaitHandles == NULL)
+    {
+        dret = LAST_ERROR_CODE();
+        goto out;
+    }
+
+    CopyMemory(pWaitHandles,pStatus->m_pInputEvts,sizeof(*pWaitHandles)*(waitnum - 1));
+    pWaitHandles[waitnum - 1] = pStatus->m_ThreadControl.exitevt;
+
+    while(pStatus->m_ThreadControl.running)
+    {
+        dret = WaitForMultipleObjectsEx(waitnum,pWaitHandle,FALSE,INFINITE,TRUE);
+        if((dret >= WAIT_OBJECT_0) && (dret <= (WAIT_OBJECT_0+waitnum - 2)))
+        {
+            idx = dret - WAIT_OBJECT_0;
+
+        }
+        else if()
+        {
+        }
+        else
+        {
+        }
+    }
+
+
+out:
+    if(pWaitHandles)
+    {
+        free(pWaitHandles);
+    }
+    pWaitHandles = NULL;
+    SetLastError(dret);
+    pStatus->m_ThreadControl.exited = 1;
+    return dret;
+}
+
+int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
+{
+}
+
+
+int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
+{
+}
+
+
+int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
+{
+
+}
+
 
 
 

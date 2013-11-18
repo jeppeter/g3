@@ -45,6 +45,6 @@ BOOL InitIoInject(HMODULE hModule)
 
 int IoInjectControl(PIO_CAP_CONTROL_t pControl)
 {
-	return 0;
+	return DetourDirectInputControl(pControl);
 }
 

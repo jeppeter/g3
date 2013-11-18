@@ -1463,5 +1463,10 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
     return pHookW;
 }
 
+int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
+{
+	SetLastError(ERROR_NOT_SUPPORTED);
+	return -ERROR_NOT_SUPPORTED;
+}
 
 

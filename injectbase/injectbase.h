@@ -33,7 +33,7 @@ typedef struct
     ptr_t m_BaseAddr;
     ptr_t m_Offset;
     unsigned int size;
-} EVENT_LIST_t;
+} EVENT_LIST_t,*PEVENT_LIST_t;
 
 
 
