@@ -116,10 +116,6 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     return uret;
 }
 
-static void IoFreeEventList(EVENT_LIST_t* pEventList)
-{
-    return ;
-}
 
 #define DIK_NULL  0xff
 
@@ -2488,7 +2484,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
             {
                 findidx = i;
                 res = st_Key8WHookVecs[i]->PutEventList(pEvent);
-                assert(res >= 0);
+                assert(res > 0);
                 ret = 1;
                 break;
             }
@@ -2502,7 +2498,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                 {
                     findidx = i;
                     res = st_Key8AHookVecs[i]->PutEventList(pEvent);
-                    assert(res >= 0);
+                    assert(res > 0);
                     ret = 1;
                     break;
                 }
@@ -2517,7 +2513,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
             {
                 findidx = i;
                 res = st_Mouse8WHookVecs[i]->PutEventList(pEvent);
-                assert(res >= 0);
+                assert(res > 0);
                 ret = 1;
                 break;
             }
@@ -2531,7 +2527,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                 {
                     findidx = i;
                     res = st_Mouse8AHookVecs[i]->PutEventList(pEvent);
-                    assert(res >= 0);
+                    assert(res > 0);
                     ret = 1;
                     break;
                 }
@@ -2540,13 +2536,74 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
     }
     else
     {
-    	/*now we do not support this*/
-		ERROR_INFO("not supported type %d\n",pDevEvent->devtype);
-    	ret = 0;
+        /*now we do not support this*/
+        ERROR_INFO("not supported type %d\n",pDevEvent->devtype);
+        ret = 0;
     }
     LeaveCriticalSection(&(st_Dinput8DeviceCS));
     return ret;
 }
+
+static HANDLE st_hDetourDinputSema=NULL;
+static PDETOUR_DIRECTINPUT_STATUS_t st_pDinputStatus=NULL;
+static void IoFreeEventList(EVENT_LIST_t* pEventList)
+{
+    unsigned int i;
+    int findidx = -1;
+    int ret = 0;
+    int* pnullptr=NULL;
+    if(st_pDinputStatus == NULL)
+    {
+        ERROR_INFO("FreeEventList<0x%p> no DinputStatus\n",pEventList);
+        return;
+    }
+
+    EnterCriticalSection(&(st_pDinputStatus->m_ListCS));
+    for(i=0; i<st_pDinputStatus->m_pInputList.size(); i++)
+    {
+        if(st_pDinputStatus->m_pInputList[i] == pEventList)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        st_pDinputStatus->m_pInputList.erase(st_pDinputStatus->m_pInputList.begin()+findidx);
+        st_pDinputStatus->m_pFreeList.push_back(pEventList);
+        ret = 1;
+    }
+    else
+    {
+        for(i=0; i<st_pDinputStatus->m_pFreeList.size(); i++)
+        {
+            if(st_pDinputStatus->m_pFreeList[i] == pEventList)
+            {
+                findidx = i;
+                break;
+            }
+        }
+
+        if(findidx < 0)
+        {
+            ERROR_INFO("really inner bug for <0x%p>\n",pEventList);
+            *pnullptr = 0;
+        }
+        else
+        {
+            ERROR_INFO("<0x%p> already in freelist\n",pEventList);
+        }
+    }
+    LeaveCriticalSection(&(st_pDinputStatus->m_ListCS));
+    if(ret > 0)
+    {
+        SetEvent(pEventList->m_hFillEvt);
+    }
+
+    return ;
+}
+
 
 int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWORD idx)
 {
@@ -2615,6 +2672,7 @@ DWORD WINAPI DetourDirectInputThreadImpl(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     unsigned int waitnum=0;
     DWORD dret,idx;
     int ret;
+    int tries;
 
     assert(pStatus->m_Bufnumm > 0);
     /*for add into num*/
@@ -2635,15 +2693,40 @@ DWORD WINAPI DetourDirectInputThreadImpl(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
         if((dret >= WAIT_OBJECT_0) && (dret <= (WAIT_OBJECT_0+waitnum - 2)))
         {
             idx = dret - WAIT_OBJECT_0;
+            tries = 0;
+            while(1)
+            {
+                ret = DetourDirectInputChangeFreeToInput(pStatus,idx);
+                if(ret > 0)
+                {
+                    break;
+                }
+                tries ++;
+                if(tries > 5)
+                {
+                    dret =ERROR_TOO_MANY_MUXWAITERS ;
+                    ERROR_INFO("could not change %d into free more than %d\n",idx,tries);
+                    goto out;
+                }
+
+                SchedOut();
+                ERROR_INFO("Change[%d] wait\n",idx);
+            }
 
         }
-        else if()
+        else if((dret == (WAIT_OBJECT_0+waitnum - 1)))
         {
+            ERROR_INFO("Exit Event Notify");
         }
-        else
+        else if(dret == WAIT_FAILED)
         {
+            dret = LAST_ERROR_CODE();
+            ERROR_INFO("Wait error(%d)\n",dret);
+            goto out;
         }
     }
+
+    dret =0;
 
 
 out:
