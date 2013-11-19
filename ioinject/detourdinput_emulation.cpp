@@ -2452,6 +2452,7 @@ typedef struct
     unsigned int m_Started;
     thread_control_t m_ThreadControl;
     unsigned int m_Bufnumm;
+    unsigned int m_BufSectSize;
     unsigned char m_MemShareBaseName[IO_NAME_MAX_SIZE];
     void* m_pMemShareBase;
     unsigned char m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
@@ -2856,13 +2857,22 @@ void __FreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 
 void __UnMapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 {
+
+    if(pStatus == NULL)
+    {
+        return ;
+    }
+    UnMapFileBuffer(&(pStatus->m_pMemShareBase));
+    ZeroMemory(pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName));
+    pStatus->m_Bufnumm = 0;
+    pStatus->m_BufSectSize = 0;
+    return ;
 }
 
 
 int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
 {
     /*now to stop for the direct input*/
-    int ret;
 
     if(st_pDinputStatus == NULL)
     {
@@ -2881,13 +2891,16 @@ int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
     __ClearEventList(st_pDinputStatus);
     __FreeEvents(st_pDinputStatus);
 
-	/*now to unmap memory*/
+    /*now to unmap memory*/
+    __UnMapMemBase(st_pDinputStatus);
 
+    /*not make not started*/
+    st_pDinputStatus->m_Started = 0;
+    free(st_pDinputStatus);
+    st_pDinputStatus = NULL;
 
-
-    assert(ret > 0);
-    SetLastError(ret);
-    return -ret;
+    SetLastError(0);
+    return 0;
 }
 
 
