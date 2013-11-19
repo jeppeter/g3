@@ -20,9 +20,10 @@ public:
 
 	BOOL Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize);
 	VOID Stop();
-	BOOL AddDevice(int iType, int iId);
+	BOOL AddDevice(uint32_t iType, uint32_t *pIId);
 	int GetDeviceNum(int iType);
 	BOOL GetDeviceIds(int iType, ptr_t * pIds, int iSize);
+	int RemoveDevice(uint32_t iType,uint32_t iId);
 
 	BOOL PushEvent(DEVICEEVENT * pDevEvt);
 
@@ -40,8 +41,8 @@ private:
 	int __AllocateCapEvents();
 	int __CallStopIoCapControl();
 	int __CallStartIoCapControl();
-	int __CallAddDeviceIoCapControl();
-	int __CallRemoveDeviceIoCapControl();
+	int __CallAddDeviceIoCapControl(uint32_t devtype,uint32_t *pDevId);
+	int __CallRemoveDeviceIoCapControl(uint32_t devtype,uint32_t devid);
 	int __CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout);
 
 private:
