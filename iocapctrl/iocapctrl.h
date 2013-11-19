@@ -34,6 +34,8 @@ private:
 	static DWORD WINAPI ThreadProc(LPVOID pParam);
 	void __ReleaseAllEvents();
 	int __AllocateAllEvents();
+	void __ReleaseCapEvents();
+	int __AllocateCapEvents();
 	int __CallStopIoCapControl();
 	int __CallStartIoCapControl();
 	int __CallAddDeviceIoCapControl();

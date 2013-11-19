@@ -386,6 +386,53 @@ fail:
     return -ret;
 }
 
+
+void CIOController::__ReleaseCapEvents()
+{
+    this->m_InputEvts.clear();
+    this->m_FreeEvts.clear();
+    if(this->m_pIoCapEvents)
+    {
+        free(this->m_pIoCapEvents);
+    }
+    this->m_pIoCapEvents = NULL;
+    return ;
+}
+
+int CIOController::__AllocateCapEvents()
+{
+    int ret;
+    unsigned int i;
+    if(this->m_hProc == NULL || this->m_BufferNum == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    this->__ReleaseCapEvents();
+
+    this->m_pIoCapEvents = calloc(sizeof(this->m_pIoCapEvents[0]),this->m_BufferNum);
+    if(this->m_pIoCapEvents == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        this->__ReleaseCapEvents();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    for(i=0; i<this->m_BufferNum; i++)
+    {
+        this->m_pIoCapEvents[i].hEvent = this->m_pInputTotalEvts[i];
+        this->m_pIoCapEvents[i].Idx = i;
+        this->m_pIoCapEvents[i].pEvent = (LPDEVICEEVENT)(this->m_pMemShareBase + this->m_BufferSectSize * i);
+        this->m_pFreeTotalEvts.push_back(&(this->m_pIoCapEvents[i]));
+    }
+
+    SetLastError(0);
+    return 0;
+}
+
 int CIOController::__CallStopIoCapControl()
 {
     PIO_CAP_CONTROL_t pControl=NULL;
@@ -430,5 +477,6 @@ VOID CIOController::Stop()
     this->__CallStopIoCapControl();
     /*now we should stop thread*/
     this->__StopBackGroundThread();
-    /*now we should call stop the injected thread and it will ok*/
+
+    this->__ReleaseAllEvents();
 }
