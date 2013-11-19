@@ -2460,8 +2460,8 @@ typedef struct
     HANDLE *m_pInputEvts;
     EVENT_LIST_t* m_pEventListArray;
     CRITICAL_SECTION m_ListCS;
-    std::vector<EVENT_LIST_t*> m_pFreeList;
-    std::vector<EVENT_LIST_t*> m_pInputList;
+    std::vector<EVENT_LIST_t*>* m_pFreeList;
+    std::vector<EVENT_LIST_t*>* m_pInputList;
 } DETOUR_DIRECTINPUT_STATUS_t,*PDETOUR_DIRECTINPUT_STATUS_t;
 
 
@@ -2559,7 +2559,7 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     }
 
     EnterCriticalSection(&(st_pDinputStatus->m_ListCS));
-    for(i=0; i<st_pDinputStatus->m_pInputList.size(); i++)
+    for(i=0; i<st_pDinputStatus->m_pInputList->size(); i++)
     {
         if(st_pDinputStatus->m_pInputList[i] == pEventList)
         {
@@ -2570,13 +2570,13 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
 
     if(findidx >= 0)
     {
-        st_pDinputStatus->m_pInputList.erase(st_pDinputStatus->m_pInputList.begin()+findidx);
-        st_pDinputStatus->m_pFreeList.push_back(pEventList);
+        st_pDinputStatus->m_pInputList->erase(st_pDinputStatus->m_pInputList->begin()+findidx);
+        st_pDinputStatus->m_pFreeList->push_back(pEventList);
         ret = 1;
     }
     else
     {
-        for(i=0; i<st_pDinputStatus->m_pFreeList.size(); i++)
+        for(i=0; i<st_pDinputStatus->m_pFreeList->size(); i++)
         {
             if(st_pDinputStatus->m_pFreeList[i] == pEventList)
             {
@@ -2613,7 +2613,7 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
     if(pStatus->m_Started)
     {
         EnterCriticalSection(&(pStatus->m_ListCS));
-        for(i=0; i<pStatus->m_pFreeList.size() ; i++)
+        for(i=0; i<pStatus->m_pFreeList->size() ; i++)
         {
             if(pStatus->m_pFreeList[i]->m_Idx == idx)
             {
@@ -2627,16 +2627,16 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
         /*now we should change the status*/
         if(findidx >= 0)
         {
-            pStatus->m_pFreeList.erase(pStatus->m_pFreeList.begin() + findidx);
-            pStatus->m_pInputList.push_back(pEvent);
+            pStatus->m_pFreeList->erase(pStatus->m_pFreeList->begin() + findidx);
+            pStatus->m_pInputList->push_back(pEvent);
 
             res = IoInjectInput(pEvent);
             if(res <= 0)
             {
                 /*now it is not the right time to insert into the device ,so we input it back ,and it will give */
                 SetEvent(pEvent->m_hFillEvt);
-                pStatus->m_pInputList.pop_back();
-                pStatus->m_pFreeList.push(pEvent);
+                pStatus->m_pInputList->pop_back();
+                pStatus->m_pFreeList->push(pEvent);
             }
         }
         LeaveCriticalSection(&(pStatus->m_ListCS));
@@ -2645,7 +2645,7 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
     {
         /*it is started not ,so we should make it just handled it*/
         EnterCriticalSection(&(pStatus->m_ListCS));
-        for(i=0; i<pStatus->m_pFreeList.size() ; i++)
+        for(i=0; i<pStatus->m_pFreeList->size() ; i++)
         {
             if(pStatus->m_pFreeList[i]->m_Idx == idx)
             {
@@ -2741,7 +2741,78 @@ out:
 }
 
 
+void __FreeDeviceEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+{
+    int ret;
+    unsigned int i;
+    if(pStatus == NULL)
+    {
+        return ;
+    }
 
+    /*now we should free events*/
+    EnterCriticalSection(&(st_Dinput8DeviceCS));
+    for(i=0; i<st_Key8AHookVecs.size() ; i++)
+    {
+        st_Key8AHookVecs[i]->FreeEventList();
+    }
+
+    for(i=0; i<st_Key8WHookVecs.size() ; i++)
+    {
+        st_Key8WHookVecs[i]->FreeEventList();
+    }
+
+    for(i=0; i<st_Mouse8AHookVecs.size() ; i++)
+    {
+        st_Mouse8AHookVecs[i]->FreeEventList();
+    }
+
+    for(i=0; i<st_Mouse8WHookVecs.size() ; i ++)
+    {
+        st_Mouse8WHookVecs[i]->FreeEventList();
+    }
+
+    for(i=0; i<st_NotSet8AHookVecs.size() ; i++)
+    {
+        st_NotSet8AHookVecs[i]->FreeEventList();
+    }
+
+    for(i=0; i<st_NotSet8WHookVecs.size(); i++)
+    {
+        st_NotSet8WHookVecs[i]->FreeEventList();
+    }
+    LeaveCriticalSection(&(st_Dinput8DeviceCS));
+
+    return ;
+}
+
+void __ClearEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+{
+    if(pStatus == NULL)
+    {
+        return ;
+    }
+    if(pStatus->m_pInputList)
+    {
+        pStatus->m_pInputList->clear();
+        delete pStatus->m_pInputList;
+    }
+    pStatus->m_pInputList = NULL;
+
+    if(pStatus->m_pFreeList)
+    {
+        pStatus->m_pFreeList->clear();
+        delete pStatus->m_pFreeList;
+    }
+    pStatus->m_pFreeList = NULL;
+
+    if(pStatus->m_pEventListArray)
+    {
+        free(pStatus->m_pEventListArray);
+    }
+    pStatus->m_pEventListArray = NULL;
+    return ;
+}
 
 
 int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
@@ -2756,9 +2827,17 @@ int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
         return 0;
     }
 
+    /*now first to stop thread */
+    StopThreadControl(&(st_pDinputStatus->m_ThreadControl));
+
+    /*now we should free all the events*/
+    __FreeDeviceEvents(st_pDinputStatus);
+
+    /*now to delete all the free event*/
+    __ClearEventList(st_pDinputStatus);
 
 
-fail:
+
     assert(ret > 0);
     SetLastError(ret);
     return -ret;
