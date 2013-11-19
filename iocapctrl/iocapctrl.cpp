@@ -535,6 +535,52 @@ VOID CIOController::Stop()
     return ;
 }
 
+int CIOController::__CallStartIoCapControl()
+{
+    int ret;
+    PIO_CAP_CONTROL_t pControl=NULL;
+
+    pControl = calloc(sizeof(*pControl),1);
+    if(pControl == NULL)
+    {
+        ret=  LAST_ERROR_CODE();
+        goto fail;
+    }
+    pControl->opcode = IO_INJECT_START;
+
+    strncpy_s(pControl->memsharename,sizeof(pControl->memsharename),this->m_MemShareName,_TRUNCATE);
+    pControl->memsharesize = this->m_BufferTotalSize;
+    pControl->memsharenum = this->m_BufferNum;
+    pControl->memsharesectsize = this->m_BufferSectSize;
+
+    strncpy_s(pControl->freeevtbasename,sizeof(pControl->freeevtbasename),this->m_FreeEvtBaseName,_TRUNCATE);
+    strncpy_s(pControl->inputevtbasename,sizeof(pControl->inputevtbasename),this->m_InputEvtBaseName,_TRUNCATE);
+
+    ret = this->__CallInnerControl(pControl,5);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Start IoCap Error(%d)\n",ret);
+        goto fail;
+    }
+
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(0);
+    return 0;
+fail:
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(ret);
+    return -ret;
+}
+
 int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
 {
     int ret;
@@ -607,3 +653,5 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
     SetLastError(0);
     return 0;
 }
+
+
