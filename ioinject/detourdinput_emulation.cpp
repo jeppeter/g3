@@ -2752,6 +2752,39 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
 
 int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
 {
+    int ret;
+    DWORD dret;
+
+    if(st_hDetourDinputSema == NULL)
+    {
+        ret = ERROR_SEM_NOT_FOUND;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    dret = WaitForSingleObjectEx(st_hDetourDinputSema,1000,TRUE);
+    if(dret != WAIT_OBJECT_0)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    switch(pControl->opcode)
+    {
+    	
+    }
+
+
+    ReleaseSemaphore(st_hDetourDinputSema,1,NULL);
+    SetLastError(0);
+    return 0;
+
+fail:
+    ReleaseSemaphore(st_hDetourDinputSema,1,NULL);
+    SetLastError(ret);
+    return -ret;
+
 
 }
 

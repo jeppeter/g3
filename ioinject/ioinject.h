@@ -26,13 +26,15 @@ BOOL InitIoInject(HMODULE hModule);
 
 typedef struct
 {
-	int opcode;
-	unsigned char memsharename[IO_NAME_MAX_SIZE];
-	int memsharesize;	
-	int memsharesectsize;                       /*section size*/
-	int memsharenum;
-	unsigned char freeevtbasename[IO_NAME_MAX_SIZE];
-	unsigned char inputevtbasename[IO_NAME_MAX_SIZE];
+    uint32_t opcode;
+    uint32_t devtype;
+    uint32_t devid;
+    uint8_t memsharename[IO_NAME_MAX_SIZE];
+    uint32_t memsharesize;
+    uint32_t memsharesectsize;                       /*section size*/
+    uint32_t memsharenum;
+    uint8_t freeevtbasename[IO_NAME_MAX_SIZE];
+    uint8_t inputevtbasename[IO_NAME_MAX_SIZE];
 } IO_CAP_CONTROL_t,*PIO_CAP_CONTROL_t;
 
 IOINJECT_API int IoInjectControl(PIO_CAP_CONTROL_t pControl);
