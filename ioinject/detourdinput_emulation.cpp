@@ -2749,6 +2749,14 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
 {
 }
 
+int __DetourDirectInputAddDevice(PIO_CAP_CONTROL_t pControl)
+{
+}
+
+int __DetourDirectInputRemoveDevice(PIO_CAP_CONTROL_t pControl)
+{
+}
+
 
 int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
 {
@@ -2762,7 +2770,7 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
         return -ret;
     }
 
-    dret = WaitForSingleObjectEx(st_hDetourDinputSema,1000,TRUE);
+    dret = WaitForSingleObjectEx(st_hDetourDinputSema,5000,TRUE);
     if(dret != WAIT_OBJECT_0)
     {
         ret = LAST_ERROR_CODE();
@@ -2772,7 +2780,48 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
 
     switch(pControl->opcode)
     {
-    	
+    case IO_INJECT_STOP:
+        ret = __DetourDirectInputStop(pControl);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Stop Device Error(%d)\n",ret);
+            goto fail;
+        }
+        break;
+    case IO_INJECT_START:
+        ret = __DetourDirectInputStart(pControl);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Start Device Error(%d)\n",ret);
+            goto fail;
+        }
+        break;
+    case IO_INJECT_ADD_DEVICE:
+        ret = __DetourDirectInputAddDevice(pControl);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Add Device (%d) Error(%d)\n",
+                       pControl->devtype,ret);
+            goto fail;
+        }
+        break;
+    case IO_INJECT_REMOVE_DEVICE:
+        ret = __DetourDirectInputRemoveDevice(pControl);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Remove Device (%d:%d) Error(%d)\n",
+                       pControl->devtype,pControl->devid,ret);
+            goto fail;
+        }
+        break;
+    default:
+        ret=  ERROR_INVALID_PARAMETER;
+        ERROR_INFO("Invalid code (%d)\n",pControl->opcode);
+        goto fail;
     }
 
 

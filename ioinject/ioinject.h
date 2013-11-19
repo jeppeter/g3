@@ -21,6 +21,8 @@ BOOL InitIoInject(HMODULE hModule);
 
 #define  IO_INJECT_STOP            0
 #define  IO_INJECT_START           1
+#define  IO_INJECT_ADD_DEVICE      2
+#define  IO_INJECT_REMOVE_DEVICE   3
 
 #define  IO_NAME_MAX_SIZE          256
 
