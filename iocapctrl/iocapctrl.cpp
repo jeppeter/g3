@@ -707,3 +707,51 @@ fail:
     SetLastError(ret);
     return -ret;
 }
+
+int CIOController::__CallRemoveDeviceIoCapControl(uint32_t devtype,uint32_t devid)
+{
+    int ret;
+    PIO_CAP_CONTROL_t pControl=NULL;
+    if(devtype >= DEVICE_TYPE_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    pControl = calloc(sizeof(*pControl),1);
+    if(pControl == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    pControl->opcode = IO_INJECT_REMOVE_DEVICE;
+    pControl->devtype = devtype;
+    pControl->devid = devid;
+
+    ret = this->__CallInnerControl(pControl,2);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Remove Device Type(%d:%d) Error(%d)\n",devtype,devid,ret);
+        goto fail;
+    }
+
+
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(0);
+    return 0;
+fail:
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(ret);
+    return -ret;
+}
