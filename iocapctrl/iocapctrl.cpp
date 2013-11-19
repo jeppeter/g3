@@ -3,6 +3,7 @@
 
 #define  IO_FREE_EVT_BASENAME  "GlobalIoInjectFreeEvt"
 #define  IO_INPUT_EVT_BASENAME  "GlobalIoInjectInputEvt"
+#define  IO_MAP_MEM_BASENAME    "GlobalIoInjectMapMem"
 
 CIOController::CIOController()
 {
@@ -437,11 +438,48 @@ int CIOController::__AllocateCapEvents()
 
 void CIOController::__ReleaseMapMem()
 {
-
+    UnMapFileBuffer(&(this->m_pMemShareBase));
+    CloseMapFileHandle(&(this->m_hMapFile));
+    ZeroMemory(this->m_MemShareName,sizeof(this->m_MemShareName));
+    return;
 }
 
 int CIOController::__AllocateMapMem()
 {
+    int ret;
+    uint32_t pid;
+
+
+    if(this->m_hProc == NULL || this->m_BufferNum ==0 ||
+            this->m_BufferSectSize == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+    this->__ReleaseMapMem();
+
+    _snprintf_s(this->m_MemShareName,sizeof(this->m_MemShareName),_TRUNCATE,"%s%d",IO_MAP_MEM_BASENAME,this->m_Pid);
+    this->m_hMapFile = CreateMapFile(this->m_MemShareName,this->m_BufferTotalSize,1);
+    if(this->m_hMapFile == NULL)
+    {
+        ret =LAST_ERROR_CODE();
+        ERROR_INFO("CreateMemMap (%s) size(0x%08x) Error(%d)\n",this->m_MemShareName,this->m_BufferTotalSize,ret);
+        this->__ReleaseMapMem();
+        return -ret;
+    }
+
+    this->m_pMemShareBase = MapFileBuffer(this->m_hMapFile,this->m_BufferTotalSize);
+    if(this->m_pMemShareBase == NULL)
+    {
+        ret =LAST_ERROR_CODE();
+        ERROR_INFO("MapFileBuffer (%s) size(0x%08x) Error(%d)\n",this->m_MemShareName,this->m_BufferTotalSize,ret);
+        this->__ReleaseMapMem();
+        return -ret;
+    }
+
+    SetLastError(0);
+    return 0;
 }
 
 int CIOController::__CallStopIoCapControl()

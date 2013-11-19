@@ -46,6 +46,7 @@ private:
 
 private:
 	HANDLE m_hProc;
+	uint32_t m_Pid;
 	thread_control_t m_BackGroundThread;
 	CRITICAL_SECTION m_EvtCS;	
 	int m_Started;

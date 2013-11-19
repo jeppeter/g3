@@ -19,6 +19,8 @@ typedef struct
 
 typedef DWORD (WINAPI *ThreadFunc_t)(LPVOID lpParam);
 
+#define LAST_ERROR_CODE() ((int)(GetLastError() ? GetLastError() : 1))
+
 
 #endif /*__INJECT_COMMON_H__*/
 
