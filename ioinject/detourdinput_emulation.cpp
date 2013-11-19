@@ -2462,6 +2462,7 @@ typedef struct
     HANDLE *m_pInputEvts;
     EVENT_LIST_t* m_pEventListArray;
     CRITICAL_SECTION m_ListCS;
+    int m_ListCSInited;
     std::vector<EVENT_LIST_t*>* m_pFreeList;
     std::vector<EVENT_LIST_t*>* m_pInputList;
 } DETOUR_DIRECTINPUT_STATUS_t,*PDETOUR_DIRECTINPUT_STATUS_t;
@@ -2814,7 +2815,11 @@ void __ClearEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     }
     pStatus->m_pEventListArray = NULL;
 
-    DeleteCriticalSection(&(pStatus->m_ListCS));
+    if(pStatus->m_ListCSInited)
+    {
+        DeleteCriticalSection(&(pStatus->m_ListCS));
+    }
+    pStatus->m_ListCSInited = 0;
 
     return ;
 }
@@ -3022,6 +3027,29 @@ int __AllocateEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
         pStatus->m_pEventListArray[i].size = pStatus->m_BufSectSize;
     }
 
+    /*new vector*/
+    pStatus->m_pFreeList = new std::vector<EVENT_LIST_t*>();
+    if(pStatus->m_pFreeList == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    pStatus->m_pInputList = new std::vector<EVENT_LIST_t*>();
+    if(pStatus->m_pInputList == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    /*now put all the event list into the free list*/
+    for(i=0; i<pStatus->m_Bufnumm; i++)
+    {
+        pStatus->m_pFreeList->push_back(&(pStatus->m_pEventListArray[i]));
+    }
+
+    /*initialize the critical section*/
+    InitializeCriticalSection(&(pStatus->m_ListCS));
+    pStatus->m_ListCSInited = 1;
+
     SetLastError(0);
     return 0;
 fail:
@@ -3115,8 +3143,23 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
     }
 
 
+    ret = __AllocateEventList(pStatus);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
 
+    pStatus->m_Started = 1;
+    ret = StartThreadControl(&(pStatus->m_ThreadControl),DetourDirectInputThreadImpl,pStatus,1);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        pStatus->m_Started = 0;
+        goto fail;
+    }
 
+    st_pDinputStatus = pStatus;
 
     SetLastError(0);
     return 0;
