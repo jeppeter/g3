@@ -279,10 +279,15 @@ int CIOController::__AllocateAllEvents()
     return 0;
 }
 
-int CIOController::__CallStopIoCapControl()
+int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
 {
     uint32_t pid;
-	int ret;
+    int ret,res;
+    void* pFnAddr=NULL;
+    PIO_CAP_CONTROL_t pRemoteControl=NULL;
+    BOOL bret;
+    SIZE_T retsize;
+    int retval;
 
     if(this->m_hProc == NULL)
     {
@@ -301,8 +306,119 @@ int CIOController::__CallStopIoCapControl()
         return -ret;
     }
 
-	/*now we should get the address of the */
-	ret = 
+    /*now we should get the address of the */
+    ret = GetRemoteProcAddress(pid,"ioinject.dll","DetourDirectInputControl",&pFnAddr);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("can not find[%d] %s:%s Error(%d)\n",pid,"ioinject.dll","DetourDirectInputControl",ret);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    pRemoteControl = VirtualAllocEx(this->m_hProc,NULL,sizeof(*pRemoteControl),MEM_COMMIT,PAGE_READWRITE);
+    if(pRemoteControl == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("<0x%08x> size(%d) Error(%d)\n",
+                   this->m_hProc,sizeof(*pRemoteControl),ret);
+        goto fail;
+    }
+
+    bret = WriteProcessMemory(this->m_hProc,pRemoteControl,pControl,sizeof(*pRemoteControl),&retsize);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("<0x%08x> write(0x%p:0x%08x) Error(%d)\n",
+                   this->m_hProc,pRemoteControl,sizeof(*pRemoteControl),ret);
+        goto fail;
+    }
+    if(retsize != sizeof(*pRemoteControl))
+    {
+        ret = ERROR_INVALID_BLOCK;
+        ERROR_INFO("<0x%08x> write(0x%p:0x%08x) Return(%d)\n",
+                   this->m_hProc,pRemoteControl,sizeof(*pRemoteControl),retsize);
+        goto fail;
+    }
+
+
+    ret = CallRemoteFuncRemoteParam(pid,pFnAddr,pRemoteControl,timeout,&retval);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Call ioinject.dll:DetourDirectInputControl Error(%d)\n",ret);
+        goto fail;
+    }
+
+    if(retval < 0)
+    {
+        ret = -retval;
+        ERROR_INFO("Call ioinject.dll:DetourDirectInputControl Return value(%d)\n",retval);
+        goto fail;
+    }
+
+    /*all is ok*/
+
+
+    if(pRemoteControl)
+    {
+        bret = VirtualFreeEx(this->m_hProc,pRemoteControl,0,MEM_RELEASE);
+        if(!bret)
+        {
+            res = LAST_ERROR_CODE();
+            ERROR_INFO("FreeEx(0x%08x:0x%p) Error(%d)\n",this->m_hProc,pRemoteControl,ret);
+        }
+    }
+    pRemoteControl = NULL;
+    return 0;
+fail:
+    if(pRemoteControl)
+    {
+        bret = VirtualFreeEx(this->m_hProc,pRemoteControl,0,MEM_RELEASE);
+        if(!bret)
+        {
+            res = LAST_ERROR_CODE();
+            ERROR_INFO("FreeEx(0x%08x:0x%p) Error(%d)\n",this->m_hProc,pRemoteControl,ret);
+        }
+    }
+    pRemoteControl = NULL;
+    SetLastError(ret);
+    return -ret;
+}
+
+int CIOController::__CallStopIoCapControl()
+{
+    PIO_CAP_CONTROL_t pControl=NULL;
+    int ret;
+
+    pControl = calloc(sizeof(*pControl),1);
+    if(pControl == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    pControl->opcode = IO_INJECT_STOP;
+
+    ret = this->__CallInnerControl(pControl,3);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("call stop Error(%d)\n",ret);
+        goto fail;
+    }
+
+    free(pControl);
+    pControl = NULL;
+    SetLastError(0);
+    return 0;
+fail:
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(ret);
+    return -ret;
 }
 
 

@@ -38,6 +38,7 @@ private:
 	int __CallStartIoCapControl();
 	int __CallAddDeviceIoCapControl();
 	int __CallRemoveDeviceIoCapControl();
+	int __CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout);
 
 private:
 	HANDLE m_hProc;
