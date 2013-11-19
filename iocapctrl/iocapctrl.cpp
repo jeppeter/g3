@@ -1,6 +1,8 @@
 
 #include "iocapctrl.h"
 
+#define  IO_FREE_EVT_BASENAME  "GlobalIoInjectFreeEvt"
+#define  IO_INPUT_EVT_BASENAME  "GlobalIoInjectInputEvt"
 
 CIOController::CIOController()
 {
@@ -34,29 +36,7 @@ CIOController::~CIOController()
 void CIOController::__StopBackGroundThread()
 {
     /*now first to make sure it is exited*/
-    this->m_BackGroundThread.running = 0;
-    while(this->m_BackGroundThread.exited == 0)
-    {
-        if(this->m_BackGroundThread.exitevt)
-        {
-            SetEvent(this->m_BackGroundThread.exitevt);
-        }
-        SchedOut();
-    }
-
-    assert(this->m_BackGroundThread.exited);
-
-    if(this->m_BackGroundThread.exitevt)
-    {
-        CloseHandle(this->m_BackGroundThread.exitevt);
-    }
-    this->m_BackGroundThread.exitevt = NULL;
-    if(this->m_BackGroundThread.thread)
-    {
-        CloseHandle(this->m_BackGroundThread.thread);
-    }
-    this->m_BackGroundThread.thread= NULL;
-    this->m_BackGroundThread.threadid = 0;
+    StopThreadControl(&(this->m_BackGroundThread));
 }
 
 
@@ -216,13 +196,89 @@ void CIOController::__ReleaseAllEvents()
     }
     this->m_pInputTotalEvts = NULL;
 
-	return ;
+    return ;
 }
 
 int CIOController::__AllocateAllEvents()
 {
-	/*now we should */	
+    /*now we should */
+    uint8_t fullname[IO_NAME_MAX_SIZE];
+    uint8_t curbasename[IO_NAME_MAX_SIZE];
+    uint32_t pid,i;
+    int ret;
+
+    this->__ReleaseAllEvents();
+    if(this->m_hProc == NULL || this->m_BufferNum == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+    SetLastError(0);
+    pid = GetProcessId(this->m_hProc);
+    if(GetLastError() != 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("can not get <0x%08x> pid Error(%d)\n",this->m_hProc,ret);
+        this->__ReleaseAllEvents();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    _snprintf_s(curbasename,sizeof(curbasename),_TRUNCATE,"%s%d",IO_FREE_EVT_BASENAME,pid);
+    this->m_pFreeTotalEvts = calloc(sizeof(this->m_pFreeTotalEvts[0]),this->m_BufferNum);
+    if(this->m_pFreeTotalEvts == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        this->__ReleaseAllEvents();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    for(i=0; i<this->m_BufferNum; i++)
+    {
+        _snprintf_s(fullname,sizeof(fullname),_TRUNCATE,"%s_%d",curbasename,i);
+        this->m_pFreeTotalEvts[i]= GetEvent(fullname,1);
+        if(this->m_pFreeTotalEvts[i] == NULL)
+        {
+            ret =LAST_ERROR_CODE();
+            ERROR_INFO("<0x%08x> create %s event Error(%d)\n",this->m_hProc,fullname,ret);
+            this->__ReleaseAllEvents();
+            SetLastError(ret);
+            return -ret;
+        }
+    }
+
+    strncpy_s(this->m_FreeEvtBaseName,sizeof(this->m_FreeEvtBaseName),curbasename,_TRUNCATE);
+
+    /*now for the input event*/
+    this->m_pInputTotalEvts = calloc(sizeof(this->m_pInputTotalEvts[0]),this->m_BufferNum);
+    if(this->m_pInputTotalEvts == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        this->__ReleaseAllEvents();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    _snprintf_s(curbasename,sizeof(curbasename),_TRUNCATE,"%s%d",IO_INPUT_EVT_BASENAME,pid);
+    for(i=0; i<this->m_BufferNum; i++)
+    {
+        _snprintf_s(fullname,sizeof(fullname),_TRUNCATE,"%s_%d",curbasename,i);
+        this->m_pInputTotalEvts[i] = GetEvent(fullname,1);
+        if(this->m_pInputTotalEvts[i] == NULL)
+        {
+            ret =LAST_ERROR_CODE();
+            ERROR_INFO("<0x%08x> create %s event Error(%d)\n",this->m_hProc,fullname,ret);
+            this->__ReleaseAllEvents();
+            SetLastError(ret);
+            return -ret;
+        }
+    }
+    strncpy_s(this->m_InputEvtBaseName,sizeof(this->m_InputEvtBaseName),curbasename,_TRUNCATE);
+    return 0;
 }
+
 
 VOID CIOController::Stop()
 {

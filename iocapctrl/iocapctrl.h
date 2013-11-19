@@ -40,14 +40,14 @@ private:
 	thread_control_t m_BackGroundThread;
 	CRITICAL_SECTION m_EvtCS;	
 	int m_Started;
-	unsigned char m_MemShareName[256];
+	uint8_t m_MemShareName[IO_NAME_MAX_SIZE];
 	int m_BufferNum;
 	int m_BufferSectSize;
 	int m_BufferTotalSize;
 	void *m_pMemShareBase;
-	unsigned char m_FreeEvtBaseName[256];
+	uint8_t m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
 	HANDLE *m_pFreeTotalEvts;
-	unsigned char m_InputEvtBaseName[256];
+	uint8_t m_InputEvtBaseName[IO_NAME_MAX_SIZE];
 	HANDLE *m_pInputTotalEvts;
 	PIO_CAP_EVENTS_t m_pIoCapEvents;
 	std::vector<PIO_CAP_EVENTS_t> m_InputEvts;
