@@ -9,6 +9,7 @@ CIOController::CIOController()
 {
     m_hProc = NULL;
     ZeroMemory(&m_BackGroundThread,sizeof(m_BackGroundThread));
+    ZeroMemory(m_TypeIds,sizeof(m_TypeIds));
     m_BackGroundThread.exited = 1;
     InitializeCriticalSection(&(m_EvtCS));
     m_Started = 0;
@@ -532,6 +533,8 @@ VOID CIOController::Stop()
     this->__ReleaseAllEvents();
 
     this->__ReleaseMapMem();
+    ZeroMemory(m_TypeIds,sizeof(m_TypeIds));
+
     return ;
 }
 
@@ -654,4 +657,53 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
     return 0;
 }
 
+int CIOController::__CallAddDeviceIoCapControl(uint32_t devtype,uint32_t * pDevId)
+{
+    int ret;
+    PIO_CAP_CONTROL_t pControl=NULL;
+    if(devtype >= DEVICE_TYPE_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
 
+    pControl = calloc(sizeof(*pControl),1);
+    if(pControl == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    pControl->opcode = IO_INJECT_ADD_DEVICE;
+    pControl->devtype = devtype;
+    pControl->devid = this->m_TypeIds[devtype];
+
+    ret = this->__CallInnerControl(pControl,2);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Add Device Type(%d:%d) Error(%d)\n",devtype,this->m_TypeIds[devtype],ret);
+        goto fail;
+    }
+
+
+    *pDevId = this->m_TypeIds[devtype];
+    this->m_TypeIds[devtype] = this->m_TypeIds[devtype]+1;
+
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(0);
+    return 0;
+fail:
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(ret);
+    return -ret;
+}

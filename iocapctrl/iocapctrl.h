@@ -48,6 +48,7 @@ private:
 private:
 	HANDLE m_hProc;
 	uint32_t m_Pid;
+	uint32_t m_TypeIds[DEVICE_TYPE_MAX];
 	thread_control_t m_BackGroundThread;
 	CRITICAL_SECTION m_EvtCS;	
 	int m_Started;
