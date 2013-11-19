@@ -527,5 +527,83 @@ VOID CIOController::Stop()
     /*now we should stop thread*/
     this->__StopBackGroundThread();
 
+    this->__ReleaseCapEvents();
+
     this->__ReleaseAllEvents();
+
+    this->__ReleaseMapMem();
+    return ;
+}
+
+int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
+{
+    int ret;
+    if(hProc == NULL || bufnum == 0 || bufsize == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+    this->Stop();
+    this->m_hProc = hProc;
+    this->m_BufferNum = bufnum;
+    this->m_BufferSectSize = bufsize;
+    this->m_BufferTotalSize = bufnum * bufsize;
+    SetLastError(0);
+    this->m_Pid = GetProcessId(hProc);
+    if(GetLastError() != 0)
+    {
+        ret=  LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x> ProcessId Error(%d)\n",this->m_hProc,ret);
+        return -ret;
+    }
+
+    /*now first to allocate memory*/
+    ret = this->__AllocateMapMem();
+    if(ret < 0)
+    {
+        ret= LAST_ERROR_CODE();
+        this->Stop();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    ret= this->__AllocateAllEvents();
+    if(ret < 0)
+    {
+        ret= LAST_ERROR_CODE();
+        this->Stop();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    ret= this->__AllocateCapEvents();
+    if(ret < 0)
+    {
+        ret= LAST_ERROR_CODE();
+        this->Stop();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    ret = this->__StartBackGroundThread();
+    if(ret < 0)
+    {
+        ret= LAST_ERROR_CODE();
+        this->Stop();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    ret = this->__CallStartIoCapControl();
+    if(ret < 0)
+    {
+        ret= LAST_ERROR_CODE();
+        this->Stop();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    SetLastError(0);
+    return 0;
 }
