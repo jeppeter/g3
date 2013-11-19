@@ -481,6 +481,12 @@ int CIOController::__CallStopIoCapControl()
     PIO_CAP_CONTROL_t pControl=NULL;
     int ret;
 
+    if(this->m_hProc == NULL)
+    {
+        SetLastError(0);
+        return 0;
+    }
+
     pControl = calloc(sizeof(*pControl),1);
     if(pControl == NULL)
     {
