@@ -2454,6 +2454,7 @@ typedef struct
     unsigned int m_Bufnumm;
     unsigned int m_BufSectSize;
     unsigned char m_MemShareBaseName[IO_NAME_MAX_SIZE];
+    HANDLE m_hMapFile;
     void* m_pMemShareBase;
     unsigned char m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
     HANDLE *m_pFreeEvts;
@@ -2863,6 +2864,7 @@ void __UnMapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
         return ;
     }
     UnMapFileBuffer(&(pStatus->m_pMemShareBase));
+    CloseMapFileHandle(&(pStatus->m_hMapFile));
     ZeroMemory(pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName));
     pStatus->m_Bufnumm = 0;
     pStatus->m_BufSectSize = 0;
@@ -2901,6 +2903,62 @@ int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
 
     SetLastError(0);
     return 0;
+}
+
+PDETOUR_DIRECTINPUT_STATUS_t __AllocateDetourStatus()
+{
+    PDETOUR_DIRECTINPUT_STATUS_t pStatus=NULL;
+    int ret;
+
+    pStatus = calloc(sizeof(*pStatus),1);
+    if(pStatus == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return NULL;
+    }
+
+    /*to make it ok for exited*/
+    pStatus->m_ThreadControl.exited = 1;
+    return pStatus;
+}
+
+int __MapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pMemName,uint32_t bufsectsize,uint32_t bufnum)
+{
+    int ret;
+    __UnMapMemBase(pStatus);
+    /*now we should first to get map file handle*/
+    pStatus->m_hMapFile = CreateMapFile(pMemName,bufsectsize*bufnum,0);
+    if(pStatus->m_hMapFile == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not createmapfile(%s) bufsectsize(%d) bufnum(%d) Error(%d)\n",
+                   pMemName,bufsectsize,bufnum,ret);
+        goto fail;
+    }
+
+    pStatus->m_pMemShareBase = MapFileBuffer(pStatus->m_hMapFile,bufsectsize*bufnum);
+    if(pStatus->m_pMemShareBase == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not mapfile buffer(%s) bufsectsize(%d) bufnum(%d) Error(%d)\n",
+                   pMemName,bufsectsize,bufnum,ret);
+        goto fail;
+    }
+
+	pStatus->m_Bufnumm = bufnum;
+	pStatus->m_BufSectSize = bufsectsize;
+	strncpy_s(pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName),pMemName,_TRUNCATE);
+	
+
+    SetLastError(0);
+    return 0;
+
+fail:
+    assert(ret > 0);
+    __UnMapMemBase(pStatus);
+    SetLastError(ret);
+    return -ret;
 }
 
 
