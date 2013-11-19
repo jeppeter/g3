@@ -279,12 +279,39 @@ int CIOController::__AllocateAllEvents()
     return 0;
 }
 
+int CIOController::__CallStopIoCapControl()
+{
+    uint32_t pid;
+	int ret;
+
+    if(this->m_hProc == NULL)
+    {
+        /*this is ok to no process specify*/
+        return 0;
+    }
+
+    SetLastError(0);
+    pid = GetProcessId(this->m_hProc);
+    if(GetLastError() != 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("can not get <0x%08x> pid Error(%d)\n",this->m_hProc,ret);
+        this->__ReleaseAllEvents();
+        SetLastError(ret);
+        return -ret;
+    }
+
+	/*now we should get the address of the */
+	ret = 
+}
+
 
 VOID CIOController::Stop()
 {
     /*first we should make the indicator to be stopped ,and this will give it ok*/
     this->m_Started = 0;
 
+    this->__CallStopIoCapControl();
     /*now we should stop thread*/
     this->__StopBackGroundThread();
     /*now we should call stop the injected thread and it will ok*/

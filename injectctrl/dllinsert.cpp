@@ -971,6 +971,116 @@ fail:
 }
 
 
+int CallRemoteFuncRemoteParam(unsigned int processid,void* pFnAddr,LPVOID pRemoteAddr,int timeout,void**ppRetVal)
+{
+    HANDLE hProcess = NULL;
+    HANDLE hThread=NULL;
+    int ret;
+    BOOL bret;
+    DWORD threadid=0,waitmils,wret,retcode;
+    ULONGLONG stime,etime,ctime;
+
+    /*first to allocate the memory for it*/
+    hProcess = OpenProcess(PROCESS_VM_OPERATION |
+                           PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD ,FALSE,processid);
+    if(hProcess == NULL)
+    {
+        ret = GetLastError() ? GetLastError() : 1;
+        ERROR_INFO("Open Process(%d) Error(%d)\n",processid,ret);
+        goto fail;
+    }
+
+    hThread = CreateRemoteThread(hProcess,NULL,0,(LPTHREAD_START_ROUTINE)pFnAddr,pRemoteAddr,0,&threadid);
+    if(hThread == NULL)
+    {
+        ret = GetLastError() ? GetLastError() : 1;
+        DEBUG_INFO("\n");
+        goto fail;
+    }
+
+    /**/
+    stime = GetTickCount();
+    etime = stime + timeout* 1000;
+    ctime = stime;
+
+    while(TimeExpire(ctime, etime)== 0|| timeout == 0)
+    {
+        waitmils = 2000;
+        if(timeout)
+        {
+            if((etime - ctime) < waitmils)
+            {
+                waitmils =(DWORD)(etime - ctime);
+            }
+        }
+
+        wret = WaitForSingleObject(hThread,waitmils);
+        if(wret == WAIT_OBJECT_0)
+        {
+            bret = GetExitCodeThread(hThread,&retcode);
+            if(bret)
+            {
+                break;
+            }
+            else if(GetLastError() != STILL_ACTIVE)
+            {
+                ret = GetLastError() ? GetLastError() : 1;
+                DEBUG_INFO("\n");
+                goto fail;
+            }
+            /*still alive ,continue*/
+        }
+        else if(wret == WAIT_TIMEOUT)
+        {
+            /*wait timeout*/
+            ;
+        }
+        else
+        {
+            ret = GetLastError() ? GetLastError() : 1;
+            DEBUG_INFO("wait error %d\n",ret);
+            goto fail;
+        }
+        GetCurrentTick(&ctime);
+    }
+
+    if(ctime >= etime && timeout > 0)
+    {
+        ret = WAIT_TIMEOUT;
+        DEBUG_INFO("\n");
+        goto fail;
+    }
+
+
+    *ppRetVal = (void*)retcode;
+    DEBUG_INFO("call 0x%p with param %s retcode(%d)\n",pFnAddr,pParam,retcode);
+
+    if(hThread)
+    {
+        CloseHandle(hThread);
+    }
+    hThread = NULL;
+    if(hProcess)
+    {
+        CloseHandle(hProcess);
+    }
+    hProcess = NULL;
+
+    return 0;
+fail:
+    if(hThread)
+    {
+        CloseHandle(hThread);
+    }
+    hThread = NULL;
+    if(hProcess)
+    {
+        CloseHandle(hProcess);
+    }
+    hProcess = NULL;
+    SetLastError(ret);
+    return -ret;
+}
 
 
 

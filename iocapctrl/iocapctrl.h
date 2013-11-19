@@ -34,6 +34,10 @@ private:
 	static DWORD WINAPI ThreadProc(LPVOID pParam);
 	void __ReleaseAllEvents();
 	int __AllocateAllEvents();
+	int __CallStopIoCapControl();
+	int __CallStartIoCapControl();
+	int __CallAddDeviceIoCapControl();
+	int __CallRemoveDeviceIoCapControl();
 
 private:
 	HANDLE m_hProc;
