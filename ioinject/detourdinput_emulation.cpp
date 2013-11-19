@@ -2811,7 +2811,51 @@ void __ClearEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
         free(pStatus->m_pEventListArray);
     }
     pStatus->m_pEventListArray = NULL;
+
+    DeleteCriticalSection(&(pStatus->m_ListCS));
+
     return ;
+}
+
+
+void __FreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+{
+    unsigned int i;
+    if(pStatus->m_pFreeEvts)
+    {
+        for(i=0; i<pStatus->m_Bufnumm; i++)
+        {
+            if(pStatus->m_pFreeEvts[i])
+            {
+                CloseHandle(pStatus->m_pFreeEvts[i]);
+            }
+            pStatus->m_pFreeEvts[i] = NULL;
+        }
+
+        free(pStatus->m_pFreeEvts);
+    }
+    pStatus->m_pFreeEvts = NULL;
+    ZeroMemory(pStatus->m_FreeEvtBaseName,sizeof(pStatus->m_FreeEvtBaseName));
+
+    if(pStatus->m_pInputEvts)
+    {
+        for(i=0; i<pStatus->m_Bufnumm; i++)
+        {
+            if(pStatus->m_pInputEvts[i])
+            {
+                CloseHandle(pStatus->m_pInputEvts[i]);
+            }
+            pStatus->m_pInputEvts[i] = NULL;
+        }
+        free(pStatus->m_pInputEvts);
+    }
+    pStatus->m_pInputEvts = NULL;
+    ZeroMemory(pStatus->m_InputEvtBaseName,sizeof(pStatus->m_InputEvtBaseName));
+    return ;
+}
+
+void __UnMapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+{
 }
 
 
@@ -2835,6 +2879,9 @@ int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
 
     /*now to delete all the free event*/
     __ClearEventList(st_pDinputStatus);
+    __FreeEvents(st_pDinputStatus);
+
+	/*now to unmap memory*/
 
 
 
