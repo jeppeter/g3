@@ -2988,6 +2988,7 @@ int __AllocateFreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pFreeEvtB
             goto fail;
         }
     }
+    strncpy_s(pStatus->m_FreeEvtBaseName,sizeof(pStatus->m_FreeEvtBaseName),pFreeEvtBaseName,_TRUNCATE);
 
 
     SetLastError(0);
@@ -2995,6 +2996,37 @@ int __AllocateFreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pFreeEvtB
 fail:
     assert(ret > 0);
     __FreeDetourEvents(pStatus);
+    SetLastError(ret);
+    return -ret;
+}
+
+int __AllocateEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+{
+    int ret;
+    uint32_t i;
+    /*now first to allocate event list array*/
+    pStatus->m_pEventListArray = calloc(sizeof(pStatus->m_pEventListArray[0]),pStatus->m_Bufnumm);
+    if(pStatus->m_pEventListArray == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    for(i=0; i<pStatus->m_Bufnumm; i++)
+    {
+        pStatus->m_pEventListArray[i].m_BaseAddr =(ptr_t) pStatus->m_pMemShareBase;
+        pStatus->m_pEventListArray[i].m_Error = 0;
+        pStatus->m_pEventListArray[i].m_hFillEvt = pStatus->m_pFreeEvts[i];
+        pStatus->m_pEventListArray[i].m_Idx = i;
+        pStatus->m_pEventListArray[i].m_Offset = (pStatus->m_BufSectSize * i);
+        pStatus->m_pEventListArray[i].size = pStatus->m_BufSectSize;
+    }
+
+    SetLastError(0);
+    return 0;
+fail:
+    assert(ret > 0);
+    __ClearEventList(pStatus);
     SetLastError(ret);
     return -ret;
 }
@@ -3024,6 +3056,7 @@ int __AllocateInputEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pInputEv
         }
     }
 
+    strncpy_s(pStatus->m_InputEvtBaseName,sizeof(pStatus->m_InputEvtBaseName),pInputEvtBaseName,_TRUNCATE);
 
     SetLastError(0);
     return 0;
