@@ -2871,36 +2871,39 @@ void __UnMapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     return ;
 }
 
+void __FreeDetourDinputStatus(PDETOUR_DIRECTINPUT_STATUS_t *ppStatus)
+{
+    PDETOUR_DIRECTINPUT_STATUS_t pStatus ;
+    if(ppStatus == NULL || *ppStatus == NULL)
+    {
+        return;
+    }
+    pStatus = *ppStatus;
+    /*now first to stop thread */
+    StopThreadControl(&(pStatus->m_ThreadControl));
+
+    /*now we should free all the events*/
+    __FreeDeviceEvents(pStatus);
+
+    /*now to delete all the free event*/
+    __ClearEventList(pStatus);
+    __FreeEvents(pStatus);
+
+    /*now to unmap memory*/
+    __UnMapMemBase(pStatus);
+
+    /*not make not started*/
+    pStatus->m_Started = 0;
+    free(pStatus);
+    *ppStatus = NULL;
+
+    return ;
+}
+
 
 int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
 {
-    /*now to stop for the direct input*/
-
-    if(st_pDinputStatus == NULL)
-    {
-        /*nothing to remove ,so it is successful*/
-        SetLastError(0);
-        return 0;
-    }
-
-    /*now first to stop thread */
-    StopThreadControl(&(st_pDinputStatus->m_ThreadControl));
-
-    /*now we should free all the events*/
-    __FreeDeviceEvents(st_pDinputStatus);
-
-    /*now to delete all the free event*/
-    __ClearEventList(st_pDinputStatus);
-    __FreeEvents(st_pDinputStatus);
-
-    /*now to unmap memory*/
-    __UnMapMemBase(st_pDinputStatus);
-
-    /*not make not started*/
-    st_pDinputStatus->m_Started = 0;
-    free(st_pDinputStatus);
-    st_pDinputStatus = NULL;
-
+    __FreeDetourDinputStatus(&st_pDinputStatus);
     SetLastError(0);
     return 0;
 }
@@ -2946,10 +2949,10 @@ int __MapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pMemName,uint32_t
         goto fail;
     }
 
-	pStatus->m_Bufnumm = bufnum;
-	pStatus->m_BufSectSize = bufsectsize;
-	strncpy_s(pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName),pMemName,_TRUNCATE);
-	
+    pStatus->m_Bufnumm = bufnum;
+    pStatus->m_BufSectSize = bufsectsize;
+    strncpy_s(pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName),pMemName,_TRUNCATE);
+
 
     SetLastError(0);
     return 0;
@@ -2964,6 +2967,39 @@ fail:
 
 int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
 {
+    int ret;
+    PDETOUR_DIRECTINPUT_STATUS_t pStatus=NULL;
+
+    if(pControl == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(st_pDinputStatus)
+    {
+        SetLastError(0);
+        return 0;
+    }
+
+    pStatus = __AllocateDetourStatus();
+    if(pStatus == NULL)
+    {
+        ret=  LAST_ERROR_CODE();
+        goto fail;
+    }
+
+
+
+    SetLastError(0);
+    return 0;
+
+fail:
+    assert(ret > 0);
+    __FreeDetourDinputStatus(&pStatus);
+    SetLastError(ret);
+    return -ret;
 }
 
 int __DetourDirectInputAddDevice(PIO_CAP_CONTROL_t pControl)
