@@ -3171,12 +3171,162 @@ fail:
     return -ret;
 }
 
+
+
 int __DetourDirectInputAddDevice(PIO_CAP_CONTROL_t pControl)
 {
+    int ret=ERROR_NOT_FOUND;
+    uint32_t devtype;
+    uint32_t devid;
+    uint32_t i;
+    uint32_t count =0;
+
+    devtype = pControl->devtype;
+    devid = pControl->devid;
+
+    EnterCriticalSection();
+    if(devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        for(i=0; i<st_Key8WVecs.size() ; i++)
+        {
+            if(count == devid)
+            {
+                ret = 0;
+                goto unlock;
+            }
+            count ++;
+        }
+
+        for(i=0; i<st_Key8AVecs.size(); i++)
+        {
+            if(count == devid)
+            {
+                ret = 0;
+                goto unlock;
+            }
+            count ++;
+        }
+    }
+    else if(devtype == DEVICE_TYPE_MOUSE)
+    {
+        for(i=0; i<st_Mouse8WVecs.size() ; i++)
+        {
+            if(count == devid)
+            {
+                ret = 0;
+                goto unlock;
+            }
+            count ++;
+        }
+
+        for(i=0; i<st_Mouse8AVes.size(); i++)
+        {
+            if(count == devid)
+            {
+                ret = 0;
+                goto unlock;
+            }
+            count ++;
+        }
+    }
+    else
+    {
+        ret =ERROR_INVALID_PARAMETER;
+        ERROR_INFO("Invalid devtype(%d)\n",devtype);
+    }
+unlock:
+    LeaveCriticalSection();
+
+    if(ret > 0)
+    {
+        goto fail;
+    }
+
+    SetLastError(0);
+    return 0;
+
+fail:
+    assert(ret > 0);
+    SetLastError(ret);
+    return -ret;
 }
 
 int __DetourDirectInputRemoveDevice(PIO_CAP_CONTROL_t pControl)
 {
+    int ret=ERROR_NOT_FOUND;
+    uint32_t devtype;
+    uint32_t devid;
+    uint32_t i;
+    uint32_t count =0;
+
+    devtype = pControl->devtype;
+    devid = pControl->devid;
+
+    EnterCriticalSection();
+    if(devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        for(i=0; i<st_Key8WVecs.size() ; i++)
+        {
+            if(count == devid)
+            {
+                ret = 0;
+                goto unlock;
+            }
+            count ++;
+        }
+
+        for(i=0; i<st_Key8AVecs.size(); i++)
+        {
+            if(count == devid)
+            {
+                ret = 0;
+                goto unlock;
+            }
+            count ++;
+        }
+    }
+    else if(devtype == DEVICE_TYPE_MOUSE)
+    {
+        for(i=0; i<st_Mouse8WVecs.size() ; i++)
+        {
+            if(count == devid)
+            {
+                ret = 0;
+                goto unlock;
+            }
+            count ++;
+        }
+
+        for(i=0; i<st_Mouse8AVes.size(); i++)
+        {
+            if(count == devid)
+            {
+                ret = 0;
+                goto unlock;
+            }
+            count ++;
+        }
+    }
+    else
+    {
+        ret =ERROR_INVALID_PARAMETER;
+        ERROR_INFO("Invalid devtype(%d)\n",devtype);
+    }
+unlock:
+    LeaveCriticalSection();
+
+    if(ret > 0)
+    {
+        goto fail;
+    }
+
+    SetLastError(0);
+    return 0;
+
+fail:
+    assert(ret > 0);
+    SetLastError(ret);
+    return -ret;
 }
 
 
