@@ -16,10 +16,12 @@ CIOController::CIOController()
     m_BufferSectSize = 0;
     m_BufferTotalSize = 0;
     m_pMemShareBase = NULL;
-    ZeroMemory(&m_EvtShareBaseName,sizeof(m_EvtShareBaseName));
-    m_pTotalEvts = NULL;
-    m_TotalEventNum = 0;
-    m_pIoEvents = NULL;
+    m_hMapFile = NULL;
+    m_pFreeTotalEvts = NULL;
+    ZeroMemory(m_FreeEvtBaseName,sizeof(m_FreeEvtBaseName));
+    m_pInputTotalEvts = NULL;
+    ZeroMemory(m_InputEvtBaseName,sizeof(m_InputEvtBaseName));
+    m_pIoCapEvents = NULL;
     assert(m_InputEvts.size() == 0);
     assert(m_FreeEvts.size() == 0);
 }
@@ -431,6 +433,15 @@ int CIOController::__AllocateCapEvents()
 
     SetLastError(0);
     return 0;
+}
+
+void CIOController::__ReleaseMapMem()
+{
+
+}
+
+int CIOController::__AllocateMapMem()
+{
 }
 
 int CIOController::__CallStopIoCapControl()

@@ -18,7 +18,7 @@ public:
 	CIOController();
 	~CIOController();
 
-	BOOL Start(HANDLE hProc);		
+	BOOL Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize);
 	VOID Stop();
 	BOOL AddDevice(int iType, int iId);
 	int GetDeviceNum(int iType);
@@ -32,6 +32,8 @@ private:
 	int __ChangeInputToFreeThread(DWORD idx);
 	DWORD __ThreadImpl();
 	static DWORD WINAPI ThreadProc(LPVOID pParam);
+	void __ReleaseMapMem();
+	int __AllocateMapMem();
 	void __ReleaseAllEvents();
 	int __AllocateAllEvents();
 	void __ReleaseCapEvents();
@@ -52,6 +54,7 @@ private:
 	int m_BufferSectSize;
 	int m_BufferTotalSize;
 	void *m_pMemShareBase;
+	HANDLE m_hMapFile;
 	uint8_t m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
 	HANDLE *m_pFreeTotalEvts;
 	uint8_t m_InputEvtBaseName[IO_NAME_MAX_SIZE];
