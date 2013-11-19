@@ -17,6 +17,8 @@ typedef struct
 } thread_control_t;
 
 
+typedef DWORD (WINAPI *ThreadFunc_t)(LPVOID lpParam);
+
 
 #endif /*__INJECT_COMMON_H__*/
 

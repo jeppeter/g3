@@ -2740,8 +2740,28 @@ out:
     return dret;
 }
 
+
+
+
+
 int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
 {
+    /*now to stop for the direct input*/
+    int ret;
+
+    if(st_pDinputStatus == NULL)
+    {
+        /*nothing to remove ,so it is successful*/
+        SetLastError(0);
+        return 0;
+    }
+
+
+
+fail:
+    assert(ret > 0);
+    SetLastError(ret);
+    return -ret;
 }
 
 

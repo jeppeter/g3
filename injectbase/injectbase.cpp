@@ -660,7 +660,7 @@ int InjectBaseModuleInit(HMODULE hModule)
 
 void SetUnHandlerExceptionDetour()
 {
-	//SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
+    //SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
 }
 
 void InjectBaseModuleFini(HMODULE hModule)
@@ -672,3 +672,66 @@ void InjectBaseModuleFini(HMODULE hModule)
     }
     return;
 }
+
+
+void StopThreadControl(thread_control_t *pThrControl)
+{
+    if(pThrControl == NULL)
+    {
+        return ;
+    }
+    pThrControl->running = 0;
+    while(pThrControl->exited == 0)
+    {
+        if(pThrControl->exitevt)
+        {
+            SetEvent(pThrControl->exitevt);
+        }
+        SchedOut();
+    }
+
+    if(pThrControl->exitevt)
+    {
+        CloseHandle(pThrControl->exitevt);
+    }
+    pThrControl->exitevt = NULL;
+
+    if(pThrControl->thread)
+    {
+        CloseHandle(pThrControl->thread);
+    }
+    pThrControl->thread = NULL;
+
+    pThrControl->threadid = 0;
+    return ;
+}
+
+
+int StartThreadControl(thread_control_t* pThrControl,)
+{
+    int ret;
+    if(pThrControl == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }	
+
+    StopThreadControl(pThrControl);
+
+	/*now first to make handle of event*/
+	pThrControl->exitevt = GetEvent(NULL,1);
+	if (pThrControl->exitevt == NULL)
+		{
+			ret = LAST_ERROR_CODE();
+		}
+	
+
+    SetLastError(0);
+    return 0;
+fail:
+    assert(ret > 0);
+    SetLastError(ret);
+    return -ret;
+}
+
