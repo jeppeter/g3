@@ -23,7 +23,7 @@ public:
 	BOOL AddDevice(uint32_t iType, uint32_t *pIId);
 	int GetDeviceNum(int iType);
 	BOOL GetDeviceIds(int iType, ptr_t * pIds, int iSize);
-	int RemoveDevice(uint32_t iType,uint32_t iId);
+	BOOL RemoveDevice(uint32_t iType,uint32_t iId);
 
 	BOOL PushEvent(DEVICEEVENT * pDevEvt);
 

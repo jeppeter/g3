@@ -296,19 +296,12 @@ int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
     if(this->m_hProc == NULL)
     {
         /*this is ok to no process specify*/
-        return 0;
-    }
-
-    SetLastError(0);
-    pid = GetProcessId(this->m_hProc);
-    if(GetLastError() != 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("can not get <0x%08x> pid Error(%d)\n",this->m_hProc,ret);
-        this->__ReleaseAllEvents();
+        ret = ERROR_INVALID_PARAMETER;
         SetLastError(ret);
         return -ret;
     }
+
+    pid = this->m_Pid;
 
     /*now we should get the address of the */
     ret = GetRemoteProcAddress(pid,"ioinject.dll","DetourDirectInputControl",&pFnAddr);
@@ -754,4 +747,26 @@ fail:
     pControl = NULL;
     SetLastError(ret);
     return -ret;
+}
+
+BOOL CIOController::AddDevice(uint32_t iType,uint32_t * pIId)
+{
+    int ret;
+    ret = this->__CallAddDeviceIoCapControl(iType,pIId);
+    if(ret < 0)
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+BOOL CIOController::RemoveDevice(uint32_t iType,uint32_t iId)
+{
+    int ret;
+    ret = this->__CallRemoveDeviceIoCapControl(iType,iId);
+    if(ret < 0)
+    {
+        return FALSE;
+    }
+    return TRUE;
 }
