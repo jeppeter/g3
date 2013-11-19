@@ -2820,7 +2820,7 @@ void __ClearEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 }
 
 
-void __FreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+void __FreeDetourEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 {
     unsigned int i;
     if(pStatus->m_pFreeEvts)
@@ -2887,7 +2887,7 @@ void __FreeDetourDinputStatus(PDETOUR_DIRECTINPUT_STATUS_t *ppStatus)
 
     /*now to delete all the free event*/
     __ClearEventList(pStatus);
-    __FreeEvents(pStatus);
+    __FreeDetourEvents(pStatus);
 
     /*now to unmap memory*/
     __UnMapMemBase(pStatus);
@@ -2964,6 +2964,76 @@ fail:
     return -ret;
 }
 
+int __AllocateFreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pFreeEvtBaseName)
+{
+    uint8_t fullname[IO_NAME_MAX_SIZE];
+    int ret;
+    uint32_t i;
+    /*now we should allocate size*/
+    pStatus->m_pFreeEvts = calloc(sizeof(pStatus->m_pFreeEvts[0]),pStatus->m_Bufnumm);
+    if(pStatus->m_pFreeEvts == NULL)
+    {
+        ret= LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    for(i=0; i<pStatus->m_Bufnumm; i++)
+    {
+        _snprintf_s(fullname,sizeof(fullname),_TRUNCATE,"%s_%d",pFreeEvtBaseName,i);
+        pStatus->m_pFreeEvts[i] = GetEvent(fullname,0);
+        if(pStatus->m_pFreeEvts[i] == NULL)
+        {
+            ret=  LAST_ERROR_CODE();
+            ERROR_INFO("GetFreeEvent (%s) Error(%d)\n",fullname,ret);
+            goto fail;
+        }
+    }
+
+
+    SetLastError(0);
+    return 0;
+fail:
+    assert(ret > 0);
+    __FreeDetourEvents(pStatus);
+    SetLastError(ret);
+    return -ret;
+}
+
+int __AllocateInputEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pInputEvtBaseName)
+{
+    uint8_t fullname[IO_NAME_MAX_SIZE];
+    int ret;
+    uint32_t i;
+    /*now we should allocate size*/
+    pStatus->m_pInputEvts = calloc(sizeof(pStatus->m_pInputEvts[0]),pStatus->m_Bufnumm);
+    if(pStatus->m_pInputEvts == NULL)
+    {
+        ret= LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    for(i=0; i<pStatus->m_Bufnumm; i++)
+    {
+        _snprintf_s(fullname,sizeof(fullname),_TRUNCATE,"%s_%d",pInputEvtBaseName,i);
+        pStatus->m_pInputEvts[i] = GetEvent(fullname,0);
+        if(pStatus->m_pInputEvts[i] == NULL)
+        {
+            ret=  LAST_ERROR_CODE();
+            ERROR_INFO("GetInputEvent (%s) Error(%d)\n",fullname,ret);
+            goto fail;
+        }
+    }
+
+
+    SetLastError(0);
+    return 0;
+fail:
+    assert(ret > 0);
+    __FreeDetourEvents(pStatus);
+    SetLastError(ret);
+    return -ret;
+}
+
 
 int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
 {
@@ -2989,6 +3059,29 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
         ret=  LAST_ERROR_CODE();
         goto fail;
     }
+
+    ret = __MapMemBase(pStatus,pControl->memsharename,pControl->memsharesectsize,pControl->memsharenum);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    ret = __AllocateFreeEvents(pStatus,pControl->freeevtbasename);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    ret = __AllocateInputEvents(pStatus,pControl->inputevtbasename);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+
 
 
 
