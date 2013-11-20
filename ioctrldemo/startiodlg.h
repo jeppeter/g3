@@ -5,11 +5,8 @@
 class CStartIoDlg : public CDialogEx
 {
 public:
-    CpcmctrldemoDlg(CWnd* pParent = NULL);	// 标准构造函数
-    ~CpcmctrldemoDlg()
-    {
-        this->StopCapper();
-    };
+    CStartIoDlg(CWnd* pParent = NULL);	// 标准构造函数
+    ~CStartIoDlg();
     CString m_strExec;
     CString m_strParam;
     CString m_strDll;
@@ -31,6 +28,9 @@ public:
     afx_msg void OnBtnExe();
     afx_msg void OnBtnDll();
 	afx_msg void OnOK();
+	afx_msg void OnCancel();
+private:
+	HANDLE m_hProc;
 };
 
 
