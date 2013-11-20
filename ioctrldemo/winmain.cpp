@@ -440,7 +440,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
 BOOL StartExeProcess(CStartIoDlg* pDlg)
 {
     char* pExeAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL;
+    CString errstr,caption=TEXT("Error");
+    uint32_t bufnum,bufsize;
+    int ret;
+#ifdef _UNICODE
     int exesize=0,dllsize=0,paramsize=0;
+#endif
     /*now we should delete the */
     if(g_pIoController)
     {
@@ -450,10 +455,34 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
     g_hProc = NULL;
 
     /*now first we should CreateProcess*/
+#ifdef _UNICODE
+
+#else
+    pExeAnsi = (char*) pDlg->m_strExec;
+    pDllAnsi = (char*) pDlg->m_strDll;
+    pParamAnsi = (char*) pDlg->m_strParam;
+#endif
+
+
+
 
 
 
     return TRUE;
+
+fail:
+    assert(ret > 0);
+#ifdef _UNICODE
+    UnicodeToAnsi(NULL,&pExeAnsi,&exesize);
+    UnicodeToAnsi(NULL,&pDllAnsi,&dllsize);
+    UnicodeToAnsi(NULL,&pParamAnsi,&paramsize);
+#else
+    pExeAnsi = NULL;
+    pDllAnsi = NULL;
+    pParamAnsi = NULL;
+#endif
+    SetLastError(ret);
+    return FALSE;
 }
 
 
