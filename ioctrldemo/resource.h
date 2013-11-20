@@ -12,7 +12,6 @@
 #define IDC_COMBO_ESCAPE                1005
 #define IDC_EDT_PARAM                   1007
 #define IDC_EDT_BUFNUM                  1009
-#define IDC_EDT_BUFNUM2                 1011
 #define IDC_EDT_BUFSIZE                 1011
 #define ID_FILE_MESSAGE                 40001
 #define ID_START_IO_INJECT              40002
