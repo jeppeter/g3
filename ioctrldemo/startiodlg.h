@@ -12,6 +12,7 @@ public:
     CString m_strDll;
 	int m_iBufNum;
 	int m_iBufSize;
+    int m_iDiK;
 
     // 对话框数据
     enum { IDD = IDD_START_DIALOG };

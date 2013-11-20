@@ -16,6 +16,12 @@ CStartIoDlg::CStartIoDlg(CWnd* pParent /*=NULL*/)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDI_ICON1);
     m_hProc = NULL;
+    m_strExec = TEXT("");
+    m_strParam = TEXT("");
+    m_strDll = TEXT("");
+    m_iBufNum = 10;
+    m_iBufSize = 10240;
+    m_iDiK = DIK_RCONTROL;
 }
 
 void CStartIoDlg::DoDataExchange(CDataExchange* pDX)
@@ -37,6 +43,7 @@ BOOL CStartIoDlg::OnInitDialog()
 {
     CEdit* pEdt=NULL;
     CString fstr;
+    CComboBox* pCombo=NULL;
     CDialogEx::OnInitDialog();
 
     // 将“关于...”菜单项添加到系统菜单中。
@@ -56,6 +63,16 @@ BOOL CStartIoDlg::OnInitDialog()
     pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_BUFSIZE);
     fstr.Format(TEXT("%x"),10240);
     pEdt->SetWindowText(fstr);
+
+    pCombo = (CComboBox*)this->GetDlgItem(IDC_COMBO_ESCAPE);
+    pCombo->Clear();
+    fstr.Format(TEXT("RControl"));
+    pCombo->InsertString(0,fstr);
+    fstr.Format(TEXT("RWin"));
+    pCombo->InsertString(1,fstr);
+
+    pCombo->SetCurSel(0);
+
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -102,7 +119,9 @@ void CStartIoDlg::OnBtnDll()
 void CStartIoDlg::OnOK()
 {
     CEdit* pEdt=NULL;
+    CComboBox* pCombo=NULL;
     CString errstr,caption=TEXT("Error"),tmpstr;
+    int sel;
     /*now we get the text*/
     pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_EXE);
     pEdt->GetWindowText(this->m_strExec);
@@ -151,6 +170,25 @@ void CStartIoDlg::OnOK()
         MessageBox(this->m_hWnd,(LPCTSTR)errstr,(LPCTSTR)caption,MB_OK);
         return ;
     }
+
+    pCombo = (CComboBox*) this->GetDlgItem(IDC_COMBO_ESCAPE);
+    sel = pCombo->GetCurSel();
+    if (sel == CB_ERR)
+    {
+        errstr.Format(TEXT("Please Specify Escape Key"));
+        MessageBox(this->m_hWnd,(LPCTSTR)errstr,(LPCTSTR)caption,MB_OK);
+        return ;
+    }
+
+    if (sel == 0)
+    {
+        this->m_iDiK = DIK_RCONTROL;
+    }
+    else if (sel == 1)
+    {
+        this->m_iDiK = DIK_RWIN;
+    }
+
 
     CDialogEx::OnOK();
 }

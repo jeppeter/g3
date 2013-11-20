@@ -12,6 +12,7 @@ int                     g_KeyboardAcquire   = 0;
 char                    g_pKeyStateBuffer[256] = {0};
 char                    g_LastpKeyStateBuffer[256] = {0};
 CIoController           *g_pIoController=NULL;
+int                      g_EscapeKey =DIK_RCONTROL;
 
 
 void DirectInput_Fini()
@@ -173,6 +174,16 @@ void UpdateCodeMessage()
     }
 
     /*now we should check if the specified key is pressed*/
+    Device_Read(g_pKeyboardDevice,g_pKeyStateBuffer,256);
+    Device_Read(g_pMouseDevice,g_diMouseState,sizeof(g_diMouseState));
+
+    if(g_pKeyStateBuffer[g_EscapeKey])
+    {
+        /*it is the escape key pressed ,so we do not handle any more*/
+        return;
+    }
+
+    /*now compare the */
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine, int nShowCmd)
