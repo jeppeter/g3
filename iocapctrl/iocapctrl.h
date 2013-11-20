@@ -44,6 +44,8 @@ private:
 	int __CallAddDeviceIoCapControl(uint32_t devtype,uint32_t *pDevId);
 	int __CallRemoveDeviceIoCapControl(uint32_t devtype,uint32_t devid);
 	int __CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout);
+	PIO_CAP_EVENTS_t __GetFreeEvent();
+	BOOL __InsertInputEvent(PIO_CAP_EVENTS_t pIoCapEvt);
 
 private:
 	HANDLE m_hProc;

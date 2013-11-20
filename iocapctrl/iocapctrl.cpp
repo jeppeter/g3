@@ -776,3 +776,65 @@ BOOL CIOController::RemoveDevice(uint32_t iType,uint32_t iId)
     }
     return TRUE;
 }
+
+PIO_CAP_EVENTS_t CIOController::__GetFreeEvent()
+{
+    PIO_CAP_EVENTS_t pIoCapEvt=NULL;
+
+    EnterCriticalSection(&(this->m_EvtCS));
+    if(this->m_FreeEvts.size() > 0)
+    {
+        pIoCapEvt = this->m_FreeEvts[0];
+        this->m_FreeEvts.erase(this->m_FreeEvts.begin());
+    }
+    LeaveCriticalSection(&(this->m_EvtCS));
+    return pIoCapEvt;
+}
+
+BOOL CIOController::__InsertInputEvent(PIO_CAP_EVENTS_t pIoCapEvt)
+{
+    BOOL bret=TRUE;
+    int ret = 0;
+
+    EnterCriticalSection(&(this->m_EvtCS));
+    this->m_InputEvts.push_back(pIoCapEvt);
+    LeaveCriticalSection(&(this->m_EvtCS));
+
+    bret = SetEvent(pIoCapEvt->hEvent);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("<0x%08x>[%d] SetEvent Error(%d)\n",this->m_hProc,pIoCapEvt->Idx,ret);
+    }
+
+    SetLastError(ret);
+    return bret;
+}
+
+BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
+{
+    BOOL bret;
+    int ret;
+    PIO_CAP_EVENTS_t pIoCapEvt=NULL;
+
+    if(this->m_Started == 0)
+    {
+        ret = ERROR_ACCESS_DENIED;
+        ERROR_INFO("Not Started\n");
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    /*now check for the device*/
+    pIoCapEvt = this->__GetFreeEvent();
+    if(pIoCapEvt == NULL)
+    {
+        ret = ERROR_NO_DATA;
+        ERROR_INFO("Could not Get FreeEvent\n");
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    CopyMemory(pIoCapEvt->pEvent,pDevEvt,sizeof(*pDevEvt));
+    return this->__InsertInputEvent(pIoCapEvt);
+}
