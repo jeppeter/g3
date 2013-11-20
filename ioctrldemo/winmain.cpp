@@ -12,6 +12,7 @@ int                     g_KeyboardAcquire   = 0;
 char                    g_pKeyStateBuffer[256] = {0};
 char                    g_LastpKeyStateBuffer[256] = {0};
 CIOController           *g_pIoController=NULL;
+HANDLE                   g_hProc = NULL;
 int                      g_EscapeKey =DIK_RCONTROL;
 
 
@@ -373,6 +374,7 @@ BOOL UpdateCodeMessage()
     {
         g_pIoController->PushEvent(&(event[0]));
         event.erase(event.begin());
+        UpdateMouseBufferAfter(&g_LastdiMouseState);
     }
 
     return TRUE;
@@ -425,7 +427,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
             DispatchMessage(&msg);
         }
 
-		UpdateCodeMessage();
+        UpdateCodeMessage();
 
     }
 
@@ -433,6 +435,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
 
     UnregisterClass(_T("IOControlDemo"), wndClass.hInstance);
     return 0;
+}
+
+BOOL StartExeProcess(CStartIoDlg* pDlg)
+{
+    char* pExeAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL;
+    int exesize=0,dllsize=0,paramsize=0;
+    /*now we should delete the */
+    if(g_pIoController)
+    {
+        delete g_pIoController;
+    }
+    g_pIoController = NULL;
+    g_hProc = NULL;
+
+    /*now first we should CreateProcess*/
+
+
+
+    return TRUE;
 }
 
 
@@ -448,9 +469,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         switch(wParam)
         {
         case ID_START_IO_INJECT:
-			CStartIoDlg dlg;
-			
-			
+            CStartIoDlg dlg;
+            INT_PTR nRet;
+
+            nRet = dlg.DoModal();
+            if(nRet == IDOK)
+            {
+                StartExeProcess(&dlg);
+            }
+
             break;
         }
         break;
