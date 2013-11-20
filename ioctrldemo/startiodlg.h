@@ -10,8 +10,8 @@ public:
     CString m_strExec;
     CString m_strParam;
     CString m_strDll;
-    CString m_strBufNum;
-    CString m_strBufSize;
+	int m_iBufNum;
+	int m_iBufSize;
 
     // 对话框数据
     enum { IDD = IDD_START_DIALOG };

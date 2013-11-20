@@ -54,7 +54,7 @@ BOOL CStartIoDlg::OnInitDialog()
     fstr.Format(TEXT("%d"),10);
     pEdt->SetWindowText(fstr);
     pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_BUFSIZE);
-    fstr.Format(TEXT("%d"),10240);
+    fstr.Format(TEXT("%x"),10240);
     pEdt->SetWindowText(fstr);
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -68,7 +68,7 @@ void CStartIoDlg::OnSysCommand(UINT nID, LPARAM lParam)
 
 HCURSOR CStartIoDlg::OnQueryDragIcon()
 {
-	return static_cast<HCURSOR>(m_hIcon);
+    return static_cast<HCURSOR>(m_hIcon);
 }
 
 void CStartIoDlg::OnBtnExe()
@@ -101,9 +101,62 @@ void CStartIoDlg::OnBtnDll()
 
 void CStartIoDlg::OnOK()
 {
+    CEdit* pEdt=NULL;
+    CString errstr,caption=TEXT("Error"),tmpstr;
+    /*now we get the text*/
+    pEdt = (CEdit*)this->GetDlgItem(IDC_EDT_EXE);
+    pEdt->GetWindowText(this->m_strExec);
+    if(this->m_strExec.GetLength() == 0)
+    {
+        errstr.Format(TEXT("Please Specify Exec"));
+        MessageBox(this->m_hWnd,(LPCTSTR)errstr,(LPCTSTR)caption,MB_OK);
+        return ;
+    }
+
+    pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_DLL);
+    pEdt->GetWindowText(this->m_strDll);
+    if(this->m_strDll.GetLength() == 0)
+    {
+        errstr.Format(TEXT("Please Specify Dll"));
+        MessageBox(this->m_hWnd,(LPCTSTR)errstr,(LPCTSTR)caption,MB_OK);
+        return ;
+    }
+
+    pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_PARAM);
+    pEdt->GetWindowText(this->m_strParam);
+
+    pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_BUFNUM);
+    pEdt->GetWindowText(tmpstr);
+    if(tmpstr.GetLength() == 0)
+    {
+        errstr.Format(TEXT("Please Specify BufNum"));
+        MessageBox(this->m_hWnd,(LPCTSTR)errstr,(LPCTSTR)caption,MB_OK);
+        return ;
+    }
+
+    this->m_iBufNum =_tcstoul(tmpstr, NULL, 10);
+    if(this->m_iBufNum <= 0)
+    {
+        errstr.Format(TEXT("Please Specify BufNum > 0"));
+        MessageBox(this->m_hWnd,(LPCTSTR)errstr,(LPCTSTR)caption,MB_OK);
+        return ;
+    }
+
+    pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_BUFSIZE);
+    pEdt->GetWindowText(tmpstr);
+    this->m_iBufSize=_tcstoul(tmpstr, NULL, 16);
+    if(this->m_iBufSize <= 32)
+    {
+        errstr.Format(TEXT("Please Specify BufSize > 32"));
+        MessageBox(this->m_hWnd,(LPCTSTR)errstr,(LPCTSTR)caption,MB_OK);
+        return ;
+    }
+
+    CDialogEx::OnOK();
 }
 
 void CStartIoDlg::OnCancel()
 {
+    CDialogEx::OnCancel();
 }
 
