@@ -439,10 +439,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
 
 BOOL StartExeProcess(CStartIoDlg* pDlg)
 {
-    char* pExeAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL;
+    char* pExeAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL,*pCommandAnsi=NULL,*pPartDll=NULL;
     CString errstr,caption=TEXT("Error");
-    uint32_t bufnum,bufsize;
+    uint32_t bufnum=0,bufsize=0;
+	uint32_t keyboardid,mouseid;
     int ret;
+    BOOL bret;
+    uint32_t pid=0;
+    int cmdsize=0;
 #ifdef _UNICODE
     int exesize=0,dllsize=0,paramsize=0;
 #endif
@@ -452,26 +456,122 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
         delete g_pIoController;
     }
     g_pIoController = NULL;
+    if(g_hProc)
+    {
+        CloseHandle(g_hProc);
+    }
     g_hProc = NULL;
 
     /*now first we should CreateProcess*/
 #ifdef _UNICODE
+    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)pDlg->m_strExec),&pExeAnsi,&exesize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)pDlg->m_strDll),&pDllAnsi,&dllsize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
 
+    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)pDlg->m_strParam),&pParamAnsi,&paramsize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
 #else
     pExeAnsi = (char*) pDlg->m_strExec;
     pDllAnsi = (char*) pDlg->m_strDll;
     pParamAnsi = (char*) pDlg->m_strParam;
 #endif
 
+    pPartDll = strrchr(pDllAnsi,'\\');
+    if(pPartDll == NULL)
+    {
+        pPartDll = pDllAnsi;
+    }
+    else
+    {
+        pPartDll += 1;
+    }
+
+    cmdsize = strlen(pExeAnsi);
+    cmdsize += 10;
+    cmdsize += strlen(pParamAnsi);
+
+    pCommandAnsi = calloc(sizeof(*pCommandAnsi),cmdsize);
+    if(pCommandAnsi == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+	
+	_snprintf_s(pCommandAnsi,cmdsize,_TRUNCATE,"%s %s",pExeAnsi,pParamAnsi);
 
 
+    ret = LoadInsert(NULL,pCommandAnsi,pDllAnsi,pPartDll);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could not Start exec(%s) param(%s) dll(%s) Error(%d)"),
+                      pExeAnsi,pParamAnsi,pDllAnsi,ret);
+        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        goto fail;
+    }
+
+    pid = ret;
+
+    g_hProc = OpenProcess(PROCESS_ALL_ACCESS,FALSE,pid);
+    if(g_hProc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could not OpenProcess(%d) Error(%d)"),
+                      pid,ret);
+        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        goto fail;
+    }
+
+    g_pIoController = new CIOController();
+    bufnum = pDlg->m_iBufNum;
+    bufsize = pDlg->m_iBufSize;
+    g_EscapeKey = pDlg->m_iDiK;
+    bret = g_pIoController->Start(g_hProc,bufnum,bufsize);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could not Start(0x%08x) bufnum(%d) bufsize(0x%08x) Error(%d)"),
+                      g_hProc,bufnum,bufsize,ret);
+        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        goto fail;
+    }
+
+	bret = g_pIoController->AddDevice(DEVICE_TYPE_KEYBOARD,&keyboardid);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could not Add Keyboard Error(%d)"),
+                      ret);
+        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        goto fail;
+    }
+
+	bret = g_pIoController->AddDevice(DEVICE_TYPE_MOUSE,&mouseid);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could not Add Mouse Error(%d)"),
+                      ret);
+        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        goto fail;
+    }
+
+	DEBUG_INFO("Add Mouse %d KeyBoard %d\n",mouseid,keyboardid);
 
 
-
-    return TRUE;
-
-fail:
-    assert(ret > 0);
 #ifdef _UNICODE
     UnicodeToAnsi(NULL,&pExeAnsi,&exesize);
     UnicodeToAnsi(NULL,&pDllAnsi,&dllsize);
@@ -481,6 +581,44 @@ fail:
     pDllAnsi = NULL;
     pParamAnsi = NULL;
 #endif
+    if(pCommandAnsi)
+    {
+        free(pCommandAnsi);
+    }
+    pCommandAnsi = NULL;
+
+
+
+    return TRUE;
+
+fail:
+    assert(ret > 0);
+
+    if(g_hProc)
+    {
+        CloseHandle(g_hProc);
+    }
+    g_hProc = NULL;
+    if(g_pIoController)
+    {
+        delete g_pIoController;
+    }
+    g_pIoController = NULL;
+
+#ifdef _UNICODE
+    UnicodeToAnsi(NULL,&pExeAnsi,&exesize);
+    UnicodeToAnsi(NULL,&pDllAnsi,&dllsize);
+    UnicodeToAnsi(NULL,&pParamAnsi,&paramsize);
+#else
+    pExeAnsi = NULL;
+    pDllAnsi = NULL;
+    pParamAnsi = NULL;
+#endif
+    if(pCommandAnsi)
+    {
+        free(pCommandAnsi);
+    }
+    pCommandAnsi = NULL;
     SetLastError(ret);
     return FALSE;
 }
