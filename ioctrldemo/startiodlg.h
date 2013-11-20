@@ -13,12 +13,24 @@ public:
     CString m_strExec;
     CString m_strParam;
     CString m_strDll;
-    CString m_strDump;
     CString m_strBufNum;
-    CString m_strBlockSize;
+    CString m_strBufSize;
 
     // 对话框数据
-    enum { IDD = IDD_PCMCTRLDEMO_DIALOG };
+    enum { IDD = IDD_START_DIALOG };
+protected:
+    HICON m_hIcon;
+
+    // 生成的消息映射函数
+    virtual BOOL OnInitDialog();
+    afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+    afx_msg void OnPaint();
+    afx_msg HCURSOR OnQueryDragIcon();
+    DECLARE_MESSAGE_MAP()
+public:
+    afx_msg void OnBtnExe();
+    afx_msg void OnBtnDll();
+	afx_msg void OnOK();
 };
 
 
