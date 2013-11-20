@@ -191,7 +191,7 @@ typedef enum IO_MOUSE_EVENT
 typedef struct 
 {
 	int devtype;
-	ptr_t devid;
+	int devid;
 	union
 	{
 		struct
