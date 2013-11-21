@@ -479,7 +479,7 @@ fail:
         }
         else if(this->m_StateSize > 0)
         {
-            CopyMemory(pData,this->m_StateBuf,cbData);
+            CopyMemory(pData,this->m_StateBuf,this->m_StateSize);
         }
         else
         {
@@ -495,8 +495,6 @@ fail:
             pEventList = HandledEventList[0];
             HandledEventList.erase(HandledEventList.begin());
             IoFreeEventList(pEventList);
-            /*we should event to handle this*/
-            assert(ret >= 0);
             pEventList = NULL;
         }
 
@@ -584,7 +582,6 @@ public:
         DIRECT_INPUT_DEVICE_8A_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_DEVICE_8A_OUT();
-        DINPUT_DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInputDevice8AHook(this->m_ptr);
@@ -1316,7 +1313,7 @@ fail:
         }
         else if(this->m_StateSize > 0)
         {
-            CopyMemory(pData,this->m_StateBuf,cbData);
+            CopyMemory(pData,this->m_StateBuf,this->m_StateSize);
         }
         else
         {
@@ -1332,8 +1329,6 @@ fail:
             pEventList = HandledEventList[0];
             HandledEventList.erase(HandledEventList.begin());
             IoFreeEventList(pEventList);
-            /*we should event to handle this*/
-            assert(ret >= 0);
             pEventList = NULL;
         }
 
@@ -1917,6 +1912,7 @@ ULONG UnRegisterDirectInput8AHook(IDirectInput8A* ptr)
     }
     LeaveCriticalSection(&st_DI8ACS);
 
+    uret = 1;
     if(findidx >= 0)
     {
         uret = ptr->Release();
@@ -2226,7 +2222,6 @@ public:
         DIRECT_INPUT_8W_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_8W_OUT();
-        DINPUT_DEBUG_INFO("uret = %d\n",uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInput8WHook(this->m_ptr);
@@ -2417,7 +2412,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
     LPDEVICEEVENT pDevEvent=NULL;
     int findidx=-1;
     unsigned int i;
-	int cnt=0;
+    int cnt=0;
 
     pDevEvent = (LPDEVICEEVENT)(pEvent->m_BaseAddr+pEvent->m_Offset);
     /*now make sure*/
@@ -2425,7 +2420,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
 
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
-    	cnt = 0;
+        cnt = 0;
         for(i=0; i<st_Key8WHookVecs.size(); i++)
         {
             if(cnt == pDevEvent->devid)
@@ -2436,7 +2431,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                 ret = 1;
                 break;
             }
-			cnt +=1;
+            cnt +=1;
         }
 
         if(findidx < 0)
@@ -2451,13 +2446,13 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                     ret = 1;
                     break;
                 }
-				cnt += 1;
+                cnt += 1;
             }
         }
     }
     else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
     {
-    	cnt = 0;
+        cnt = 0;
         for(i=0; i<st_Mouse8WHookVecs.size() ; i++)
         {
             if(cnt  == pDevEvent->devid)
@@ -2468,7 +2463,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                 ret = 1;
                 break;
             }
-			cnt += 1;
+            cnt += 1;
         }
 
         if(findidx < 0)
@@ -2483,7 +2478,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                     ret = 1;
                     break;
                 }
-				cnt += 1;
+                cnt += 1;
             }
         }
     }
@@ -2508,8 +2503,8 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     if(st_pDinputStatus == NULL)
     {
         ERROR_INFO("FreeEventList<0x%p> no DinputStatus\n",pEventList);
-		/*this may not be right ,but it notifies the free event ,so it will ok to get the event ok*/
-		SetEvent(pEventList->m_hFillEvt);
+        /*this may not be right ,but it notifies the free event ,so it will ok to get the event ok*/
+        SetEvent(pEventList->m_hFillEvt);
         return;
     }
 
@@ -2530,8 +2525,8 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     else
     {
         st_pDinputStatus->m_pFreeList->push_back(pEventList);
-		/*to notify the free list*/
-		ret = 1;
+        /*to notify the free list*/
+        ret = 1;
     }
     LeaveCriticalSection(&(st_pDinputStatus->m_ListCS));
     if(ret > 0)
@@ -2551,7 +2546,7 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
     if(pStatus->m_Started)
     {
         EnterCriticalSection(&(pStatus->m_ListCS));
-    	findidx = -1;
+        findidx = -1;
         for(i=0; i<pStatus->m_pFreeList->size() ; i++)
         {
             if(pStatus->m_pFreeList->At[i]->m_Idx == idx)
@@ -2681,6 +2676,7 @@ void __FreeDeviceEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 {
     int ret;
     unsigned int i;
+    int tries;
     if(pStatus == NULL)
     {
         return ;
@@ -2719,24 +2715,54 @@ void __FreeDeviceEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     }
     LeaveCriticalSection(&(st_Dinput8DeviceCS));
 
+
     return ;
 }
 
 void __ClearEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 {
+    int tries = 0;
+    int fullfreelist=0;
     if(pStatus == NULL)
     {
         return ;
     }
-    if(pStatus->m_pInputList)
-    {
-        pStatus->m_pInputList->clear();
-        delete pStatus->m_pInputList;
-    }
-    pStatus->m_pInputList = NULL;
 
     if(pStatus->m_pFreeList)
     {
+        if(pStatus->m_ListCSInited)
+        {
+            /*now we should test if the free list is full ,if it is some free list is not in the free list,so we should wait for it*/
+            tries = 0;
+            while(1)
+            {
+                fullfreelist = 0;
+                EnterCriticalSection(&(pStatus->m_ListCS));
+                if(pStatus->m_pFreeList->size() == pStatus->m_Bufnumm)
+                {
+                    fullfreelist = 1;
+                }
+                LeaveCriticalSection(&(pStatus->m_ListCS));
+
+                if(fullfreelist > 0)
+                {
+                    /*ok ,we have collect all free list ,so we can clear them*/
+                    break;
+                }
+
+                /*now ,so we should wait for a while*/
+                if(tries > 5)
+                {
+                    ERROR_INFO("Could not Get Free List At times (%d)\n",tries);
+                    abort();
+                }
+
+                tries ++;
+                SchedOut();
+                ERROR_INFO("Wait Free List At Time(%d)\n",tries);
+            }
+        }
+
         pStatus->m_pFreeList->clear();
         delete pStatus->m_pFreeList;
     }
@@ -2817,6 +2843,8 @@ void __FreeDetourDinputStatus(PDETOUR_DIRECTINPUT_STATUS_t *ppStatus)
         return;
     }
     pStatus = *ppStatus;
+	/*make sure this is stopped ,so we can do things safe*/
+    pStatus->m_Started = 0;
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
 
