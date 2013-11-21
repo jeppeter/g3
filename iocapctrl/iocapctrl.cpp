@@ -387,6 +387,29 @@ fail:
 
 void CIOController::__ReleaseCapEvents()
 {
+    int fullevents;
+    int tries =0;
+    assert(this->m_Started == 0);
+
+    while(this->m_BufferNum)
+    {
+        fullevents = 0;
+        EnterCriticalSection(&(this->m_EvtCS));
+        if((this->m_InputEvts.size() + this->m_FreeEvts.size())==this->m_BufferNum)
+        {
+            fullevents = 1;
+        }
+        LeaveCriticalSection(&(this->m_EvtCS));
+
+        if(fullevents > 0)
+        {
+            break;
+        }
+
+        SchedOut();
+        tries ++;
+        ERROR_INFO("Wait %d FreeEvents tries(%d)\n",this->m_BufferNum,tries);
+    }
     this->m_InputEvts.clear();
     this->m_FreeEvts.clear();
     if(this->m_pIoCapEvents)
@@ -652,6 +675,8 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
         SetLastError(ret);
         return -ret;
     }
+
+    this->m_Started = 1;
 
     SetLastError(0);
     return 0;
