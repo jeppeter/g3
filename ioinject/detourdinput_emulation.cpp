@@ -3062,9 +3062,15 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
     int ret;
     PDETOUR_DIRECTINPUT_STATUS_t pStatus=NULL;
 
-    if(pControl == NULL)
+    if(pControl == NULL || pControl->memsharenum == 0 ||
+		pControl->memsharesectsize == 0 ||
+		pControl->memsharesize != (pControl->memsharenum * pControl->memsharesectsize) ||
+		strlen(pControl->memsharename) == 0 ||
+		strlen(pControl->inputevtbasename) == 0 ||
+		strlen(pControl->freeevtbasename)== 0)
     {
         ret = ERROR_INVALID_PARAMETER;
+		ERROR_INFO("Invalid Parameter\n");
         SetLastError(ret);
         return -ret;
     }
@@ -3072,6 +3078,7 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
     if(st_pDinputStatus)
     {
         ret = ERROR_ALREADY_EXISTS;
+		ERROR_INFO("Already Exist Start\n");
         SetLastError(ret);
         return -ret;
     }
@@ -3082,6 +3089,9 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
         ret=  LAST_ERROR_CODE();
         goto fail;
     }
+
+	/*we put here for it will let the start ok*/
+	pStatus->m_Started = 1;
 
     ret = __MapMemBase(pStatus,pControl->memsharename,pControl->memsharesectsize,pControl->memsharenum);
     if(ret < 0)
