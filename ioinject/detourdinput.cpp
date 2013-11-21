@@ -132,6 +132,15 @@ void DetourDirectInputFini(void)
     {
         /*nothing to done*/
     }
+
+#ifdef EMULATION_MODE
+    if(st_hDetourDinputSema)
+    {
+        CloseHandle(st_hDetourDinputSema);
+    }
+    st_hDetourDinputSema = NULL;
+#endif
+
     st_IOInjectInit = 0;
     return ;
 }
@@ -167,6 +176,13 @@ BOOL DetourDirectInputInit(void)
 
 #ifdef  EMULATION_MODE
     InitializeCriticalSection(&st_Dinput8DeviceCS);
+    st_hDetourDinputSema = CreateSemaphore(NULL,1,10,NULL);
+    if(st_hDetourDinputSema == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Create Semaphore Error(%d)\n",ret);
+        goto fail;
+    }
 #endif
     InitializeCriticalSection(&st_DI8ACS);
     InitializeCriticalSection(&st_DI8WCS);
@@ -186,6 +202,13 @@ BOOL DetourDirectInputInit(void)
     return TRUE;
 
 fail:
+#ifdef EMULATION_MODE
+    if(st_hDetourDinputSema)
+    {
+        CloseHandle(st_hDetourDinputSema);
+    }
+    st_hDetourDinputSema = NULL;
+#endif
     SetLastError(ret);
     return FALSE;
 

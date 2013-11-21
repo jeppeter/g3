@@ -743,8 +743,6 @@ int StartThreadControl(thread_control_t* pThrControl,ThreadFunc_t pStartFunc,LPV
         goto fail;
     }
 
-
-
     SetLastError(0);
     return 0;
 fail:
@@ -770,6 +768,8 @@ int ResumeThreadControl(thread_control_t * pThrControl)
     if(dret == (DWORD)-1)
     {
         ret = LAST_ERROR_CODE();
+		/*we make sure this will exited ,when it */
+		pThrControl->exited = 1;
         ERROR_INFO("Thread[0x%p] resume Error(%d)\n",pThrControl->thread,ret);
         SetLastError(ret);
         return -ret;

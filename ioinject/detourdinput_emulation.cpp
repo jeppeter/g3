@@ -2551,7 +2551,7 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
         {
             if(pStatus->m_pFreeList->At[i]->m_Idx == idx)
             {
-                pEvent = pStatus->m_pFreeList[i];
+                pEvent = pStatus->m_pFreeList->At(i);
                 findidx = i;
                 ret = 1;
                 break;
@@ -2576,9 +2576,10 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
     {
         /*it is started not ,so we should make it just handled it*/
         EnterCriticalSection(&(pStatus->m_ListCS));
+        findidx = -1;
         for(i=0; i<pStatus->m_pFreeList->size() ; i++)
         {
-            if(pStatus->m_pFreeList[i]->m_Idx == idx)
+            if(pStatus->m_pFreeList->At(i)->m_Idx == idx)
             {
                 pEvent = pStatus->m_pFreeList[i];
                 findidx = i;
@@ -2597,8 +2598,9 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
     return ret;
 }
 
-DWORD WINAPI DetourDirectInputThreadImpl(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+DWORD WINAPI DetourDirectInputThreadImpl(LPVOID pParam)
 {
+    PDETOUR_DIRECTINPUT_STATUS_t pStatus = (PDETOUR_DIRECTINPUT_STATUS_t)pParam;
     HANDLE *pWaitHandles=NULL;
     unsigned int waitnum=0;
     DWORD dret,idx;
@@ -2606,7 +2608,7 @@ DWORD WINAPI DetourDirectInputThreadImpl(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     int tries;
 
     assert(pStatus->m_Bufnumm > 0);
-    /*for add into num*/
+    /*for add into num exit handle to wait*/
     waitnum = (pStatus->m_Bufnumm + 1);
     pWaitHandles = calloc(sizeof(*pWaitHandles),waitnum);
     if(pWaitHandles == NULL)
@@ -2620,7 +2622,7 @@ DWORD WINAPI DetourDirectInputThreadImpl(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 
     while(pStatus->m_ThreadControl.running)
     {
-        dret = WaitForMultipleObjectsEx(waitnum,pWaitHandle,FALSE,INFINITE,TRUE);
+        dret = WaitForMultipleObjectsEx(waitnum,pWaitHandles,FALSE,INFINITE,TRUE);
         if((dret >= WAIT_OBJECT_0) && (dret <= (WAIT_OBJECT_0+waitnum - 2)))
         {
             idx = dret - WAIT_OBJECT_0;
@@ -2641,7 +2643,7 @@ DWORD WINAPI DetourDirectInputThreadImpl(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
                 }
 
                 SchedOut();
-                ERROR_INFO("Change[%d] wait\n",idx);
+                ERROR_INFO("Change[%d] wait[%d]\n",idx,tries);
             }
 
         }
@@ -2787,6 +2789,12 @@ void __ClearEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 void __FreeDetourEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 {
     unsigned int i;
+
+    if(pStatus == NULL)
+    {
+        return ;
+    }
+
     if(pStatus->m_pFreeEvts)
     {
         for(i=0; i<pStatus->m_Bufnumm; i++)
@@ -2995,12 +3003,7 @@ int __AllocateEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
         ret = LAST_ERROR_CODE();
         goto fail;
     }
-    pStatus->m_pInputList = new std::vector<EVENT_LIST_t*>();
-    if(pStatus->m_pInputList == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        goto fail;
-    }
+
     /*now put all the event list into the free list*/
     for(i=0; i<pStatus->m_Bufnumm; i++)
     {
@@ -3063,14 +3066,14 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
     PDETOUR_DIRECTINPUT_STATUS_t pStatus=NULL;
 
     if(pControl == NULL || pControl->memsharenum == 0 ||
-		pControl->memsharesectsize == 0 ||
-		pControl->memsharesize != (pControl->memsharenum * pControl->memsharesectsize) ||
-		strlen(pControl->memsharename) == 0 ||
-		strlen(pControl->inputevtbasename) == 0 ||
-		strlen(pControl->freeevtbasename)== 0)
+            pControl->memsharesectsize == 0 ||
+            pControl->memsharesize != (pControl->memsharenum * pControl->memsharesectsize) ||
+            strlen(pControl->memsharename) == 0 ||
+            strlen(pControl->inputevtbasename) == 0 ||
+            strlen(pControl->freeevtbasename)== 0)
     {
         ret = ERROR_INVALID_PARAMETER;
-		ERROR_INFO("Invalid Parameter\n");
+        ERROR_INFO("Invalid Parameter\n");
         SetLastError(ret);
         return -ret;
     }
@@ -3078,7 +3081,7 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
     if(st_pDinputStatus)
     {
         ret = ERROR_ALREADY_EXISTS;
-		ERROR_INFO("Already Exist Start\n");
+        ERROR_INFO("Already Exist Start\n");
         SetLastError(ret);
         return -ret;
     }
@@ -3090,8 +3093,8 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-	/*we put here for it will let the start ok*/
-	pStatus->m_Started = 1;
+    /*we put here for it will let the start ok*/
+    pStatus->m_Started = 1;
 
     ret = __MapMemBase(pStatus,pControl->memsharename,pControl->memsharesectsize,pControl->memsharenum);
     if(ret < 0)
@@ -3156,9 +3159,10 @@ int __DetourDirectInputAddDevice(PIO_CAP_CONTROL_t pControl)
     devtype = pControl->devtype;
     devid = pControl->devid;
 
-    EnterCriticalSection();
+    EnterCriticalSection(&st_Dinput8DeviceCS);
     if(devtype == DEVICE_TYPE_KEYBOARD)
     {
+        count = 0;
         for(i=0; i<st_Key8WVecs.size() ; i++)
         {
             if(count == devid)
@@ -3181,6 +3185,7 @@ int __DetourDirectInputAddDevice(PIO_CAP_CONTROL_t pControl)
     }
     else if(devtype == DEVICE_TYPE_MOUSE)
     {
+        count = 0;
         for(i=0; i<st_Mouse8WVecs.size() ; i++)
         {
             if(count == devid)
@@ -3207,7 +3212,7 @@ int __DetourDirectInputAddDevice(PIO_CAP_CONTROL_t pControl)
         ERROR_INFO("Invalid devtype(%d)\n",devtype);
     }
 unlock:
-    LeaveCriticalSection();
+    LeaveCriticalSection(&st_Dinput8DeviceCS);
 
     if(ret > 0)
     {
@@ -3234,9 +3239,10 @@ int __DetourDirectInputRemoveDevice(PIO_CAP_CONTROL_t pControl)
     devtype = pControl->devtype;
     devid = pControl->devid;
 
-    EnterCriticalSection();
+    EnterCriticalSection(&st_Dinput8DeviceCS);
     if(devtype == DEVICE_TYPE_KEYBOARD)
     {
+        count = 0;
         for(i=0; i<st_Key8WVecs.size() ; i++)
         {
             if(count == devid)
@@ -3259,6 +3265,7 @@ int __DetourDirectInputRemoveDevice(PIO_CAP_CONTROL_t pControl)
     }
     else if(devtype == DEVICE_TYPE_MOUSE)
     {
+        count = 0;
         for(i=0; i<st_Mouse8WVecs.size() ; i++)
         {
             if(count == devid)
@@ -3285,7 +3292,7 @@ int __DetourDirectInputRemoveDevice(PIO_CAP_CONTROL_t pControl)
         ERROR_INFO("Invalid devtype(%d)\n",devtype);
     }
 unlock:
-    LeaveCriticalSection();
+    LeaveCriticalSection(&st_Dinput8DeviceCS);
 
     if(ret > 0)
     {
@@ -3318,6 +3325,7 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
     if(dret != WAIT_OBJECT_0)
     {
         ret = LAST_ERROR_CODE();
+        ERROR_INFO("WaitFor InputSema Return(%d) Error(%d)\n",dret,ret);
         SetLastError(ret);
         return -ret;
     }
