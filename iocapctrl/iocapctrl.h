@@ -67,6 +67,7 @@ private:
 	PIO_CAP_EVENTS_t m_pIoCapEvents;
 	std::vector<PIO_CAP_EVENTS_t> m_InputEvts;
 	std::vector<PIO_CAP_EVENTS_t> m_FreeEvts;
+	int m_InsertEvts;
 };
 
 

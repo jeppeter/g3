@@ -27,6 +27,7 @@ CIOController::CIOController()
     m_pIoCapEvents = NULL;
     assert(m_InputEvts.size() == 0);
     assert(m_FreeEvts.size() == 0);
+	m_InsertEvts = 0;
 }
 
 
@@ -391,11 +392,12 @@ void CIOController::__ReleaseCapEvents()
     int tries =0;
     assert(this->m_Started == 0);
 
-    while(this->m_BufferNum)
+	/*we must make sure this is the iocap events ok*/
+    while(this->m_InsertEvts)
     {
         fullevents = 0;
         EnterCriticalSection(&(this->m_EvtCS));
-        if((this->m_InputEvts.size() + this->m_FreeEvts.size())==this->m_BufferNum)
+        if((this->m_InputEvts.size() + this->m_FreeEvts.size())==this->m_BufferNum )
         {
             fullevents = 1;
         }
@@ -412,6 +414,7 @@ void CIOController::__ReleaseCapEvents()
     }
     this->m_InputEvts.clear();
     this->m_FreeEvts.clear();
+	this->m_InsertEvts = 0;
     if(this->m_pIoCapEvents)
     {
         free(this->m_pIoCapEvents);
@@ -449,6 +452,8 @@ int CIOController::__AllocateCapEvents()
         this->m_pIoCapEvents[i].pEvent = (LPDEVICEEVENT)(this->m_pMemShareBase + this->m_BufferSectSize * i);
         this->m_pFreeTotalEvts.push_back(&(this->m_pIoCapEvents[i]));
     }
+
+	this->m_InsertEvts = 1;
 
     SetLastError(0);
     return 0;
