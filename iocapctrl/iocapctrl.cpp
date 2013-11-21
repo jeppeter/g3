@@ -212,7 +212,7 @@ int CIOController::__AllocateAllEvents()
         return -ret;
     }
 
-	pid = this->m_Pid;
+    pid = this->m_Pid;
 
     _snprintf_s(curbasename,sizeof(curbasename),_TRUNCATE,"%s%d",IO_FREE_EVT_BASENAME,pid);
     this->m_pFreeTotalEvts = calloc(sizeof(this->m_pFreeTotalEvts[0]),this->m_BufferNum);
@@ -604,7 +604,7 @@ fail:
 int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
 {
     int ret;
-    if(hProc == NULL || bufnum == 0 || bufsize == 0)
+    if(hProc == NULL || bufnum == 0 || bufsize < sizeof(DEVICEEVENT))
     {
         ret = ERROR_INVALID_PARAMETER;
         SetLastError(ret);
@@ -621,7 +621,7 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
     {
         ret=  LAST_ERROR_CODE();
         ERROR_INFO("Get <0x%08x> ProcessId Error(%d)\n",this->m_hProc,ret);
-		this->Stop();
+        this->Stop();
         return -ret;
     }
 
@@ -779,6 +779,14 @@ fail:
 BOOL CIOController::AddDevice(uint32_t iType,uint32_t * pIId)
 {
     int ret;
+    if(this->m_hProc == NULL ||
+            this->m_Pid == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+
     ret = this->__CallAddDeviceIoCapControl(iType,pIId);
     if(ret < 0)
     {
@@ -790,6 +798,13 @@ BOOL CIOController::AddDevice(uint32_t iType,uint32_t * pIId)
 BOOL CIOController::RemoveDevice(uint32_t iType,uint32_t iId)
 {
     int ret;
+    if(this->m_hProc == NULL ||
+            this->m_Pid == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
     ret = this->__CallRemoveDeviceIoCapControl(iType,iId);
     if(ret < 0)
     {
