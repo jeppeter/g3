@@ -8,8 +8,9 @@
 CIOController::CIOController()
 {
     m_hProc = NULL;
-    ZeroMemory(&m_BackGroundThread,sizeof(m_BackGroundThread));
+    m_Pid = 0;
     ZeroMemory(m_TypeIds,sizeof(m_TypeIds));
+    ZeroMemory(&m_BackGroundThread,sizeof(m_BackGroundThread));
     m_BackGroundThread.exited = 1;
     InitializeCriticalSection(&(m_EvtCS));
     m_Started = 0;
@@ -19,10 +20,10 @@ CIOController::CIOController()
     m_BufferTotalSize = 0;
     m_pMemShareBase = NULL;
     m_hMapFile = NULL;
-    m_pFreeTotalEvts = NULL;
     ZeroMemory(m_FreeEvtBaseName,sizeof(m_FreeEvtBaseName));
-    m_pInputTotalEvts = NULL;
+    m_pFreeTotalEvts = NULL;
     ZeroMemory(m_InputEvtBaseName,sizeof(m_InputEvtBaseName));
+    m_pInputTotalEvts = NULL;
     m_pIoCapEvents = NULL;
     assert(m_InputEvts.size() == 0);
     assert(m_FreeEvts.size() == 0);
@@ -73,34 +74,32 @@ int CIOController::__ChangeInputToFreeThread(DWORD idx)
 
 DWORD CIOController::__ThreadImpl()
 {
-    HANDLE* pWaitHandle=NULL;
+    HANDLE* pWaitHandles=NULL;
     DWORD dret,idx;
     int waitnum = 0;
     int tries=0,ret;
 
     /*including the exit notify event*/
-    waitnum = this->m_TotalEventNum + 1;
-    pWaitHandle = calloc(sizeof(*pWaitHandle),waitnum);
-    if(pWaitHandle == NULL)
+    assert(this->m_BufferNum > 0);
+    waitnum = this->m_BufferNum + 1;
+    pWaitHandles = calloc(sizeof(*pWaitHandles),waitnum);
+    if(pWaitHandles == NULL)
     {
         dret = LAST_ERROR_CODE();
         goto out;
     }
 
     /*now copy for the wait handler*/
-    if(this->m_TotalEventNum > 0)
-    {
-        CopyMemory(pWaitHandle,this->m_pFreeTotalEvts,sizeof(*pWaitHandle)*this->m_BufferNum);
-    }
+    CopyMemory(pWaitHandles,this->m_pFreeTotalEvts,sizeof(*pWaitHandles)*this->m_BufferNum);
 
     /*now to set the last one*/
     assert(this->m_BackGroundThread.exitevt);
-    pWaitHandle[waitnum - 1] = this->m_BackGroundThread.exitevt;
+    pWaitHandles[waitnum - 1] = this->m_BackGroundThread.exitevt;
 
 
     while(this->m_BackGroundThread.running)
     {
-        dret = WaitForMultipleObjectsEx(waitnum,pWaitHandle,FALSE,INFINITE,TRUE);
+        dret = WaitForMultipleObjectsEx(waitnum,pWaitHandles,FALSE,INFINITE,TRUE);
         if(dret >= WAIT_OBJECT_0 && dret <= (WAIT_OBJECT_0 + waitnum -2))
         {
             idx = dret - WAIT_OBJECT_0;
@@ -119,7 +118,7 @@ DWORD CIOController::__ThreadImpl()
                     dret = ERROR_TOO_MANY_MUXWAITERS;
                     goto out;
                 }
-                ERROR_INFO("Change <%d> not commit\n",idx);
+                ERROR_INFO("Change <%d>[%d] not commit\n",idx,tries);
                 SchedOut();
             }
         }
@@ -135,12 +134,14 @@ DWORD CIOController::__ThreadImpl()
         }
     }
 
+    dret = 0;
+
 out:
-    if(pWaitHandle)
+    if(pWaitHandles)
     {
-        free(pWaitHandle);
+        free(pWaitHandles);
     }
-    pWaitHandle = NULL;
+    pWaitHandles = NULL;
     SetLastError(dret);
     this->m_BackGroundThread.exited = 1;
     return dret;
@@ -347,15 +348,14 @@ int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
         goto fail;
     }
 
-    if(retval < 0)
+    if(retval != 0)
     {
-        ret = -retval;
+        ret = retval > 0  ? retval : -retval;
         ERROR_INFO("Call ioinject.dll:DetourDirectInputControl Return value(%d)\n",retval);
         goto fail;
     }
 
     /*all is ok*/
-
 
     if(pRemoteControl)
     {
@@ -367,6 +367,7 @@ int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
         }
     }
     pRemoteControl = NULL;
+    SetLastError(0);
     return 0;
 fail:
     if(pRemoteControl)
