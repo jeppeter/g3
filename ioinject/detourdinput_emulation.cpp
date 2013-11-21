@@ -184,9 +184,6 @@ static int st_CodeMapDik[256] =
 
 #define  MAX_STATE_BUFFER_SIZE   256
 
-#define  LEFTBUTTON_IDX      0
-#define  RIGHTBUTTON_IDX     1
-#define  MIDBUTTON_IDX       2
 #define  SET_BIT(c)  ((c)=0x80)
 #define  CLEAR_BIT(c)  ((c)=0x00)
 

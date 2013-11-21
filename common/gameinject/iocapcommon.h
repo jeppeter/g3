@@ -4,6 +4,11 @@
 
 #include <injectcommon.h>
 
+#define  LEFTBUTTON_IDX      0
+#define  RIGHTBUTTON_IDX     1
+#define  MIDBUTTON_IDX       2
+
+
 typedef enum IO_DEVICE_TYPE
 {
     DEVICE_TYPE_KEYBOARD = 0,
