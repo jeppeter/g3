@@ -22,8 +22,8 @@ static std::vector<CDirectInputDevice8WHook*> st_NotSet8WHookVecs;
 
 static CRITICAL_SECTION st_Dinput8DeviceCS;
 
-#define IS_IID_MOUSE(riid)  (( (riid)	== GUID_SysMouse ||(riid) == GUID_SysMouseEm ||(riid) == GUID_SysMouseEm2 ))
-#define IS_IID_KEYBOARD(riid) (((riid) == GUID_SysKeyboard ||(riid) == GUID_SysKeyboardEm ||(riid) == GUID_SysKeyboardEm2))
+#define IS_IID_MOUSE(riid)  ( (riid)	== GUID_SysMouse ||(riid) == GUID_SysMouseEm ||(riid) == GUID_SysMouseEm2 )
+#define IS_IID_KEYBOARD(riid) ((riid) == GUID_SysKeyboard ||(riid) == GUID_SysKeyboardEm ||(riid) == GUID_SysKeyboardEm2)
 
 #define EQUAL_DEVICE_8A_VECS() \
 do\
@@ -85,6 +85,7 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
         }
         else
         {
+        	findidx = -1;
             for(i=0; i<st_NotSet8AVecs.size(); i++)
             {
                 if(st_NotSet8AVecs[i] == ptr)
