@@ -2521,6 +2521,8 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     else
     {
         st_pDinputStatus->m_pFreeList->push_back(pEventList);
+		/*to notify the free list*/
+		ret = 1;
     }
     LeaveCriticalSection(&(st_pDinputStatus->m_ListCS));
     if(ret > 0)
