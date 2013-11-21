@@ -2417,6 +2417,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
     LPDEVICEEVENT pDevEvent=NULL;
     int findidx=-1;
     unsigned int i;
+	int cnt=0;
 
     pDevEvent = (LPDEVICEEVENT)(pEvent->m_BaseAddr+pEvent->m_Offset);
     /*now make sure*/
@@ -2424,9 +2425,10 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
 
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
+    	cnt = 0;
         for(i=0; i<st_Key8WHookVecs.size(); i++)
         {
-            if(st_Key8WVecs[i] == pDevEvent->devid)
+            if(cnt == pDevEvent->devid)
             {
                 findidx = i;
                 res = st_Key8WHookVecs[i]->PutEventList(pEvent);
@@ -2434,13 +2436,14 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                 ret = 1;
                 break;
             }
+			cnt +=1;
         }
 
         if(findidx < 0)
         {
             for(i=0; i<st_Key8AHookVecs.size(); i++)
             {
-                if(st_Key8AVecs[i] == pDevEvent->devid)
+                if(cnt == pDevEvent->devid)
                 {
                     findidx = i;
                     res = st_Key8AHookVecs[i]->PutEventList(pEvent);
@@ -2448,14 +2451,16 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                     ret = 1;
                     break;
                 }
+				cnt += 1;
             }
         }
     }
     else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
     {
+    	cnt = 0;
         for(i=0; i<st_Mouse8WHookVecs.size() ; i++)
         {
-            if(st_Mouse8WVecs[i] == pDevEvent->devid)
+            if(cnt  == pDevEvent->devid)
             {
                 findidx = i;
                 res = st_Mouse8WHookVecs[i]->PutEventList(pEvent);
@@ -2463,13 +2468,14 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                 ret = 1;
                 break;
             }
+			cnt += 1;
         }
 
         if(findidx < 0)
         {
             for(i=0; i<st_Mouse8AHookVecs.size(); i++)
             {
-                if(st_Mouse8AVes[i] == pDevEvent->devid)
+                if(cnt == pDevEvent->devid)
                 {
                     findidx = i;
                     res = st_Mouse8AHookVecs[i]->PutEventList(pEvent);
@@ -2477,6 +2483,7 @@ int IoInjectInput(PEVENT_LIST_t pEvent)
                     ret = 1;
                     break;
                 }
+				cnt += 1;
             }
         }
     }
@@ -2501,6 +2508,8 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     if(st_pDinputStatus == NULL)
     {
         ERROR_INFO("FreeEventList<0x%p> no DinputStatus\n",pEventList);
+		/*this may not be right ,but it notifies the free event ,so it will ok to get the event ok*/
+		SetEvent(pEventList->m_hFillEvt);
         return;
     }
 
@@ -2542,9 +2551,10 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
     if(pStatus->m_Started)
     {
         EnterCriticalSection(&(pStatus->m_ListCS));
+    	findidx = -1;
         for(i=0; i<pStatus->m_pFreeList->size() ; i++)
         {
-            if(pStatus->m_pFreeList[i]->m_Idx == idx)
+            if(pStatus->m_pFreeList->At[i]->m_Idx == idx)
             {
                 pEvent = pStatus->m_pFreeList[i];
                 findidx = i;
@@ -2557,15 +2567,12 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
         if(findidx >= 0)
         {
             pStatus->m_pFreeList->erase(pStatus->m_pFreeList->begin() + findidx);
-            pStatus->m_pInputList->push_back(pEvent);
-
             res = IoInjectInput(pEvent);
             if(res <= 0)
             {
                 /*now it is not the right time to insert into the device ,so we input it back ,and it will give */
+                pStatus->m_pFreeList->push_back(pEvent);
                 SetEvent(pEvent->m_hFillEvt);
-                pStatus->m_pInputList->pop_back();
-                pStatus->m_pFreeList->push(pEvent);
             }
         }
         LeaveCriticalSection(&(pStatus->m_ListCS));
