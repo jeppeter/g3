@@ -27,7 +27,7 @@ CIOController::CIOController()
     m_pIoCapEvents = NULL;
     assert(m_InputEvts.size() == 0);
     assert(m_FreeEvts.size() == 0);
-	m_InsertEvts = 0;
+    m_InsertEvts = 0;
 }
 
 
@@ -211,16 +211,8 @@ int CIOController::__AllocateAllEvents()
         SetLastError(ret);
         return -ret;
     }
-    SetLastError(0);
-    pid = GetProcessId(this->m_hProc);
-    if(GetLastError() != 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("can not get <0x%08x> pid Error(%d)\n",this->m_hProc,ret);
-        this->__ReleaseAllEvents();
-        SetLastError(ret);
-        return -ret;
-    }
+
+	pid = this->m_Pid;
 
     _snprintf_s(curbasename,sizeof(curbasename),_TRUNCATE,"%s%d",IO_FREE_EVT_BASENAME,pid);
     this->m_pFreeTotalEvts = calloc(sizeof(this->m_pFreeTotalEvts[0]),this->m_BufferNum);
@@ -383,12 +375,12 @@ void CIOController::__ReleaseCapEvents()
     int tries =0;
     assert(this->m_Started == 0);
 
-	/*we must make sure this is the iocap events ok*/
+    /*we must make sure this is the iocap events ok*/
     while(this->m_InsertEvts)
     {
         fullevents = 0;
         EnterCriticalSection(&(this->m_EvtCS));
-        if((this->m_InputEvts.size() + this->m_FreeEvts.size())==this->m_BufferNum )
+        if((this->m_InputEvts.size() + this->m_FreeEvts.size())==this->m_BufferNum)
         {
             fullevents = 1;
         }
@@ -405,7 +397,7 @@ void CIOController::__ReleaseCapEvents()
     }
     this->m_InputEvts.clear();
     this->m_FreeEvts.clear();
-	this->m_InsertEvts = 0;
+    this->m_InsertEvts = 0;
     if(this->m_pIoCapEvents)
     {
         free(this->m_pIoCapEvents);
@@ -444,7 +436,7 @@ int CIOController::__AllocateCapEvents()
         this->m_pFreeTotalEvts.push_back(&(this->m_pIoCapEvents[i]));
     }
 
-	this->m_InsertEvts = 1;
+    this->m_InsertEvts = 1;
 
     SetLastError(0);
     return 0;
@@ -455,9 +447,6 @@ void CIOController::__ReleaseMapMem()
     UnMapFileBuffer(&(this->m_pMemShareBase));
     CloseMapFileHandle(&(this->m_hMapFile));
     ZeroMemory(this->m_MemShareName,sizeof(this->m_MemShareName));
-	this->m_BufferNum = 0;
-	this->m_BufferSectSize = 0;
-	this->m_BufferTotalSize = 0;
     return;
 }
 
@@ -556,6 +545,12 @@ VOID CIOController::Stop()
 
     this->__ReleaseMapMem();
     ZeroMemory(m_TypeIds,sizeof(m_TypeIds));
+    this->m_BufferNum = 0;
+    this->m_BufferSectSize = 0;
+    this->m_BufferTotalSize = 0;
+
+    this->m_hProc = NULL;
+    this->m_Pid = 0;
 
     return ;
 }
@@ -626,6 +621,7 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
     {
         ret=  LAST_ERROR_CODE();
         ERROR_INFO("Get <0x%08x> ProcessId Error(%d)\n",this->m_hProc,ret);
+		this->Stop();
         return -ret;
     }
 
