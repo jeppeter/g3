@@ -9,7 +9,7 @@ DIMOUSESTATE            g_diMouseState      = {0};
 DIMOUSESTATE            g_LastdiMouseState  = {0};
 LPDIRECTINPUTDEVICE8    g_pKeyboardDevice   = NULL;
 int                     g_KeyboardAcquire   = 0;
-char                    g_pKeyStateBuffer[256] = {0};
+char                    g_KeyStateBuffer[256] = {0};
 char                    g_LastpKeyStateBuffer[256] = {0};
 CIOController           *g_pIoController=NULL;
 HANDLE                   g_hProc = NULL;
@@ -298,57 +298,57 @@ BOOL CompareMouseBuffer(DIMOUSESTATE* pCurState,DIMOUSESTATE* pLastState,std::ve
         event.push_back(evt);
     }
 
-    if(pCurState->rgbButtons[0] != pLastState->rgbButtons[0])
+    if(pCurState->rgbButtons[LEFTBUTTON_IDX] != pLastState->rgbButtons[LEFTBUTTON_IDX])
     {
         evt.devtype = DEVICE_TYPE_MOUSE;
         evt.devid = 0;
         evt.event.mouse.code = MOUSE_CODE_LEFTBUTTON;
         evt.event.mouse.x = 0;
         evt.event.mouse.y = 0;
-        if(pCurState->rgbButtons[0])
+        if(pCurState->rgbButtons[LEFTBUTTON_IDX])
         {
             evt.event.mouse.event = MOUSE_EVENT_KEYDOWN;
         }
         else
         {
-            evt.event.mouse.event = MOUSE_EVENT_UP;
+            evt.event.mouse.event = MOUSE_EVENT_KEYUP;
         }
         event.push_back(evt)
     }
 
 
-    if(pCurState->rgbButtons[1] != pLastState->rgbButtons[1])
+    if(pCurState->rgbButtons[RIGHTBUTTON_IDX] != pLastState->rgbButtons[RIGHTBUTTON_IDX])
     {
         evt.devtype = DEVICE_TYPE_MOUSE;
         evt.devid = 0;
         evt.event.mouse.code = MOUSE_CODE_RIGHTBUTTON;
         evt.event.mouse.x = 0;
         evt.event.mouse.y = 0;
-        if(pCurState->rgbButtons[1])
+        if(pCurState->rgbButtons[RIGHTBUTTON_IDX])
         {
             evt.event.mouse.event = MOUSE_EVENT_KEYDOWN;
         }
         else
         {
-            evt.event.mouse.event = MOUSE_EVENT_UP;
+            evt.event.mouse.event = MOUSE_EVENT_KEYUP;
         }
         event.push_back(evt)
     }
 
-    if(pCurState->rgbButtons[2] != pLastState->rgbButtons[2])
+    if(pCurState->rgbButtons[MIDBUTTON_IDX] != pLastState->rgbButtons[MIDBUTTON_IDX])
     {
         evt.devtype = DEVICE_TYPE_MOUSE;
         evt.devid = 0;
         evt.event.mouse.code = MOUSE_CODE_MIDDLEBUTTON;
         evt.event.mouse.x = 0;
         evt.event.mouse.y = 0;
-        if(pCurState->rgbButtons[1])
+        if(pCurState->rgbButtons[MIDBUTTON_IDX])
         {
             evt.event.mouse.event = MOUSE_EVENT_KEYDOWN;
         }
         else
         {
-            evt.event.mouse.event = MOUSE_EVENT_UP;
+            evt.event.mouse.event = MOUSE_EVENT_KEYUP;
         }
         event.push_back(evt)
     }
@@ -373,17 +373,17 @@ BOOL UpdateCodeMessage()
     }
 
     /*now we should check if the specified key is pressed*/
-    Device_Read(g_pKeyboardDevice,g_pKeyStateBuffer,256);
+    Device_Read(g_pKeyboardDevice,g_KeyStateBuffer,256);
     Device_Read(g_pMouseDevice,g_diMouseState,sizeof(g_diMouseState));
 
-    if(g_pKeyStateBuffer[g_EscapeKey])
+    if(g_KeyStateBuffer[g_EscapeKey])
     {
         /*it is the escape key pressed ,so we do not handle any more*/
         return;
     }
 
     /*now compare the key difference*/
-    CompareKeyBuffer(g_pKeyStateBuffer,g_LastpKeyStateBuffer,event);
+    CompareKeyBuffer(g_KeyStateBuffer,g_LastpKeyStateBuffer,event);
     CompareMouseBuffer(&g_diMouseState,&g_LastdiMouseState,event);
 
     while(event.size()>0)
