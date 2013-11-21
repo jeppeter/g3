@@ -4,6 +4,25 @@
 class CDirectInputDevice8AHook;
 class CDirectInputDevice8WHook;
 
+typedef struct
+{
+    unsigned int m_Started;
+    thread_control_t m_ThreadControl;
+    unsigned int m_Bufnumm;
+    unsigned int m_BufSectSize;
+    unsigned char m_MemShareBaseName[IO_NAME_MAX_SIZE];
+    HANDLE m_hMapFile;
+    void* m_pMemShareBase;
+    unsigned char m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
+    HANDLE *m_pFreeEvts;
+    unsigned char m_InputEvtBaseName[IO_NAME_MAX_SIZE];
+    HANDLE *m_pInputEvts;
+    EVENT_LIST_t* m_pEventListArray;
+    CRITICAL_SECTION m_ListCS;
+    int m_ListCSInited;
+    std::vector<EVENT_LIST_t*>* m_pFreeList;
+} DETOUR_DIRECTINPUT_STATUS_t,*PDETOUR_DIRECTINPUT_STATUS_t;
+
 
 static std::vector<IDirectInputDevice8A*> st_Key8AVecs;
 static std::vector<CDirectInputDevice8AHook*> st_Key8AHookVecs;
@@ -2390,25 +2409,6 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
 }
 
 
-typedef struct
-{
-    unsigned int m_Started;
-    thread_control_t m_ThreadControl;
-    unsigned int m_Bufnumm;
-    unsigned int m_BufSectSize;
-    unsigned char m_MemShareBaseName[IO_NAME_MAX_SIZE];
-    HANDLE m_hMapFile;
-    void* m_pMemShareBase;
-    unsigned char m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
-    HANDLE *m_pFreeEvts;
-    unsigned char m_InputEvtBaseName[IO_NAME_MAX_SIZE];
-    HANDLE *m_pInputEvts;
-    EVENT_LIST_t* m_pEventListArray;
-    CRITICAL_SECTION m_ListCS;
-    int m_ListCSInited;
-    std::vector<EVENT_LIST_t*>* m_pFreeList;
-    std::vector<EVENT_LIST_t*>* m_pInputList;
-} DETOUR_DIRECTINPUT_STATUS_t,*PDETOUR_DIRECTINPUT_STATUS_t;
 
 
 int IoInjectInput(PEVENT_LIST_t pEvent)
@@ -2534,7 +2534,7 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
         if(findidx < 0)
         {
             ERROR_INFO("really inner bug for <0x%p>\n",pEventList);
-            *pnullptr = 0;
+            abort();
         }
         else
         {
