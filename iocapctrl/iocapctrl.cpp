@@ -161,15 +161,6 @@ void CIOController::__ReleaseAllEvents()
     /*we make sure in the exited thread mode call this function*/
     assert(this->m_BackGroundThread.exited > 0);
 
-    /*now free input evts*/
-    this->m_InputEvts.clear();
-    this->m_FreeEvts.clear();
-
-    if(this->m_pIoCapEvents)
-    {
-        free(this->m_pIoCapEvents);
-    }
-    this->m_pIoCapEvents = NULL;
 
     if(this->m_pFreeTotalEvts)
     {
@@ -464,6 +455,9 @@ void CIOController::__ReleaseMapMem()
     UnMapFileBuffer(&(this->m_pMemShareBase));
     CloseMapFileHandle(&(this->m_hMapFile));
     ZeroMemory(this->m_MemShareName,sizeof(this->m_MemShareName));
+	this->m_BufferNum = 0;
+	this->m_BufferSectSize = 0;
+	this->m_BufferTotalSize = 0;
     return;
 }
 
