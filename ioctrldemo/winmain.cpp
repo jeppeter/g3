@@ -15,6 +15,20 @@ CIOController           *g_pIoController=NULL;
 HANDLE                   g_hProc = NULL;
 int                      g_EscapeKey =DIK_RCONTROL;
 
+void Process_Fini()
+{
+    if(g_pIoController)
+    {
+        delete g_pIoController ;
+    }
+    g_pIoController = NULL;
+    if(g_hProc)
+    {
+        CloseHandle(g_hProc);
+    }
+    g_hProc = NULL;
+}
+
 
 void DirectInput_Fini()
 {
@@ -66,6 +80,8 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
     HRESULT hr;
     int ret;
 
+	DirectInput_Fini();
+
     hr = DirectInput8Create(hInstance,0x800,(void**)&g_pDirectInput,NULL);
     if(hr != DI_OK)
     {
@@ -105,7 +121,7 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
         goto fail;
     }
 
-
+	g_KeyboardAcquire = 1;
     hr = g_pDirectInput->CreateDevice(GUID_SysMouse,&g_pMouseDevice,NULL);
     if(hr != DI_OK)
     {
@@ -129,7 +145,7 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
         ERROR_INFO("Could not Acquire Mouse error(%d)\n",ret);
         goto fail;
     }
-
+	g_MouseAcquire = 1;
 
 
     return S_OK;
@@ -383,10 +399,11 @@ BOOL UpdateCodeMessage()
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine, int nShowCmd)
 {
-    HMENU hMenu=NULL;
     HWND hwnd = NULL;
     HRESULT hr;
     MSG msg= {0};
+    int ret;
+    ATOM pAtom=NULL;
 
     WNDCLASSEX wndClass = { 0 };
     wndClass.cbSize = sizeof(WNDCLASSEX) ;
@@ -397,25 +414,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
     wndClass.hInstance = hInstance;
     wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
     wndClass.hbrBackground=(HBRUSH)GetStockObject(GRAY_BRUSH);
-    wndClass.lpszMenuName = NULL;
+    wndClass.lpszMenuName = MAKEINTRESOURCE(IDR_MAIN_MENU);
     wndClass.lpszClassName = _T("IOControlDemo");
 
-    if(!RegisterClassEx(&wndClass))
-        return -1;
-    hMenu = ::LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MAIN_MENU));
-    if(hMenu == NULL)
+    pAtom = RegisterClassEx(&wndClass);
+    if(!pAtom)
     {
-        return -3;
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Register Class Error(%d)\n",ret);
+        goto out;
     }
-    hwnd = CreateWindow(_T("IOControlDemo"),WINDOW_TITLE,
+    hwnd = CreateWindow(pAtom,_T("Demo Window"),
                         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH,
-                        SCREEN_HEIGHT, NULL, hMenu, hInstance, NULL);
+                        SCREEN_HEIGHT, NULL, NULL, hInstance, NULL);
 
     hr = DirectInput_Init(hwnd,hInstance);
     if(hr != S_OK)
     {
+        ret = LAST_ERROR_CODE();
         ERROR_INFO("Could not Init DirectInput\n");
-        return -4;
+        goto out;
     }
 
 
@@ -431,10 +449,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
 
     }
 
+    ret = 0;
+out:
     DirectInput_Fini();
+    Process_Fini();
 
-    UnregisterClass(_T("IOControlDemo"), wndClass.hInstance);
-    return 0;
+    if(pAtom)
+    {
+        UnregisterClassEx(pAtom,hInstance);
+    }
+    pAtom = NULL;
+    return -ret;
 }
 
 BOOL StartExeProcess(CStartIoDlg* pDlg)
@@ -442,7 +467,7 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
     char* pExeAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL,*pCommandAnsi=NULL,*pPartDll=NULL;
     CString errstr,caption=TEXT("Error");
     uint32_t bufnum=0,bufsize=0;
-	uint32_t keyboardid,mouseid;
+    uint32_t keyboardid,mouseid;
     int ret;
     BOOL bret;
     uint32_t pid=0;
@@ -509,8 +534,8 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
         ret = LAST_ERROR_CODE();
         goto fail;
     }
-	
-	_snprintf_s(pCommandAnsi,cmdsize,_TRUNCATE,"%s %s",pExeAnsi,pParamAnsi);
+
+    _snprintf_s(pCommandAnsi,cmdsize,_TRUNCATE,"%s %s",pExeAnsi,pParamAnsi);
 
 
     ret = LoadInsert(NULL,pCommandAnsi,pDllAnsi,pPartDll);
@@ -549,7 +574,7 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
         goto fail;
     }
 
-	bret = g_pIoController->AddDevice(DEVICE_TYPE_KEYBOARD,&keyboardid);
+    bret = g_pIoController->AddDevice(DEVICE_TYPE_KEYBOARD,&keyboardid);
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
@@ -559,7 +584,7 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
         goto fail;
     }
 
-	bret = g_pIoController->AddDevice(DEVICE_TYPE_MOUSE,&mouseid);
+    bret = g_pIoController->AddDevice(DEVICE_TYPE_MOUSE,&mouseid);
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
@@ -569,7 +594,7 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
         goto fail;
     }
 
-	DEBUG_INFO("Add Mouse %d KeyBoard %d\n",mouseid,keyboardid);
+    DEBUG_INFO("Add Mouse %d KeyBoard %d\n",mouseid,keyboardid);
 
 
 #ifdef _UNICODE
