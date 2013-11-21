@@ -2843,7 +2843,7 @@ void __FreeDetourDinputStatus(PDETOUR_DIRECTINPUT_STATUS_t *ppStatus)
         return;
     }
     pStatus = *ppStatus;
-	/*make sure this is stopped ,so we can do things safe*/
+    /*make sure this is stopped ,so we can do things safe*/
     pStatus->m_Started = 0;
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
@@ -3071,8 +3071,9 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
 
     if(st_pDinputStatus)
     {
-        SetLastError(0);
-        return 0;
+        ret = ERROR_ALREADY_EXISTS;
+        SetLastError(ret);
+        return -ret;
     }
 
     pStatus = __AllocateDetourStatus();
