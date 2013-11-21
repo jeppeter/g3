@@ -104,7 +104,7 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
         }
         else
         {
-        	findidx = -1;
+            findidx = -1;
             for(i=0; i<st_NotSet8AVecs.size(); i++)
             {
                 if(st_NotSet8AVecs[i] == ptr)
@@ -2505,9 +2505,9 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     }
 
     EnterCriticalSection(&(st_pDinputStatus->m_ListCS));
-    for(i=0; i<st_pDinputStatus->m_pInputList->size(); i++)
+    for(i=0; i<st_pDinputStatus->m_pFreeList->size(); i++)
     {
-        if(st_pDinputStatus->m_pInputList[i] == pEventList)
+        if(st_pDinputStatus->m_pFreeList->At(i) == pEventList)
         {
             findidx = i;
             break;
@@ -2516,30 +2516,11 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
 
     if(findidx >= 0)
     {
-        st_pDinputStatus->m_pInputList->erase(st_pDinputStatus->m_pInputList->begin()+findidx);
-        st_pDinputStatus->m_pFreeList->push_back(pEventList);
-        ret = 1;
+        ERROR_INFO("We have input the Event List<0x%p> idx(%d)\n",pEventList,pEventList->m_Idx);
     }
     else
     {
-        for(i=0; i<st_pDinputStatus->m_pFreeList->size(); i++)
-        {
-            if(st_pDinputStatus->m_pFreeList[i] == pEventList)
-            {
-                findidx = i;
-                break;
-            }
-        }
-
-        if(findidx < 0)
-        {
-            ERROR_INFO("really inner bug for <0x%p>\n",pEventList);
-            abort();
-        }
-        else
-        {
-            ERROR_INFO("<0x%p> already in freelist\n",pEventList);
-        }
+        st_pDinputStatus->m_pFreeList->push_back(pEventList);
     }
     LeaveCriticalSection(&(st_pDinputStatus->m_ListCS));
     if(ret > 0)
