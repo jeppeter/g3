@@ -47,6 +47,8 @@ void DirectInput_Fini()
         }
     }
     g_pMouseDevice = NULL;
+    ZeroMemory(&g_diMouseState,sizeof(g_diMouseState));
+    ZeroMemory(&g_LastdiMouseState,sizeof(g_LastdiMouseState));
 
     if(g_pKeyboardDevice)
     {
@@ -62,6 +64,8 @@ void DirectInput_Fini()
         }
     }
     g_pKeyboardDevice = NULL;
+    ZeroMemory(g_KeyStateBuffer,sizeof(g_KeyStateBuffer));
+    ZeroMemory(g_LastpKeyStateBuffer,sizeof(g_LastpKeyStateBuffer));
 
     if(g_pDirectInput)
     {
@@ -80,7 +84,7 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
     HRESULT hr;
     int ret;
 
-	DirectInput_Fini();
+    DirectInput_Fini();
 
     hr = DirectInput8Create(hInstance,0x800,(void**)&g_pDirectInput,NULL);
     if(hr != DI_OK)
@@ -121,7 +125,7 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
         goto fail;
     }
 
-	g_KeyboardAcquire = 1;
+    g_KeyboardAcquire = 1;
     hr = g_pDirectInput->CreateDevice(GUID_SysMouse,&g_pMouseDevice,NULL);
     if(hr != DI_OK)
     {
@@ -145,7 +149,7 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
         ERROR_INFO("Could not Acquire Mouse error(%d)\n",ret);
         goto fail;
     }
-	g_MouseAcquire = 1;
+    g_MouseAcquire = 1;
 
 
     return S_OK;
@@ -159,6 +163,7 @@ fail:
 BOOL Device_Read(IDirectInputDevice8* pDevice,void* pBuffer,long lSize)
 {
     HRESULT hr;
+	ZeroMemory(pBuffer,lSize);
 
     while(1)
     {
@@ -397,71 +402,6 @@ BOOL UpdateCodeMessage()
 
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine, int nShowCmd)
-{
-    HWND hwnd = NULL;
-    HRESULT hr;
-    MSG msg= {0};
-    int ret;
-    ATOM pAtom=NULL;
-
-    WNDCLASSEX wndClass = { 0 };
-    wndClass.cbSize = sizeof(WNDCLASSEX) ;
-    wndClass.style = CS_HREDRAW | CS_VREDRAW;
-    wndClass.lpfnWndProc = WndProc;
-    wndClass.cbClsExtra		= 0;
-    wndClass.cbWndExtra		= 0;
-    wndClass.hInstance = hInstance;
-    wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wndClass.hbrBackground=(HBRUSH)GetStockObject(GRAY_BRUSH);
-    wndClass.lpszMenuName = MAKEINTRESOURCE(IDR_MAIN_MENU);
-    wndClass.lpszClassName = _T("IOControlDemo");
-
-    pAtom = RegisterClassEx(&wndClass);
-    if(!pAtom)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Register Class Error(%d)\n",ret);
-        goto out;
-    }
-    hwnd = CreateWindow(pAtom,_T("Demo Window"),
-                        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH,
-                        SCREEN_HEIGHT, NULL, NULL, hInstance, NULL);
-
-    hr = DirectInput_Init(hwnd,hInstance);
-    if(hr != S_OK)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not Init DirectInput\n");
-        goto out;
-    }
-
-
-    while(msg.message != WM_QUIT)
-    {
-        if(PeekMessage(&msg,0,0,0,PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
-        UpdateCodeMessage();
-
-    }
-
-    ret = 0;
-out:
-    DirectInput_Fini();
-    Process_Fini();
-
-    if(pAtom)
-    {
-        UnregisterClassEx(pAtom,hInstance);
-    }
-    pAtom = NULL;
-    return -ret;
-}
-
 BOOL StartExeProcess(CStartIoDlg* pDlg)
 {
     char* pExeAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL,*pCommandAnsi=NULL,*pPartDll=NULL;
@@ -509,9 +449,9 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
         goto fail;
     }
 #else
-    pExeAnsi = (char*) pDlg->m_strExec;
-    pDllAnsi = (char*) pDlg->m_strDll;
-    pParamAnsi = (char*) pDlg->m_strParam;
+    pExeAnsi = (LPCSTR) pDlg->m_strExec;
+    pDllAnsi = (LPCSTR) pDlg->m_strDll;
+    pParamAnsi = (LPCSTR) pDlg->m_strParam;
 #endif
 
     pPartDll = strrchr(pDllAnsi,'\\');
@@ -679,5 +619,72 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     return 0;
+}
+
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine, int nShowCmd)
+{
+    HWND hwnd = NULL;
+    HRESULT hr;
+    MSG msg= {0};
+    int ret;
+    ATOM pAtom=NULL;
+
+    WNDCLASSEX wndClass = { 0 };
+    wndClass.cbSize = sizeof(WNDCLASSEX) ;
+    wndClass.style = CS_HREDRAW | CS_VREDRAW;
+    wndClass.lpfnWndProc = WndProc;
+    wndClass.cbClsExtra		= 0;
+    wndClass.cbWndExtra		= 0;
+    wndClass.hInstance = hInstance;
+    wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wndClass.hbrBackground=(HBRUSH)GetStockObject(GRAY_BRUSH);
+    wndClass.lpszMenuName = MAKEINTRESOURCE(IDR_MAIN_MENU);
+    wndClass.lpszClassName = _T("IOControlDemo");
+
+    pAtom = RegisterClassEx(&wndClass);
+    if(!pAtom)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Register Class Error(%d)\n",ret);
+        goto out;
+    }
+    hwnd = CreateWindow(pAtom,_T("Demo Window"),
+                        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH,
+                        SCREEN_HEIGHT, NULL, NULL, hInstance, NULL);
+
+    hr = DirectInput_Init(hwnd,hInstance);
+    if(hr != S_OK)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Init DirectInput\n");
+        goto out;
+    }
+	ShowWindow(hwnd, nShowCmd);
+	UpdateWindow(hwnd);
+
+    while(msg.message != WM_QUIT)
+    {
+        if(PeekMessage(&msg,0,0,0,PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        UpdateCodeMessage();
+
+    }
+
+    ret = 0;
+out:
+    DirectInput_Fini();
+    Process_Fini();
+
+    if(pAtom)
+    {
+        UnregisterClassEx(pAtom,hInstance);
+    }
+    pAtom = NULL;
+    return -ret;
 }
 

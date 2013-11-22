@@ -30,8 +30,6 @@ public:
     afx_msg void OnBtnDll();
 	afx_msg void OnOK();
 	afx_msg void OnCancel();
-private:
-	HANDLE m_hProc;
 };
 
 

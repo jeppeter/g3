@@ -15,7 +15,6 @@ CStartIoDlg::CStartIoDlg(CWnd* pParent /*=NULL*/)
     : CDialogEx(CStartIoDlg::IDD, pParent)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDI_ICON1);
-    m_hProc = NULL;
     m_strExec = TEXT("");
     m_strParam = TEXT("");
     m_strDll = TEXT("");
