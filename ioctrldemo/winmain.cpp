@@ -1,5 +1,9 @@
 
-#include <Windows.h>
+#define  DIRECTINPUT_VERSION   0x800
+#include <dinput.h>
+#include "startiodlg.h"
+#include <iocapctrl.h>
+#include <output_debug.h>
 
 
 LPDIRECTINPUT8          g_pDirectInput      = NULL; //
@@ -9,8 +13,8 @@ DIMOUSESTATE            g_diMouseState      = {0};
 DIMOUSESTATE            g_LastdiMouseState  = {0};
 LPDIRECTINPUTDEVICE8    g_pKeyboardDevice   = NULL;
 int                     g_KeyboardAcquire   = 0;
-char                    g_KeyStateBuffer[256] = {0};
-char                    g_LastpKeyStateBuffer[256] = {0};
+unsigned char                    g_KeyStateBuffer[256] = {0};
+unsigned char                    g_LastpKeyStateBuffer[256] = {0};
 CIOController           *g_pIoController=NULL;
 HANDLE                   g_hProc = NULL;
 int                      g_EscapeKey =DIK_RCONTROL;
@@ -86,7 +90,7 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
 
     DirectInput_Fini();
 
-    hr = DirectInput8Create(hInstance,0x800,(void**)&g_pDirectInput,NULL);
+    hr = DirectInput8Create(hInstance,0x800,IID_IDirectInput8,(void**)&g_pDirectInput,NULL);
     if(hr != DI_OK)
     {
         ret = LAST_ERROR_CODE();
@@ -188,7 +192,7 @@ BOOL Device_Read(IDirectInputDevice8* pDevice,void* pBuffer,long lSize)
     return TRUE;
 }
 
-static int st_DIKMapCode[256] =
+static IO_KEYBOARD_CODE_t st_DIKMapCode[256] =
 {
     KEYBOARD_CODE_NULL               ,KEYBOARD_CODE_ESCAPE              ,KEYBOARD_CODE_1                      ,KEYBOARD_CODE_2                 ,KEYBOARD_CODE_3                   ,  /*5*/
     KEYBOARD_CODE_4                  ,KEYBOARD_CODE_5                   ,KEYBOARD_CODE_6                      ,KEYBOARD_CODE_7                 ,KEYBOARD_CODE_8                   ,  /*10*/
@@ -318,7 +322,7 @@ BOOL CompareMouseBuffer(DIMOUSESTATE* pCurState,DIMOUSESTATE* pLastState,std::ve
         {
             evt.event.mouse.event = MOUSE_EVENT_KEYUP;
         }
-        event.push_back(evt)
+        event.push_back(evt);
     }
 
 
@@ -337,7 +341,7 @@ BOOL CompareMouseBuffer(DIMOUSESTATE* pCurState,DIMOUSESTATE* pLastState,std::ve
         {
             evt.event.mouse.event = MOUSE_EVENT_KEYUP;
         }
-        event.push_back(evt)
+        event.push_back(evt);
     }
 
     if(pCurState->rgbButtons[MIDBUTTON_IDX] != pLastState->rgbButtons[MIDBUTTON_IDX])
@@ -355,7 +359,7 @@ BOOL CompareMouseBuffer(DIMOUSESTATE* pCurState,DIMOUSESTATE* pLastState,std::ve
         {
             evt.event.mouse.event = MOUSE_EVENT_KEYUP;
         }
-        event.push_back(evt)
+        event.push_back(evt);
     }
 
     CopyMemory(pLastState,pCurState,sizeof(*pCurState));
@@ -379,12 +383,12 @@ BOOL UpdateCodeMessage()
 
     /*now we should check if the specified key is pressed*/
     Device_Read(g_pKeyboardDevice,g_KeyStateBuffer,256);
-    Device_Read(g_pMouseDevice,g_diMouseState,sizeof(g_diMouseState));
+    Device_Read(g_pMouseDevice,&g_diMouseState,sizeof(g_diMouseState));
 
     if(g_KeyStateBuffer[g_EscapeKey])
     {
         /*it is the escape key pressed ,so we do not handle any more*/
-        return;
+        return TRUE;
     }
 
     /*now compare the key difference*/

@@ -1,4 +1,6 @@
 
+#define  DIRECTINPUT_VERSION   0x800
+#include <dinput.h>
 #include "resource.h"
 #include "startiodlg.h"
 

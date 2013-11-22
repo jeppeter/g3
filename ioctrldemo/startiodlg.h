@@ -2,7 +2,8 @@
 #ifndef __START_IO_DLG_H__
 #define __START_IO_DLG_H__
 
-class CStartIoDlg : public CDialogEx
+
+class CStartIoDlg : public CDialog
 {
 public:
     CStartIoDlg(CWnd* pParent = NULL);	// 标准构造函数
