@@ -1090,6 +1090,7 @@ BOOL CheckDialogString(HWND hwndDlg)
     bufsize = strtoul(g_pBufSizeStr, NULL, 16);
     waittime = strtoul(g_pBufNumStr, NULL, 10);
 #endif
+	DEBUG_INFO("wait time %d (%S)\n",waittime,g_pWaitTimeStr);
 
     if(bufnum == 0 || bufsize < 32)
     {

@@ -307,11 +307,11 @@ int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
     pid = this->m_Pid;
 
     /*now we should get the address of the */
-    ret = GetRemoteProcAddress(pid,IOINJECT_DLL,"DetourDirectInputControl",&pFnAddr);
+    ret = GetRemoteProcAddress(pid,IOINJECT_DLL,"IoInjectControl",&pFnAddr);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("can not find[%d] %s:%s Error(%d)\n",pid,IOINJECT_DLL,"DetourDirectInputControl",ret);
+        ERROR_INFO("can not find[%d] %s:%s Error(%d)\n",pid,IOINJECT_DLL,"IoInjectControl",ret);
         SetLastError(ret);
         return -ret;
     }
