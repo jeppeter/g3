@@ -1,10 +1,25 @@
 
 #define  DIRECTINPUT_VERSION   0x800
 #include <dinput.h>
-#include "startiodlg.h"
 #include <iocapctrl.h>
 #include <output_debug.h>
+#include "resource.h"
+#include <uniansi.h>
+#include <dllinsert.h>
+#include <stdlib.h>
+#include <assert.h>
 
+#pragma comment(lib,"dinput8.lib")
+#pragma comment(lib,"dxguid.lib")
+
+
+#ifdef _DEBUG
+#pragma comment(lib,"injectctrld.lib")
+#pragma comment(lib,"iocapctrld.lib")
+#else
+#pragma comment(lib,"injectctrl.lib")
+#pragma comment(lib,"iocapctrl.lib")
+#endif
 
 LPDIRECTINPUT8          g_pDirectInput      = NULL; //
 LPDIRECTINPUTDEVICE8    g_pMouseDevice      = NULL;
@@ -18,9 +33,13 @@ unsigned char                    g_LastpKeyStateBuffer[256] = {0};
 CIOController           *g_pIoController=NULL;
 HANDLE                   g_hProc = NULL;
 int                      g_EscapeKey =DIK_RCONTROL;
+HINSTANCE                g_hInstance = NULL;
 
 
 #define  MAX_STRING   256
+
+#define  SCREEN_WIDTH  800
+#define  SCREEN_HEIGHT 600
 
 #ifdef _UNICODE
 wchar_t  g_pExeStr[MAX_STRING];
@@ -423,6 +442,11 @@ BOOL UpdateCodeMessage()
 
 }
 
+BOOL StartExeProcess(HWND hwnd);
+BOOL CALLBACK ShowDialogProc(HWND hwndDlg,
+                             UINT message,
+                             WPARAM wParam,
+                             LPARAM lParam);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -437,11 +461,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
         case ID_START_IO_INJECT:
             INT_PTR nRet;
-
             nRet = DialogBox(g_hInstance,MAKEINTRESOURCE(IDD_START_DIALOG),hwnd,ShowDialogProc);
             if(nRet == IDOK)
             {
-                StartExeProcess();
+                StartExeProcess(hwnd);
             }
 
             break;
@@ -474,7 +497,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
     wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
     wndClass.hbrBackground=(HBRUSH)GetStockObject(GRAY_BRUSH);
     wndClass.lpszMenuName = MAKEINTRESOURCE(IDR_MAIN_MENU);
-    wndClass.lpszClassName = _T("IOControlDemo");
+    wndClass.lpszClassName = TEXT("IOControlDemo");
+
+    g_hInstance = hInstance;
 
     pAtom = RegisterClassEx(&wndClass);
     if(!pAtom)
@@ -483,7 +508,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
         ERROR_INFO("Register Class Error(%d)\n",ret);
         goto out;
     }
-    hwnd = CreateWindow(pAtom,_T("Demo Window"),
+    hwnd = CreateWindow(TEXT("IOControlDemo"),TEXT("Demo Window"),
                         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH,
                         SCREEN_HEIGHT, NULL, NULL, hInstance, NULL);
 
@@ -516,7 +541,7 @@ out:
 
     if(pAtom)
     {
-        UnregisterClassEx(pAtom,hInstance);
+        UnregisterClass(TEXT("IOControlDemo"),hInstance);
     }
     pAtom = NULL;
     return -ret;
@@ -537,7 +562,7 @@ BOOL GetDialogItemString(HWND hwndDlg,int nIDDlgItem,wchar_t *pString,int count)
         return FALSE;
     }
 
-    pString[0] = 0x0;
+    ZeroMemory(pString,count*sizeof(pString[0]));
     SetLastError(0);
     ret = ::GetWindowText(hCtrlItem,pString,count);
     if(ret == 0 && GetLastError() != 0)
@@ -581,7 +606,6 @@ BOOL InsertComboString(HWND hwndDlg,int nIDDlgItem,int idx,wchar_t *pString)
 {
     HWND hCtrlItem=NULL;
     int ret;
-    BOOL bret;
     hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
     if(!hCtrlItem)
     {
@@ -591,11 +615,11 @@ BOOL InsertComboString(HWND hwndDlg,int nIDDlgItem,int idx,wchar_t *pString)
         return FALSE;
     }
 
-    ret = SendMessage(hCtrlItem, CB_INSERTRSTRING,idx,pString);
+    ret = SendMessage(hCtrlItem, CB_INSERTSTRING,idx,(LPARAM)pString);
     if(ret == CB_ERR)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("AddString <0x%08x>:%d  Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        ERROR_INFO("InsertString <0x%08x>:%d  Error(%d)\n",hwndDlg,nIDDlgItem,idx,ret);
         SetLastError(ret);
         return FALSE;
     }
@@ -608,7 +632,6 @@ int GetComboSel(HWND hwndDlg,int nIDDlgItem)
 {
     HWND hCtrlItem=NULL;
     int ret;
-    BOOL bret;
     hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
     if(!hCtrlItem)
     {
@@ -622,7 +645,7 @@ int GetComboSel(HWND hwndDlg,int nIDDlgItem)
     if(ret == CB_ERR)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("AddString <0x%08x>:%d  Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        ERROR_INFO("GetCurSel <0x%08x>  Error(%d)\n",hwndDlg,nIDDlgItem,ret);
         SetLastError(ret);
         return -1;
     }
@@ -637,7 +660,7 @@ int SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
     int ret;
     va_list ap;
 
-    va_start(ap,fmt);
+    va_start(ap,pfmt);
 
     ret =  _vsnwprintf_s(pString,count,_TRUNCATE,pfmt,ap);
 
@@ -660,7 +683,7 @@ BOOL GetDialogItemString(HWND hwndDlg,int nIDDlgItem,char *pString,int count)
         return FALSE;
     }
 
-    pString[0] = 0x0;
+    ZeroMemory(pString,count*sizeof(pString[0]));
     SetLastError(0);
     ret = ::GetWindowText(hCtrlItem,pString,count);
     if(ret == 0 && GetLastError() != 0)
@@ -717,10 +740,9 @@ void SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
 
 #endif /*_UNICODE*/
 
-BOOL StartExeProcess()
+BOOL StartExeProcess(HWND hwnd)
 {
     char* pExeAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL,*pCommandAnsi=NULL,*pPartDll=NULL;
-    BOOL bret;
 #ifdef _UNICODE
     wchar_t errstr[MAX_STRING];
 #else
@@ -791,7 +813,7 @@ BOOL StartExeProcess()
     cmdsize += 10;
     cmdsize += strlen(pParamAnsi);
 
-    pCommandAnsi = calloc(sizeof(*pCommandAnsi),cmdsize);
+    pCommandAnsi = (char*)calloc(sizeof(*pCommandAnsi),cmdsize);
     if(pCommandAnsi == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -805,9 +827,9 @@ BOOL StartExeProcess()
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        errstr.Format(TEXT("Could not Start exec(%s) param(%s) dll(%s) Error(%d)"),
+        SprintfString(errstr,MAX_STRING,TEXT("Could not Start exec(%s) param(%s) dll(%s) Error(%d)"),
                       pExeAnsi,pParamAnsi,pDllAnsi,ret);
-        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        MessageBox(hwnd,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
 
@@ -817,22 +839,27 @@ BOOL StartExeProcess()
     if(g_hProc == NULL)
     {
         ret = LAST_ERROR_CODE();
-        errstr.Format(TEXT("Could not OpenProcess(%d) Error(%d)"),
+        SprintfString(errstr,MAX_STRING,TEXT("Could not OpenProcess(%d) Error(%d)"),
                       pid,ret);
-        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        MessageBox(hwnd,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
 
     g_pIoController = new CIOController();
-    bufnum = _tcstoul(g_pBufNumStr, NULL, 10);
-    bufsize = _tcstoul(g_pBufSizeStr, NULL, 16);
+#ifdef _UNICODE
+    bufnum = wcstoul(g_pBufNumStr, NULL, 10);
+    bufsize = wcstoul(g_pBufSizeStr, NULL, 16);
+#else
+    bufnum = strtoul(g_pBufNumStr, NULL, 10);
+    bufsize = strtoul(g_pBufSizeStr, NULL, 16);
+#endif
     bret = g_pIoController->Start(g_hProc,bufnum,bufsize);
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        errstr.Format(TEXT("Could not Start(0x%08x) bufnum(%d) bufsize(0x%08x) Error(%d)"),
+        SprintfString(errstr,MAX_STRING,TEXT("Could not Start(0x%08x) bufnum(%d) bufsize(0x%08x) Error(%d)"),
                       g_hProc,bufnum,bufsize,ret);
-        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        MessageBox(hwnd,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
 
@@ -840,9 +867,9 @@ BOOL StartExeProcess()
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        errstr.Format(TEXT("Could not Add Keyboard Error(%d)"),
+        SprintfString(errstr,MAX_STRING,TEXT("Could not Add Keyboard Error(%d)"),
                       ret);
-        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        MessageBox(hwnd,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
 
@@ -850,9 +877,9 @@ BOOL StartExeProcess()
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        errstr.Format(TEXT("Could not Add Mouse Error(%d)"),
+        SprintfString(errstr,MAX_STRING,TEXT("Could not Add Mouse Error(%d)"),
                       ret);
-        MessageBox(pDlg->m_hWnd,errstr,caption,MB_OK);
+        MessageBox(hwnd,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
 
@@ -961,8 +988,13 @@ BOOL CheckDialogString(HWND hwndDlg)
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
-    bufnum = _tcstoul(g_pBufNumStr, NULL, 10);
-    bufsize = _tcstoul(g_pBufSizeStr, NULL, 16);
+#ifdef _UNICODE
+    bufnum = wcstoul(g_pBufNumStr, NULL, 10);
+    bufsize = wcstoul(g_pBufSizeStr, NULL, 16);
+#else
+    bufnum = strtoul(g_pBufNumStr, NULL, 10);
+    bufsize = strtoul(g_pBufSizeStr, NULL, 16);
+#endif
 
     if(bufnum == 0 || bufsize < 32)
     {
@@ -1009,25 +1041,25 @@ BOOL InitShowDialog(HWND hwndDlg)
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        SprintfString(errstr,MAX_STRING,"Can not Set Exe Error(%d)",ret);
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Set Exe Error(%d)"),ret);
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
 
-    bret = SetDialogItemString(hwndDlg,IDC_EDT_PARAM,IDC_EDT_EXE,TEXT(""));
+    bret = SetDialogItemString(hwndDlg,IDC_EDT_PARAM,TEXT(""));
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        SprintfString(errstr,MAX_STRING,"Can not Set Param Error(%d)",ret);
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Set Param Error(%d)"),ret);
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
 
-    bret = SetDialogItemString(hwndDlg,IDC_EDT_DLL,IDC_EDT_EXE,TEXT(""));
+    bret = SetDialogItemString(hwndDlg,IDC_EDT_DLL,TEXT(""));
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        SprintfString(errstr,MAX_STRING,"Can not Get DLL Error(%d)",ret);
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Get DLL Error(%d)"),ret);
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
@@ -1038,7 +1070,7 @@ BOOL InitShowDialog(HWND hwndDlg)
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        SprintfString(errstr,MAX_STRING,"Can not Get BufNum Error(%d)",ret);
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Get BufNum Error(%d)"),ret);
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
@@ -1063,7 +1095,7 @@ BOOL InitShowDialog(HWND hwndDlg)
         goto fail;
     }
 
-	SprintfString(selstr,MAX_STRING,TEXT("RWIN"));
+    SprintfString(selstr,MAX_STRING,TEXT("RWIN"));
     bret = InsertComboString(hwndDlg,IDC_COMBO_ESCAPE,1,selstr);
     if(!bret)
     {
@@ -1072,7 +1104,7 @@ BOOL InitShowDialog(HWND hwndDlg)
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
-	
+
 
     SetLastError(0);
     return TRUE;

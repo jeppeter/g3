@@ -52,6 +52,11 @@ void CIOController::__StopBackGroundThread()
     StopThreadControl(&(this->m_BackGroundThread));
 }
 
+int CIOController::__StartBackGroundThread()
+{
+    return StartThreadControl(&(this->m_BackGroundThread),CIOController::ThreadProc,this,1);
+}
+
 
 int CIOController::__ChangeInputToFreeThread(DWORD idx)
 {
@@ -853,7 +858,6 @@ BOOL CIOController::__InsertInputEvent(PIO_CAP_EVENTS_t pIoCapEvt)
 
 BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
 {
-    BOOL bret;
     int ret;
     PIO_CAP_EVENTS_t pIoCapEvt=NULL;
 
