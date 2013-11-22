@@ -4,6 +4,7 @@
 
 
 #include <Windows.h>
+#include <stdint.h>
 
 typedef unsigned long ptr_t;
 

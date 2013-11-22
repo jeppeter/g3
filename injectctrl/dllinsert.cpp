@@ -1053,7 +1053,7 @@ int CallRemoteFuncRemoteParam(unsigned int processid,void* pFnAddr,LPVOID pRemot
 
 
     *ppRetVal = (void*)retcode;
-    DEBUG_INFO("call 0x%p with param %s retcode(%d)\n",pFnAddr,pParam,retcode);
+    DEBUG_INFO("call 0x%p with param 0x%p retcode(%d)\n",pFnAddr,pRemoteAddr,retcode);
 
     if(hThread)
     {

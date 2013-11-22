@@ -1,21 +1,22 @@
 
 #include <iocapcommon.h>
+#include <vector>
 
 class CDirectInputDevice8AHook;
 class CDirectInputDevice8WHook;
 
 typedef struct
 {
-    unsigned int m_Started;
+    uint32_t m_Started;
     thread_control_t m_ThreadControl;
-    unsigned int m_Bufnumm;
-    unsigned int m_BufSectSize;
-    unsigned char m_MemShareBaseName[IO_NAME_MAX_SIZE];
+    uint32_t m_Bufnumm;
+    uint32_t m_BufSectSize;
+    uint8_t m_MemShareBaseName[IO_NAME_MAX_SIZE];
     HANDLE m_hMapFile;
-    void* m_pMemShareBase;
-    unsigned char m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
+    ptr_t m_pMemShareBase;
+    uint8_t m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
     HANDLE *m_pFreeEvts;
-    unsigned char m_InputEvtBaseName[IO_NAME_MAX_SIZE];
+    uint8_t m_InputEvtBaseName[IO_NAME_MAX_SIZE];
     HANDLE *m_pInputEvts;
     EVENT_LIST_t* m_pEventListArray;
     CRITICAL_SECTION m_ListCS;
@@ -23,6 +24,7 @@ typedef struct
     std::vector<EVENT_LIST_t*>* m_pFreeList;
 } DETOUR_DIRECTINPUT_STATUS_t,*PDETOUR_DIRECTINPUT_STATUS_t;
 
+static void IoFreeEventList(EVENT_LIST_t* pEventList);
 
 static std::vector<IDirectInputDevice8A*> st_Key8AVecs;
 static std::vector<CDirectInputDevice8AHook*> st_Key8AHookVecs;
@@ -2511,7 +2513,7 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     EnterCriticalSection(&(st_pDinputStatus->m_ListCS));
     for(i=0; i<st_pDinputStatus->m_pFreeList->size(); i++)
     {
-        if(st_pDinputStatus->m_pFreeList->At(i) == pEventList)
+        if(st_pDinputStatus->m_pFreeList->at(i) == pEventList)
         {
             findidx = i;
             break;
@@ -2549,9 +2551,9 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
         findidx = -1;
         for(i=0; i<pStatus->m_pFreeList->size() ; i++)
         {
-            if(pStatus->m_pFreeList->At[i]->m_Idx == idx)
+            if(pStatus->m_pFreeList->at(i)->m_Idx == idx)
             {
-                pEvent = pStatus->m_pFreeList->At(i);
+                pEvent = pStatus->m_pFreeList->at(i);
                 findidx = i;
                 ret = 1;
                 break;
@@ -2579,9 +2581,9 @@ int DetourDirectInputChangeFreeToInput(PDETOUR_DIRECTINPUT_STATUS_t pStatus,DWOR
         findidx = -1;
         for(i=0; i<pStatus->m_pFreeList->size() ; i++)
         {
-            if(pStatus->m_pFreeList->At(i)->m_Idx == idx)
+            if(pStatus->m_pFreeList->at(i)->m_Idx == idx)
             {
-                pEvent = pStatus->m_pFreeList[i];
+                pEvent = pStatus->m_pFreeList->at(i);
                 findidx = i;
                 ret = 1;
                 break;
@@ -2610,7 +2612,7 @@ DWORD WINAPI DetourDirectInputThreadImpl(LPVOID pParam)
     assert(pStatus->m_Bufnumm > 0);
     /*for add into num exit handle to wait*/
     waitnum = (pStatus->m_Bufnumm + 1);
-    pWaitHandles = calloc(sizeof(*pWaitHandles),waitnum);
+    pWaitHandles = (HANDLE*)calloc(sizeof(*pWaitHandles),waitnum);
     if(pWaitHandles == NULL)
     {
         dret = LAST_ERROR_CODE();
@@ -2676,9 +2678,7 @@ out:
 
 void __FreeDeviceEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 {
-    int ret;
     unsigned int i;
-    int tries;
     if(pStatus == NULL)
     {
         return ;
@@ -2835,7 +2835,7 @@ void __UnMapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     {
         return ;
     }
-    UnMapFileBuffer(&(pStatus->m_pMemShareBase));
+    UnMapFileBuffer((unsigned char**)&(pStatus->m_pMemShareBase));
     CloseMapFileHandle(&(pStatus->m_hMapFile));
     ZeroMemory(pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName));
     pStatus->m_Bufnumm = 0;
@@ -2887,7 +2887,7 @@ PDETOUR_DIRECTINPUT_STATUS_t __AllocateDetourStatus()
     PDETOUR_DIRECTINPUT_STATUS_t pStatus=NULL;
     int ret;
 
-    pStatus = calloc(sizeof(*pStatus),1);
+    pStatus =(PDETOUR_DIRECTINPUT_STATUS_t) calloc(sizeof(*pStatus),1);
     if(pStatus == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -2905,7 +2905,7 @@ int __MapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pMemName,uint32_t
     int ret;
     __UnMapMemBase(pStatus);
     /*now we should first to get map file handle*/
-    pStatus->m_hMapFile = CreateMapFile(pMemName,bufsectsize*bufnum,0);
+    pStatus->m_hMapFile = CreateMapFile((const char*)pMemName,bufsectsize*bufnum,0);
     if(pStatus->m_hMapFile == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -2914,7 +2914,7 @@ int __MapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pMemName,uint32_t
         goto fail;
     }
 
-    pStatus->m_pMemShareBase = MapFileBuffer(pStatus->m_hMapFile,bufsectsize*bufnum);
+    pStatus->m_pMemShareBase = (ptr_t)MapFileBuffer(pStatus->m_hMapFile,bufsectsize*bufnum);
     if(pStatus->m_pMemShareBase == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -2925,7 +2925,7 @@ int __MapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pMemName,uint32_t
 
     pStatus->m_Bufnumm = bufnum;
     pStatus->m_BufSectSize = bufsectsize;
-    strncpy_s(pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName),pMemName,_TRUNCATE);
+    strncpy_s((char*)pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName),(const char*)pMemName,_TRUNCATE);
 
 
     SetLastError(0);
@@ -2944,7 +2944,7 @@ int __AllocateFreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pFreeEvtB
     int ret;
     uint32_t i;
     /*now we should allocate size*/
-    pStatus->m_pFreeEvts = calloc(sizeof(pStatus->m_pFreeEvts[0]),pStatus->m_Bufnumm);
+    pStatus->m_pFreeEvts = (HANDLE*)calloc(sizeof(pStatus->m_pFreeEvts[0]),pStatus->m_Bufnumm);
     if(pStatus->m_pFreeEvts == NULL)
     {
         ret= LAST_ERROR_CODE();
@@ -2953,8 +2953,8 @@ int __AllocateFreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pFreeEvtB
 
     for(i=0; i<pStatus->m_Bufnumm; i++)
     {
-        _snprintf_s(fullname,sizeof(fullname),_TRUNCATE,"%s_%d",pFreeEvtBaseName,i);
-        pStatus->m_pFreeEvts[i] = GetEvent(fullname,0);
+        _snprintf_s((char*)fullname,sizeof(fullname),_TRUNCATE,"%s_%d",pFreeEvtBaseName,i);
+        pStatus->m_pFreeEvts[i] = GetEvent((const char*)fullname,0);
         if(pStatus->m_pFreeEvts[i] == NULL)
         {
             ret=  LAST_ERROR_CODE();
@@ -2962,7 +2962,7 @@ int __AllocateFreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pFreeEvtB
             goto fail;
         }
     }
-    strncpy_s(pStatus->m_FreeEvtBaseName,sizeof(pStatus->m_FreeEvtBaseName),pFreeEvtBaseName,_TRUNCATE);
+    strncpy_s((char*)pStatus->m_FreeEvtBaseName,sizeof(pStatus->m_FreeEvtBaseName),(const char*)pFreeEvtBaseName,_TRUNCATE);
 
 
     SetLastError(0);
@@ -2979,7 +2979,7 @@ int __AllocateEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     int ret;
     uint32_t i;
     /*now first to allocate event list array*/
-    pStatus->m_pEventListArray = calloc(sizeof(pStatus->m_pEventListArray[0]),pStatus->m_Bufnumm);
+    pStatus->m_pEventListArray = (EVENT_LIST_t*)calloc(sizeof(pStatus->m_pEventListArray[0]),pStatus->m_Bufnumm);
     if(pStatus->m_pEventListArray == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -3029,7 +3029,7 @@ int __AllocateInputEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pInputEv
     int ret;
     uint32_t i;
     /*now we should allocate size*/
-    pStatus->m_pInputEvts = calloc(sizeof(pStatus->m_pInputEvts[0]),pStatus->m_Bufnumm);
+    pStatus->m_pInputEvts = (HANDLE*)calloc(sizeof(pStatus->m_pInputEvts[0]),pStatus->m_Bufnumm);
     if(pStatus->m_pInputEvts == NULL)
     {
         ret= LAST_ERROR_CODE();
@@ -3038,8 +3038,8 @@ int __AllocateInputEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pInputEv
 
     for(i=0; i<pStatus->m_Bufnumm; i++)
     {
-        _snprintf_s(fullname,sizeof(fullname),_TRUNCATE,"%s_%d",pInputEvtBaseName,i);
-        pStatus->m_pInputEvts[i] = GetEvent(fullname,0);
+        _snprintf_s((char*)fullname,sizeof(fullname),_TRUNCATE,"%s_%d",pInputEvtBaseName,i);
+        pStatus->m_pInputEvts[i] = GetEvent((const char*)fullname,0);
         if(pStatus->m_pInputEvts[i] == NULL)
         {
             ret=  LAST_ERROR_CODE();
@@ -3048,7 +3048,7 @@ int __AllocateInputEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pInputEv
         }
     }
 
-    strncpy_s(pStatus->m_InputEvtBaseName,sizeof(pStatus->m_InputEvtBaseName),pInputEvtBaseName,_TRUNCATE);
+    strncpy_s((char*)pStatus->m_InputEvtBaseName,sizeof(pStatus->m_InputEvtBaseName),(const char*)pInputEvtBaseName,_TRUNCATE);
 
     SetLastError(0);
     return 0;
@@ -3068,9 +3068,9 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
     if(pControl == NULL || pControl->memsharenum == 0 ||
             pControl->memsharesectsize == 0 ||
             pControl->memsharesize != (pControl->memsharenum * pControl->memsharesectsize) ||
-            strlen(pControl->memsharename) == 0 ||
-            strlen(pControl->inputevtbasename) == 0 ||
-            strlen(pControl->freeevtbasename)== 0)
+            strlen((const char*)pControl->memsharename) == 0 ||
+            strlen((const char*)pControl->inputevtbasename) == 0 ||
+            strlen((const char*)pControl->freeevtbasename)== 0)
     {
         ret = ERROR_INVALID_PARAMETER;
         ERROR_INFO("Invalid Parameter\n");

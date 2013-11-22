@@ -1,5 +1,12 @@
 
 #include "iocapctrl.h"
+#include <assert.h>
+#include <injectctrl.h>
+#include <output_debug.h>
+#include <sched.h>
+#include <evt.h>
+#include <dllinsert.h>
+#include <memshare.h>
 
 #define  IO_FREE_EVT_BASENAME  "GlobalIoInjectFreeEvt"
 #define  IO_INPUT_EVT_BASENAME  "GlobalIoInjectInputEvt"
@@ -83,7 +90,7 @@ DWORD CIOController::__ThreadImpl()
     /*including the exit notify event*/
     assert(this->m_BufferNum > 0);
     waitnum = this->m_BufferNum + 1;
-    pWaitHandles = calloc(sizeof(*pWaitHandles),waitnum);
+    pWaitHandles = (HANDLE*)calloc(sizeof(*pWaitHandles),waitnum);
     if(pWaitHandles == NULL)
     {
         dret = LAST_ERROR_CODE();
@@ -214,8 +221,8 @@ int CIOController::__AllocateAllEvents()
 
     pid = this->m_Pid;
 
-    _snprintf_s(curbasename,sizeof(curbasename),_TRUNCATE,"%s%d",IO_FREE_EVT_BASENAME,pid);
-    this->m_pFreeTotalEvts = calloc(sizeof(this->m_pFreeTotalEvts[0]),this->m_BufferNum);
+    _snprintf_s((char*)curbasename,sizeof(curbasename),_TRUNCATE,"%s%d",IO_FREE_EVT_BASENAME,pid);
+    this->m_pFreeTotalEvts = (HANDLE*)calloc(sizeof(this->m_pFreeTotalEvts[0]),this->m_BufferNum);
     if(this->m_pFreeTotalEvts == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -226,8 +233,8 @@ int CIOController::__AllocateAllEvents()
 
     for(i=0; i<this->m_BufferNum; i++)
     {
-        _snprintf_s(fullname,sizeof(fullname),_TRUNCATE,"%s_%d",curbasename,i);
-        this->m_pFreeTotalEvts[i]= GetEvent(fullname,1);
+        _snprintf_s((char*)fullname,sizeof(fullname),_TRUNCATE,"%s_%d",curbasename,i);
+        this->m_pFreeTotalEvts[i]= GetEvent((char*)fullname,1);
         if(this->m_pFreeTotalEvts[i] == NULL)
         {
             ret =LAST_ERROR_CODE();
@@ -238,10 +245,10 @@ int CIOController::__AllocateAllEvents()
         }
     }
 
-    strncpy_s(this->m_FreeEvtBaseName,sizeof(this->m_FreeEvtBaseName),curbasename,_TRUNCATE);
+    strncpy_s((char*)this->m_FreeEvtBaseName,sizeof(this->m_FreeEvtBaseName),(const char*)curbasename,_TRUNCATE);
 
     /*now for the input event*/
-    this->m_pInputTotalEvts = calloc(sizeof(this->m_pInputTotalEvts[0]),this->m_BufferNum);
+    this->m_pInputTotalEvts =(HANDLE*) calloc(sizeof(this->m_pInputTotalEvts[0]),this->m_BufferNum);
     if(this->m_pInputTotalEvts == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -250,11 +257,11 @@ int CIOController::__AllocateAllEvents()
         return -ret;
     }
 
-    _snprintf_s(curbasename,sizeof(curbasename),_TRUNCATE,"%s%d",IO_INPUT_EVT_BASENAME,pid);
+    _snprintf_s((char*)curbasename,sizeof(curbasename),_TRUNCATE,"%s%d",IO_INPUT_EVT_BASENAME,pid);
     for(i=0; i<this->m_BufferNum; i++)
     {
-        _snprintf_s(fullname,sizeof(fullname),_TRUNCATE,"%s_%d",curbasename,i);
-        this->m_pInputTotalEvts[i] = GetEvent(fullname,1);
+        _snprintf_s((char*)fullname,sizeof(fullname),_TRUNCATE,"%s_%d",curbasename,i);
+        this->m_pInputTotalEvts[i] = GetEvent((char*)fullname,1);
         if(this->m_pInputTotalEvts[i] == NULL)
         {
             ret =LAST_ERROR_CODE();
@@ -264,7 +271,7 @@ int CIOController::__AllocateAllEvents()
             return -ret;
         }
     }
-    strncpy_s(this->m_InputEvtBaseName,sizeof(this->m_InputEvtBaseName),curbasename,_TRUNCATE);
+    strncpy_s((char*)this->m_InputEvtBaseName,sizeof(this->m_InputEvtBaseName),(const char*)curbasename,_TRUNCATE);
     return 0;
 }
 
@@ -298,7 +305,7 @@ int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
         return -ret;
     }
 
-    pRemoteControl = VirtualAllocEx(this->m_hProc,NULL,sizeof(*pRemoteControl),MEM_COMMIT,PAGE_READWRITE);
+    pRemoteControl =(PIO_CAP_CONTROL_t) VirtualAllocEx(this->m_hProc,NULL,sizeof(*pRemoteControl),MEM_COMMIT,PAGE_READWRITE);
     if(pRemoteControl == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -324,7 +331,7 @@ int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
     }
 
 
-    ret = CallRemoteFuncRemoteParam(pid,pFnAddr,pRemoteControl,timeout,&retval);
+    ret = CallRemoteFuncRemoteParam(pid,pFnAddr,pRemoteControl,timeout,(void**)&retval);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -419,7 +426,7 @@ int CIOController::__AllocateCapEvents()
 
     this->__ReleaseCapEvents();
 
-    this->m_pIoCapEvents = calloc(sizeof(this->m_pIoCapEvents[0]),this->m_BufferNum);
+    this->m_pIoCapEvents = (PIO_CAP_EVENTS_t)calloc(sizeof(this->m_pIoCapEvents[0]),this->m_BufferNum);
     if(this->m_pIoCapEvents == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -433,7 +440,7 @@ int CIOController::__AllocateCapEvents()
         this->m_pIoCapEvents[i].hEvent = this->m_pInputTotalEvts[i];
         this->m_pIoCapEvents[i].Idx = i;
         this->m_pIoCapEvents[i].pEvent = (LPDEVICEEVENT)(this->m_pMemShareBase + this->m_BufferSectSize * i);
-        this->m_pFreeTotalEvts.push_back(&(this->m_pIoCapEvents[i]));
+        this->m_FreeEvts.push_back(&(this->m_pIoCapEvents[i]));
     }
 
     this->m_InsertEvts = 1;
@@ -444,7 +451,7 @@ int CIOController::__AllocateCapEvents()
 
 void CIOController::__ReleaseMapMem()
 {
-    UnMapFileBuffer(&(this->m_pMemShareBase));
+    UnMapFileBuffer((unsigned char**)&(this->m_pMemShareBase));
     CloseMapFileHandle(&(this->m_hMapFile));
     ZeroMemory(this->m_MemShareName,sizeof(this->m_MemShareName));
     return;
@@ -453,9 +460,6 @@ void CIOController::__ReleaseMapMem()
 int CIOController::__AllocateMapMem()
 {
     int ret;
-    uint32_t pid;
-
-
     if(this->m_hProc == NULL || this->m_BufferNum ==0 ||
             this->m_BufferSectSize == 0)
     {
@@ -465,8 +469,8 @@ int CIOController::__AllocateMapMem()
     }
     this->__ReleaseMapMem();
 
-    _snprintf_s(this->m_MemShareName,sizeof(this->m_MemShareName),_TRUNCATE,"%s%d",IO_MAP_MEM_BASENAME,this->m_Pid);
-    this->m_hMapFile = CreateMapFile(this->m_MemShareName,this->m_BufferTotalSize,1);
+    _snprintf_s((char*)this->m_MemShareName,sizeof(this->m_MemShareName),_TRUNCATE,"%s%d",IO_MAP_MEM_BASENAME,this->m_Pid);
+    this->m_hMapFile = CreateMapFile((char*)this->m_MemShareName,this->m_BufferTotalSize,1);
     if(this->m_hMapFile == NULL)
     {
         ret =LAST_ERROR_CODE();
@@ -475,7 +479,7 @@ int CIOController::__AllocateMapMem()
         return -ret;
     }
 
-    this->m_pMemShareBase = MapFileBuffer(this->m_hMapFile,this->m_BufferTotalSize);
+    this->m_pMemShareBase = (ptr_t)MapFileBuffer(this->m_hMapFile,this->m_BufferTotalSize);
     if(this->m_pMemShareBase == NULL)
     {
         ret =LAST_ERROR_CODE();
@@ -499,7 +503,7 @@ int CIOController::__CallStopIoCapControl()
         return 0;
     }
 
-    pControl = calloc(sizeof(*pControl),1);
+    pControl = (PIO_CAP_CONTROL_t)calloc(sizeof(*pControl),1);
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -560,7 +564,7 @@ int CIOController::__CallStartIoCapControl()
     int ret;
     PIO_CAP_CONTROL_t pControl=NULL;
 
-    pControl = calloc(sizeof(*pControl),1);
+    pControl = (PIO_CAP_CONTROL_t)calloc(sizeof(*pControl),1);
     if(pControl == NULL)
     {
         ret=  LAST_ERROR_CODE();
@@ -568,13 +572,13 @@ int CIOController::__CallStartIoCapControl()
     }
     pControl->opcode = IO_INJECT_START;
 
-    strncpy_s(pControl->memsharename,sizeof(pControl->memsharename),this->m_MemShareName,_TRUNCATE);
+    strncpy_s((char*)pControl->memsharename,sizeof(pControl->memsharename),(const char*)this->m_MemShareName,_TRUNCATE);
     pControl->memsharesize = this->m_BufferTotalSize;
     pControl->memsharenum = this->m_BufferNum;
     pControl->memsharesectsize = this->m_BufferSectSize;
 
-    strncpy_s(pControl->freeevtbasename,sizeof(pControl->freeevtbasename),this->m_FreeEvtBaseName,_TRUNCATE);
-    strncpy_s(pControl->inputevtbasename,sizeof(pControl->inputevtbasename),this->m_InputEvtBaseName,_TRUNCATE);
+    strncpy_s((char*)pControl->freeevtbasename,sizeof(pControl->freeevtbasename),(const char*)this->m_FreeEvtBaseName,_TRUNCATE);
+    strncpy_s((char*)pControl->inputevtbasename,sizeof(pControl->inputevtbasename),(const char*)this->m_InputEvtBaseName,_TRUNCATE);
 
     ret = this->__CallInnerControl(pControl,5);
     if(ret < 0)
@@ -688,7 +692,7 @@ int CIOController::__CallAddDeviceIoCapControl(uint32_t devtype,uint32_t * pDevI
         return -ret;
     }
 
-    pControl = calloc(sizeof(*pControl),1);
+    pControl = (PIO_CAP_CONTROL_t)calloc(sizeof(*pControl),1);
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -739,7 +743,7 @@ int CIOController::__CallRemoveDeviceIoCapControl(uint32_t devtype,uint32_t devi
         return -ret;
     }
 
-    pControl = calloc(sizeof(*pControl),1);
+    pControl = (PIO_CAP_CONTROL_t)calloc(sizeof(*pControl),1);
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();

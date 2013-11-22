@@ -3,7 +3,7 @@
 #define __IO_CAP_CTRL_H__
 
 #include <iocapcommon.h>
-
+#include <vector>
 
 typedef struct
 {
@@ -55,10 +55,10 @@ private:
 	CRITICAL_SECTION m_EvtCS;	
 	int m_Started;
 	uint8_t m_MemShareName[IO_NAME_MAX_SIZE];
-	int m_BufferNum;
-	int m_BufferSectSize;
-	int m_BufferTotalSize;
-	void *m_pMemShareBase;
+	uint32_t m_BufferNum;
+	uint32_t m_BufferSectSize;
+	uint32_t m_BufferTotalSize;
+	ptr_t m_pMemShareBase;
 	HANDLE m_hMapFile;
 	uint8_t m_FreeEvtBaseName[IO_NAME_MAX_SIZE];
 	HANDLE *m_pFreeTotalEvts;
