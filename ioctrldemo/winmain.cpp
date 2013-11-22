@@ -8,6 +8,7 @@
 #include <dllinsert.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <tchar.h>
 
 #pragma comment(lib,"dinput8.lib")
 #pragma comment(lib,"dxguid.lib")
@@ -201,12 +202,12 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
 
     SetLastError(0);
     hr = g_pKeyboardDevice->Acquire();
-	/*yes we may acquire this ,or not ,so do not mind this*/
+    /*yes we may acquire this ,or not ,so do not mind this*/
     if(hr == DI_OK)
-    {    	
-		g_KeyboardAcquire = 1;
+    {
+        g_KeyboardAcquire = 1;
     }
-	
+
 
 
 
@@ -567,6 +568,10 @@ out:
 
 
 #ifdef _UNICODE
+int StringLength(wchar_t* pString)
+{
+    return wcslen(pString);
+}
 BOOL GetDialogItemString(HWND hwndDlg,int nIDDlgItem,wchar_t *pString,int count)
 {
     HWND hCtrlItem=NULL;
@@ -637,7 +642,33 @@ BOOL InsertComboString(HWND hwndDlg,int nIDDlgItem,int idx,wchar_t *pString)
     if(ret == CB_ERR)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("InsertString <0x%08x>:%d  Error(%d)\n",hwndDlg,nIDDlgItem,idx,ret);
+        ERROR_INFO("InsertString <0x%08x>:%d  Error(%d) CB_ERR(%d)\n",hwndDlg,nIDDlgItem,idx,ret,CB_ERR);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+BOOL SetComboSel(HWND hwndDlg,int nIDDlgItem,int idx)
+{
+    HWND hCtrlItem=NULL;
+    int ret;
+    hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
+    if(!hCtrlItem)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d DlgItem Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    ret = SendMessage(hCtrlItem,CB_SETCURSEL,idx,0);
+    if(ret == CB_ERR)
+    {
+        ret = LAST_ERROR_CODE();
+        SendMessage(hCtrlItem,CB_SETCURSEL,0,0);
+        ERROR_INFO("SetCurSel <0x%08x>:%d Idx(%d) CB_ERR(%d)  Error(%d)\n",hwndDlg,nIDDlgItem,idx,CB_ERR,ret);
         SetLastError(ret);
         return FALSE;
     }
@@ -688,6 +719,12 @@ int SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
 
 
 #else
+
+int StringLength(char * pString)
+{
+    return strlen(pString);
+}
+
 BOOL GetDialogItemString(HWND hwndDlg,int nIDDlgItem,char *pString,int count)
 {
     HWND hCtrlItem=NULL;
@@ -971,6 +1008,15 @@ BOOL CheckDialogString(HWND hwndDlg)
         goto fail;
     }
 
+    ret = StringLength(g_pExeStr);
+    if(ret == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SprintfString(errstr,MAX_STRING,TEXT("Must Specify Exe"));
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
     bret = GetDialogItemString(hwndDlg,IDC_EDT_PARAM,g_pParamStr,MAX_STRING);
     if(!bret)
     {
@@ -985,6 +1031,14 @@ BOOL CheckDialogString(HWND hwndDlg)
     {
         ret = LAST_ERROR_CODE();
         SprintfString(errstr,MAX_STRING,TEXT("Can not Get DLL Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+    ret = StringLength(g_pDllStr);
+    if(ret == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SprintfString(errstr,MAX_STRING,TEXT("Must Specify Dll"));
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
@@ -1119,6 +1173,15 @@ BOOL InitShowDialog(HWND hwndDlg)
     {
         ret = LAST_ERROR_CODE();
         SprintfString(errstr,MAX_STRING,TEXT("Can not Insert RWIN Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    bret = SetComboSel(hwndDlg,IDC_COMBO_ESCAPE,0);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Select 0 Error(%d)"),ret);
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
