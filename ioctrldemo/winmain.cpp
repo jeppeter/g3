@@ -423,10 +423,6 @@ BOOL UpdateCodeMessage()
 
 }
 
-BOOL StartExeProcess(CStartIoDlg* pDlg)
-{
-}
-
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -440,13 +436,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         switch(wParam)
         {
         case ID_START_IO_INJECT:
-            CStartIoDlg dlg;
             INT_PTR nRet;
 
-            nRet = dlg.DoModal();
+            nRet = DialogBox(g_hInstance,MAKEINTRESOURCE(IDD_START_DIALOG),hwnd,ShowDialogProc);
             if(nRet == IDOK)
             {
-                StartExeProcess(&dlg);
+                StartExeProcess();
             }
 
             break;
