@@ -21,7 +21,8 @@
 #pragma comment(lib,"iocapctrl.lib")
 #endif
 
-LPDIRECTINPUT8          g_pDirectInput      = NULL; //
+LPDIRECTINPUT8          g_pKeyDirectInput      = NULL;
+LPDIRECTINPUT8          g_pMouseDirectInput    = NULL;
 LPDIRECTINPUTDEVICE8    g_pMouseDevice      = NULL;
 int                     g_MouseAcquire      = 0;
 DIMOUSESTATE            g_diMouseState      = {0};
@@ -107,15 +108,24 @@ void DirectInput_Fini()
     ZeroMemory(g_KeyStateBuffer,sizeof(g_KeyStateBuffer));
     ZeroMemory(g_LastpKeyStateBuffer,sizeof(g_LastpKeyStateBuffer));
 
-    if(g_pDirectInput)
+    if(g_pKeyDirectInput)
     {
-        uret = g_pDirectInput->Release();
+        uret = g_pKeyDirectInput->Release();
         if(uret != 0)
         {
-            ERROR_INFO("DirectInput Release Not 0 (%d)\n",uret);
+            ERROR_INFO("KeyDirectInput Release Not 0 (%d)\n",uret);
         }
     }
-    g_pDirectInput = NULL;
+    g_pKeyDirectInput = NULL;
+    if(g_pMouseDirectInput)
+    {
+        uret = g_pMouseDirectInput->Release();
+        if(uret != 0)
+        {
+            ERROR_INFO("MouseDirectInput Release Not 0 (%d)\n",uret);
+        }
+    }
+    g_pMouseDirectInput = NULL;
     return ;
 }
 
@@ -125,48 +135,15 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
     int ret;
 
     DirectInput_Fini();
-
-    hr = DirectInput8Create(hInstance,0x800,IID_IDirectInput8,(void**)&g_pDirectInput,NULL);
+    hr = DirectInput8Create(hInstance,0x800,IID_IDirectInput8,(void**)&g_pMouseDirectInput,NULL);
     if(hr != DI_OK)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not Create DirectInput8 error(%d)\n",ret);
+        ERROR_INFO("Could not Create DirectInput8 error(%d) (0x%08x)\n",ret,hr);
         goto fail;
     }
 
-    hr = g_pDirectInput->CreateDevice(GUID_SysKeyboard,&g_pKeyboardDevice,NULL);
-    if(hr != DI_OK)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not Create SysKeyboard error(%d)\n",ret);
-        goto fail;
-    }
-
-    hr = g_pKeyboardDevice->SetDataFormat(&c_dfDIKeyboard);
-    if(hr != DI_OK)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not Set Keyboard Format error(%d)\n",ret);
-        goto fail;
-    }
-    hr = g_pKeyboardDevice->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-    if(hr != DI_OK)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not SetCooperativeLevel error(%d)\n",ret);
-        goto fail;
-    }
-
-    hr = g_pKeyboardDevice->Acquire();
-    if(hr != DI_OK)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not Keyboard Acquire error(%d)\n",ret);
-        goto fail;
-    }
-
-    g_KeyboardAcquire = 1;
-    hr = g_pDirectInput->CreateDevice(GUID_SysMouse,&g_pMouseDevice,NULL);
+    hr = g_pMouseDirectInput->CreateDevice(GUID_SysMouse,&g_pMouseDevice,NULL);
     if(hr != DI_OK)
     {
         ret = LAST_ERROR_CODE();
@@ -190,6 +167,47 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
         goto fail;
     }
     g_MouseAcquire = 1;
+
+    hr = DirectInput8Create(hInstance,0x800,IID_IDirectInput8,(void**)&g_pKeyDirectInput,NULL);
+    if(hr != DI_OK)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Create DirectInput8 error(%d) (0x%08x)\n",ret,hr);
+        goto fail;
+    }
+
+    hr = g_pKeyDirectInput->CreateDevice(GUID_SysKeyboard,&g_pKeyboardDevice,NULL);
+    if(hr != DI_OK)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Create SysKeyboard error(%d) (0x%08x)\n",ret,hr);
+        goto fail;
+    }
+
+    hr = g_pKeyboardDevice->SetDataFormat(&c_dfDIKeyboard);
+    if(hr != DI_OK)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Set Keyboard Format error(%d) (0x%08x)\n",ret,hr);
+        goto fail;
+    }
+    hr = g_pKeyboardDevice->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+    if(hr != DI_OK)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not SetCooperativeLevel error(%d) (0x%08x)\n",ret,hr);
+        goto fail;
+    }
+
+    SetLastError(0);
+    hr = g_pKeyboardDevice->Acquire();
+	/*yes we may acquire this ,or not ,so do not mind this*/
+    if(hr == DI_OK)
+    {    	
+		g_KeyboardAcquire = 1;
+    }
+	
+
 
 
     return S_OK;
