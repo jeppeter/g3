@@ -19,6 +19,23 @@ CIOController           *g_pIoController=NULL;
 HANDLE                   g_hProc = NULL;
 int                      g_EscapeKey =DIK_RCONTROL;
 
+
+#define  MAX_STRING   256
+
+#ifdef _UNICODE
+wchar_t  g_pExeStr[MAX_STRING];
+wchar_t  g_pDllStr[MAX_STRING];
+wchar_t  g_pParamStr[MAX_STRING];
+wchar_t  g_pBufNumStr[MAX_STRING];
+wchar_t  g_pBufSizeStr[MAX_STRING];
+#else
+char  g_pExeStr[MAX_STRING];
+char  g_pDllStr[MAX_STRING];
+char  g_pParamStr[MAX_STRING];
+char  g_pBufNumStr[MAX_STRING];
+char  g_pBufSizeStr[MAX_STRING];
+#endif
+
 void Process_Fini()
 {
     if(g_pIoController)
@@ -167,7 +184,7 @@ fail:
 BOOL Device_Read(IDirectInputDevice8* pDevice,void* pBuffer,long lSize)
 {
     HRESULT hr;
-	ZeroMemory(pBuffer,lSize);
+    ZeroMemory(pBuffer,lSize);
 
     while(1)
     {
@@ -408,8 +425,312 @@ BOOL UpdateCodeMessage()
 
 BOOL StartExeProcess(CStartIoDlg* pDlg)
 {
+}
+
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch(message)
+    {
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    case WM_COMMAND:
+        switch(wParam)
+        {
+        case ID_START_IO_INJECT:
+            CStartIoDlg dlg;
+            INT_PTR nRet;
+
+            nRet = dlg.DoModal();
+            if(nRet == IDOK)
+            {
+                StartExeProcess(&dlg);
+            }
+
+            break;
+        }
+        break;
+
+    default:
+        return DefWindowProc(hwnd, message, wParam, lParam);
+    }
+
+    return 0;
+}
+
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine, int nShowCmd)
+{
+    HWND hwnd = NULL;
+    HRESULT hr;
+    MSG msg= {0};
+    int ret;
+    ATOM pAtom=NULL;
+
+    WNDCLASSEX wndClass = { 0 };
+    wndClass.cbSize = sizeof(WNDCLASSEX) ;
+    wndClass.style = CS_HREDRAW | CS_VREDRAW;
+    wndClass.lpfnWndProc = WndProc;
+    wndClass.cbClsExtra		= 0;
+    wndClass.cbWndExtra		= 0;
+    wndClass.hInstance = hInstance;
+    wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wndClass.hbrBackground=(HBRUSH)GetStockObject(GRAY_BRUSH);
+    wndClass.lpszMenuName = MAKEINTRESOURCE(IDR_MAIN_MENU);
+    wndClass.lpszClassName = _T("IOControlDemo");
+
+    pAtom = RegisterClassEx(&wndClass);
+    if(!pAtom)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Register Class Error(%d)\n",ret);
+        goto out;
+    }
+    hwnd = CreateWindow(pAtom,_T("Demo Window"),
+                        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH,
+                        SCREEN_HEIGHT, NULL, NULL, hInstance, NULL);
+
+    hr = DirectInput_Init(hwnd,hInstance);
+    if(hr != S_OK)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Init DirectInput\n");
+        goto out;
+    }
+    ShowWindow(hwnd, nShowCmd);
+    UpdateWindow(hwnd);
+
+    while(msg.message != WM_QUIT)
+    {
+        if(PeekMessage(&msg,0,0,0,PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        UpdateCodeMessage();
+
+    }
+
+    ret = 0;
+out:
+    DirectInput_Fini();
+    Process_Fini();
+
+    if(pAtom)
+    {
+        UnregisterClassEx(pAtom,hInstance);
+    }
+    pAtom = NULL;
+    return -ret;
+}
+
+
+#ifdef _UNICODE
+BOOL GetDialogItemString(HWND hwndDlg,int nIDDlgItem,wchar_t *pString,int count)
+{
+    HWND hCtrlItem=NULL;
+    int ret;
+    hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
+    if(!hCtrlItem)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d DlgItem Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    pString[0] = 0x0;
+    SetLastError(0);
+    ret = ::GetWindowText(hCtrlItem,pString,count);
+    if(ret == 0 && GetLastError() != 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d WindowText Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+    }
+
+    return TRUE;
+
+}
+
+BOOL SetDialogItemString(HWND hwndDlg,int nIDDlgItem,wchar_t *pString)
+{
+    HWND hCtrlItem=NULL;
+    int ret;
+    BOOL bret;
+    hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
+    if(!hCtrlItem)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d DlgItem Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    bret = SetWindowText(hCtrlItem,pString);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Set <0x%08x>:%d WindowText Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+BOOL InsertComboString(HWND hwndDlg,int nIDDlgItem,int idx,wchar_t *pString)
+{
+    HWND hCtrlItem=NULL;
+    int ret;
+    BOOL bret;
+    hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
+    if(!hCtrlItem)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d DlgItem Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    ret = SendMessage(hCtrlItem, CB_INSERTRSTRING,idx,pString);
+    if(ret == CB_ERR)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("AddString <0x%08x>:%d  Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+
+int GetComboSel(HWND hwndDlg,int nIDDlgItem)
+{
+    HWND hCtrlItem=NULL;
+    int ret;
+    BOOL bret;
+    hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
+    if(!hCtrlItem)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d DlgItem Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return -1;
+    }
+
+    ret = SendMessage(hCtrlItem,CB_GETCURSEL,0,0);
+    if(ret == CB_ERR)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("AddString <0x%08x>:%d  Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return -1;
+    }
+
+    return ret;
+}
+
+
+
+int SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap,fmt);
+
+    ret =  _vsnwprintf_s(pString,count,_TRUNCATE,pfmt,ap);
+
+    DEBUG_INFO("%S\n",pString);
+    return ret;
+}
+
+
+#else
+BOOL GetDialogItemString(HWND hwndDlg,int nIDDlgItem,char *pString,int count)
+{
+    HWND hCtrlItem=NULL;
+    int ret;
+    hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
+    if(!hCtrlItem)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d DlgItem Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    pString[0] = 0x0;
+    SetLastError(0);
+    ret = ::GetWindowText(hCtrlItem,pString,count);
+    if(ret == 0 && GetLastError() != 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d WindowText Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+    }
+
+    return TRUE;
+}
+
+BOOL SetDialogItemString(HWND hwndDlg,int nIDDlgItem,char *pString)
+{
+    HWND hCtrlItem=NULL;
+    int ret;
+    BOOL bret;
+    hCtrlItem = ::GetDlgItem(hwndDlg,nIDDlgItem);
+    if(!hCtrlItem)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get <0x%08x>:%d DlgItem Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    bret = SetWindowText(hCtrlItem,pString);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Set <0x%08x>:%d WindowText Error(%d)\n",hwndDlg,nIDDlgItem,ret);
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+
+
+
+void SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap,fmt);
+
+    ret = _vsnprintf_s(pString,count,_TRUNCATE,pfmt,ap);
+
+    DEBUG_INFO("%s\n",pString);
+    return ret;
+}
+
+#endif /*_UNICODE*/
+
+BOOL StartExeProcess()
+{
     char* pExeAnsi=NULL,*pDllAnsi=NULL,*pParamAnsi=NULL,*pCommandAnsi=NULL,*pPartDll=NULL;
-    CString errstr,caption=TEXT("Error");
+    BOOL bret;
+#ifdef _UNICODE
+    wchar_t errstr[MAX_STRING];
+#else
+    char errstr[MAX_STRING];
+#endif
     uint32_t bufnum=0,bufsize=0;
     uint32_t keyboardid,mouseid;
     int ret;
@@ -431,31 +752,34 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
     }
     g_hProc = NULL;
 
+
+
+
     /*now first we should CreateProcess*/
 #ifdef _UNICODE
-    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)pDlg->m_strExec),&pExeAnsi,&exesize);
+    ret = UnicodeToAnsi(g_pExeStr,&pExeAnsi,&exesize);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
         goto fail;
     }
-    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)pDlg->m_strDll),&pDllAnsi,&dllsize);
+    ret = UnicodeToAnsi(g_pDllStr,&pDllAnsi,&dllsize);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
         goto fail;
     }
 
-    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)pDlg->m_strParam),&pParamAnsi,&paramsize);
+    ret = UnicodeToAnsi(g_pParamStr,&pParamAnsi,&paramsize);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
         goto fail;
     }
 #else
-    pExeAnsi = (LPCSTR) pDlg->m_strExec;
-    pDllAnsi = (LPCSTR) pDlg->m_strDll;
-    pParamAnsi = (LPCSTR) pDlg->m_strParam;
+    pExeAnsi = (LPCSTR) g_pExeStr;
+    pDllAnsi = (LPCSTR) g_pDllStr;
+    pParamAnsi = (LPCSTR) g_pParamStr;
 #endif
 
     pPartDll = strrchr(pDllAnsi,'\\');
@@ -505,9 +829,8 @@ BOOL StartExeProcess(CStartIoDlg* pDlg)
     }
 
     g_pIoController = new CIOController();
-    bufnum = pDlg->m_iBufNum;
-    bufsize = pDlg->m_iBufSize;
-    g_EscapeKey = pDlg->m_iDiK;
+    bufnum = _tcstoul(g_pBufNumStr, NULL, 10);
+    bufsize = _tcstoul(g_pBufSizeStr, NULL, 16);
     bret = g_pIoController->Start(g_hProc,bufnum,bufsize);
     if(!bret)
     {
@@ -593,102 +916,211 @@ fail:
 }
 
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+BOOL CheckDialogString(HWND hwndDlg)
 {
-    switch(message)
+    BOOL bret;
+    int ret;
+    wchar_t errstr[MAX_STRING];
+    uint32_t bufnum,bufsize;
+    bret = GetDialogItemString(hwndDlg,IDC_EDT_EXE,g_pExeStr,MAX_STRING);
+    if(!bret)
     {
-
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    case WM_COMMAND:
-        switch(wParam)
-        {
-        case ID_START_IO_INJECT:
-            CStartIoDlg dlg;
-            INT_PTR nRet;
-
-            nRet = dlg.DoModal();
-            if(nRet == IDOK)
-            {
-                StartExeProcess(&dlg);
-            }
-
-            break;
-        }
-        break;
-
-    default:
-        return DefWindowProc(hwnd, message, wParam, lParam);
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Get Exe Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
     }
 
-    return 0;
+    bret = GetDialogItemString(hwndDlg,IDC_EDT_PARAM,g_pParamStr,MAX_STRING);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Get Param Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    bret = GetDialogItemString(hwndDlg,IDC_EDT_DLL,g_pDllStr,MAX_STRING);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Get DLL Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    bret = GetDialogItemString(hwndDlg,IDC_EDT_BUFNUM,g_pBufNumStr,MAX_STRING);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Get BufNum Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    bret = GetDialogItemString(hwndDlg,IDC_EDT_BUFSIZE,g_pBufSizeStr,MAX_STRING);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Get BufSize Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+    bufnum = _tcstoul(g_pBufNumStr, NULL, 10);
+    bufsize = _tcstoul(g_pBufSizeStr, NULL, 16);
+
+    if(bufnum == 0 || bufsize < 32)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SprintfString(errstr,MAX_STRING,TEXT("Bufnum (%d  == 0) or BufSize(%d < 32)"),bufnum,bufsize);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    ret = GetComboSel(hwndDlg,IDC_COMBO_ESCAPE);
+    if(ret == -1)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Get CurSel Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    if(ret == 0)
+    {
+        g_EscapeKey = DIK_RCONTROL;
+    }
+    else if(ret == 1)
+    {
+        g_EscapeKey = DIK_RWIN;
+    }
+
+    SetLastError(0);
+    return TRUE;
+fail:
+    SetLastError(ret);
+    return FALSE;
 }
 
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine, int nShowCmd)
+
+BOOL InitShowDialog(HWND hwndDlg)
 {
-    HWND hwnd = NULL;
-    HRESULT hr;
-    MSG msg= {0};
+    BOOL bret;
     int ret;
-    ATOM pAtom=NULL;
-
-    WNDCLASSEX wndClass = { 0 };
-    wndClass.cbSize = sizeof(WNDCLASSEX) ;
-    wndClass.style = CS_HREDRAW | CS_VREDRAW;
-    wndClass.lpfnWndProc = WndProc;
-    wndClass.cbClsExtra		= 0;
-    wndClass.cbWndExtra		= 0;
-    wndClass.hInstance = hInstance;
-    wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wndClass.hbrBackground=(HBRUSH)GetStockObject(GRAY_BRUSH);
-    wndClass.lpszMenuName = MAKEINTRESOURCE(IDR_MAIN_MENU);
-    wndClass.lpszClassName = _T("IOControlDemo");
-
-    pAtom = RegisterClassEx(&wndClass);
-    if(!pAtom)
+    wchar_t errstr[MAX_STRING];
+    wchar_t selstr[MAX_STRING];
+    bret = SetDialogItemString(hwndDlg,IDC_EDT_EXE,TEXT(""));
+    if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("Register Class Error(%d)\n",ret);
-        goto out;
+        SprintfString(errstr,MAX_STRING,"Can not Set Exe Error(%d)",ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
     }
-    hwnd = CreateWindow(pAtom,_T("Demo Window"),
-                        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH,
-                        SCREEN_HEIGHT, NULL, NULL, hInstance, NULL);
 
-    hr = DirectInput_Init(hwnd,hInstance);
-    if(hr != S_OK)
+    bret = SetDialogItemString(hwndDlg,IDC_EDT_PARAM,IDC_EDT_EXE,TEXT(""));
+    if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not Init DirectInput\n");
-        goto out;
+        SprintfString(errstr,MAX_STRING,"Can not Set Param Error(%d)",ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
     }
-	ShowWindow(hwnd, nShowCmd);
-	UpdateWindow(hwnd);
 
-    while(msg.message != WM_QUIT)
+    bret = SetDialogItemString(hwndDlg,IDC_EDT_DLL,IDC_EDT_EXE,TEXT(""));
+    if(!bret)
     {
-        if(PeekMessage(&msg,0,0,0,PM_REMOVE))
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,"Can not Get DLL Error(%d)",ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    SprintfString(g_pBufNumStr,MAX_STRING,TEXT("10"));
+
+    bret = SetDialogItemString(hwndDlg,IDC_EDT_BUFNUM,g_pBufNumStr);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,"Can not Get BufNum Error(%d)",ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    SprintfString(g_pBufSizeStr,MAX_STRING,TEXT("400"));
+    bret = SetDialogItemString(hwndDlg,IDC_EDT_BUFSIZE,g_pBufSizeStr);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Set BufSize Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    SprintfString(selstr,MAX_STRING,TEXT("RCONTROL"));
+    bret = InsertComboString(hwndDlg,IDC_COMBO_ESCAPE,0,selstr);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Insert RCONTROL Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+	SprintfString(selstr,MAX_STRING,TEXT("RWIN"));
+    bret = InsertComboString(hwndDlg,IDC_COMBO_ESCAPE,1,selstr);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Insert RWIN Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+	
+
+    SetLastError(0);
+    return TRUE;
+fail:
+    SetLastError(ret);
+    return FALSE;
+
+}
+
+BOOL CALLBACK ShowDialogProc(HWND hwndDlg,
+                             UINT message,
+                             WPARAM wParam,
+                             LPARAM lParam)
+{
+    BOOL bret;
+    switch(message)
+    {
+    case WM_INITDIALOG:
+        InitShowDialog(hwndDlg);
+        return TRUE;
+        break;
+    case WM_CLOSE:
+        EndDialog(hwndDlg,0);
+        return TRUE;
+    case WM_COMMAND:
+        switch(LOWORD(wParam))
         {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+        case IDOK:
+            bret = CheckDialogString(hwndDlg);
+            if(bret)
+            {
+                EndDialog(hwndDlg,wParam);
+                return TRUE;
+            }
+            break;
+        case IDCANCEL:
+            EndDialog(hwndDlg,wParam);
+            return TRUE;
         }
-
-        UpdateCodeMessage();
+        break;
 
     }
 
-    ret = 0;
-out:
-    DirectInput_Fini();
-    Process_Fini();
-
-    if(pAtom)
-    {
-        UnregisterClassEx(pAtom,hInstance);
-    }
-    pAtom = NULL;
-    return -ret;
+    return FALSE;
 }
 
