@@ -35,6 +35,7 @@ unsigned char                    g_LastpKeyStateBuffer[256] = {0};
 CIOController           *g_pIoController=NULL;
 HANDLE                   g_hProc = NULL;
 int                      g_EscapeKey =DIK_RCONTROL;
+int                      g_WaitTime = 0;
 HINSTANCE                g_hInstance = NULL;
 
 
@@ -49,12 +50,14 @@ wchar_t  g_pDllStr[MAX_STRING];
 wchar_t  g_pParamStr[MAX_STRING];
 wchar_t  g_pBufNumStr[MAX_STRING];
 wchar_t  g_pBufSizeStr[MAX_STRING];
+wchar_t  g_pWaitTimeStr[MAX_STRING];
 #else
 char  g_pExeStr[MAX_STRING];
 char  g_pDllStr[MAX_STRING];
 char  g_pParamStr[MAX_STRING];
 char  g_pBufNumStr[MAX_STRING];
 char  g_pBufSizeStr[MAX_STRING];
+char  g_pWaitTimeStr[MAX_STRING];
 #endif
 
 void Process_Fini()
@@ -890,6 +893,13 @@ BOOL StartExeProcess(HWND hwnd)
 
     pid = ret;
 
+    DEBUG_INFO("Wait Before (%d)\n",g_WaitTime);
+    if(g_WaitTime > 0)
+    {
+        Sleep(g_WaitTime * 1000);
+    }
+    DEBUG_INFO("Wait After (%d)\n",g_WaitTime);
+
     g_hProc = OpenProcess(PROCESS_ALL_ACCESS,FALSE,pid);
     if(g_hProc == NULL)
     {
@@ -900,6 +910,8 @@ BOOL StartExeProcess(HWND hwnd)
         goto fail;
     }
 
+
+
     g_pIoController = new CIOController();
 #ifdef _UNICODE
     bufnum = wcstoul(g_pBufNumStr, NULL, 10);
@@ -908,7 +920,7 @@ BOOL StartExeProcess(HWND hwnd)
     bufnum = strtoul(g_pBufNumStr, NULL, 10);
     bufsize = strtoul(g_pBufSizeStr, NULL, 16);
 #endif
-    bret = g_pIoController->Start(g_hProc,bufnum,bufsize);
+    bret  = g_pIoController->Start(g_hProc,bufnum,bufsize);
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
@@ -998,7 +1010,7 @@ BOOL CheckDialogString(HWND hwndDlg)
     BOOL bret;
     int ret;
     wchar_t errstr[MAX_STRING];
-    uint32_t bufnum,bufsize;
+    uint32_t bufnum,bufsize,waittime;
     bret = GetDialogItemString(hwndDlg,IDC_EDT_EXE,g_pExeStr,MAX_STRING);
     if(!bret)
     {
@@ -1060,12 +1072,23 @@ BOOL CheckDialogString(HWND hwndDlg)
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
+    bret = GetDialogItemString(hwndDlg,IDC_EDT_WAITTIME,g_pWaitTimeStr,MAX_STRING);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Get WaitTime Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
 #ifdef _UNICODE
     bufnum = wcstoul(g_pBufNumStr, NULL, 10);
     bufsize = wcstoul(g_pBufSizeStr, NULL, 16);
+    waittime = wcstoul(g_pWaitTimeStr, NULL, 10);
 #else
     bufnum = strtoul(g_pBufNumStr, NULL, 10);
     bufsize = strtoul(g_pBufSizeStr, NULL, 16);
+    waittime = strtoul(g_pBufNumStr, NULL, 10);
 #endif
 
     if(bufnum == 0 || bufsize < 32)
@@ -1093,6 +1116,8 @@ BOOL CheckDialogString(HWND hwndDlg)
     {
         g_EscapeKey = DIK_RWIN;
     }
+
+    g_WaitTime = waittime;
 
     SetLastError(0);
     return TRUE;
@@ -1153,6 +1178,16 @@ BOOL InitShowDialog(HWND hwndDlg)
     {
         ret = LAST_ERROR_CODE();
         SprintfString(errstr,MAX_STRING,TEXT("Can not Set BufSize Error(%d)"),ret);
+        MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    SprintfString(selstr,MAX_STRING,TEXT("10"));
+    bret = SetDialogItemString(hwndDlg,IDC_EDT_WAITTIME,selstr);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        SprintfString(errstr,MAX_STRING,TEXT("Can not Set WaitTime Error(%d)"),ret);
         MessageBox(hwndDlg,errstr,TEXT("Error"),MB_OK);
         goto fail;
     }

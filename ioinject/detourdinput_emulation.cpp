@@ -1039,8 +1039,10 @@ ULONG UnRegisterDirectInputDevice8WHook(IDirectInputDevice8W* ptr)
 }
 
 
-#define  DIRECT_INPUT_DEVICE_8W_IN()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
-#define  DIRECT_INPUT_DEVICE_8W_OUT()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+//#define  DIRECT_INPUT_DEVICE_8W_IN()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+//#define  DIRECT_INPUT_DEVICE_8W_OUT()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8W_IN()
+#define  DIRECT_INPUT_DEVICE_8W_OUT()
 
 
 class CDirectInputDevice8WHook : public IDirectInputDevice8W
@@ -1292,6 +1294,7 @@ fail:
         EnterCriticalSection(&(this->m_StateCS));
         while(this->m_EventList.size() > 0)
         {
+			DEBUG_INFO("Event Size (%d)\n",this->m_EventList.size());
             assert(pEventList == NULL);
             pEventList = this->m_EventList[0];
             this->m_EventList.erase(this->m_EventList.begin());
@@ -1718,7 +1721,6 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->Poll();
-        DINPUT_DEBUG_INFO("<0X%p> Poll Return 0x%08x\n",this->m_ptr,hr);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }

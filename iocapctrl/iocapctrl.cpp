@@ -12,6 +12,12 @@
 #define  IO_INPUT_EVT_BASENAME  "GlobalIoInjectInputEvt"
 #define  IO_MAP_MEM_BASENAME    "GlobalIoInjectMapMem"
 
+#ifdef _DEBUG
+#define IOINJECT_DLL  "ioinjectd.dll"
+#else
+#define IOINJECT_DLL  "ioinject.dll"
+#endif
+
 CIOController::CIOController()
 {
     m_hProc = NULL;
@@ -301,11 +307,11 @@ int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
     pid = this->m_Pid;
 
     /*now we should get the address of the */
-    ret = GetRemoteProcAddress(pid,"ioinject.dll","DetourDirectInputControl",&pFnAddr);
+    ret = GetRemoteProcAddress(pid,IOINJECT_DLL,"DetourDirectInputControl",&pFnAddr);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("can not find[%d] %s:%s Error(%d)\n",pid,"ioinject.dll","DetourDirectInputControl",ret);
+        ERROR_INFO("can not find[%d] %s:%s Error(%d)\n",pid,IOINJECT_DLL,"DetourDirectInputControl",ret);
         SetLastError(ret);
         return -ret;
     }
@@ -610,14 +616,14 @@ fail:
     return -ret;
 }
 
-int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
+BOOL CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
 {
     int ret;
     if(hProc == NULL || bufnum == 0 || bufsize < sizeof(DEVICEEVENT))
     {
         ret = ERROR_INVALID_PARAMETER;
         SetLastError(ret);
-        return -ret;
+        return FALSE;
     }
     this->Stop();
     this->m_hProc = hProc;
@@ -631,7 +637,7 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
         ret=  LAST_ERROR_CODE();
         ERROR_INFO("Get <0x%08x> ProcessId Error(%d)\n",this->m_hProc,ret);
         this->Stop();
-        return -ret;
+        return FALSE;
     }
 
     /*now first to allocate memory*/
@@ -641,7 +647,7 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
         ret= LAST_ERROR_CODE();
         this->Stop();
         SetLastError(ret);
-        return -ret;
+        return FALSE;
     }
 
     ret= this->__AllocateAllEvents();
@@ -650,7 +656,7 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
         ret= LAST_ERROR_CODE();
         this->Stop();
         SetLastError(ret);
-        return -ret;
+        return FALSE;
     }
 
     ret= this->__AllocateCapEvents();
@@ -659,7 +665,7 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
         ret= LAST_ERROR_CODE();
         this->Stop();
         SetLastError(ret);
-        return -ret;
+        return FALSE;
     }
 
     ret = this->__StartBackGroundThread();
@@ -668,7 +674,7 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
         ret= LAST_ERROR_CODE();
         this->Stop();
         SetLastError(ret);
-        return -ret;
+        return FALSE;
     }
 
     ret = this->__CallStartIoCapControl();
@@ -677,13 +683,13 @@ int CIOController::Start(HANDLE hProc,uint32_t bufnum,uint32_t bufsize)
         ret= LAST_ERROR_CODE();
         this->Stop();
         SetLastError(ret);
-        return -ret;
+        return FALSE;
     }
 
     this->m_Started = 1;
 
     SetLastError(0);
-    return 0;
+    return TRUE;
 }
 
 int CIOController::__CallAddDeviceIoCapControl(uint32_t devtype,uint32_t * pDevId)
