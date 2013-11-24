@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "detourdinput.h"
+#include "detourrawinput.h"
 #include "ioinject.h"
 #include <injectbase.h>
 
@@ -13,6 +14,7 @@ void FiniIoInject(HMODULE hModule)
     if(st_IoInjectInited)
     {
         DetourDirectInputFini();
+        DetourRawInputFini();
     }
     st_IoInjectInited = 0;
     return ;
@@ -23,9 +25,15 @@ BOOL InitIoInject(HMODULE hModule)
     BOOL bret;
     int ret;
 
-	DEBUG_INFO("st_IoInjectInited = %d\n",st_IoInjectInited);
+    DEBUG_INFO("st_IoInjectInited = %d\n",st_IoInjectInited);
 
     bret = DetourDirectInputInit();
+    if(!bret)
+    {
+        return TRUE;
+    }
+
+    bret = DetourRawInputInit();
     if(!bret)
     {
         return TRUE;
@@ -45,6 +53,24 @@ BOOL InitIoInject(HMODULE hModule)
 
 int IoInjectControl(PIO_CAP_CONTROL_t pControl)
 {
-	return DetourDirectInputControl(pControl);
+    int ret;
+    int lasterr=0;
+    int totalret=0;
+    ret = DetourDirectInputControl(pControl);
+    if(ret < 0)
+    {
+        totalret = -ret;
+        lasterr = LAST_ERROR_CODE();
+    }
+
+    ret = DetourRawInputControl(pControl);
+    if(ret < 0)
+    {
+        totalret = -ret;
+        lasterr = LAST_ERROR_CODE();
+    }
+
+    SetLastError(lasterr);
+    return -totalret;
 }
 
