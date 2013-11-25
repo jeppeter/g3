@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "detourdinput.h"
 #include "detourrawinput.h"
+#include "detourmessage.h"
 #include "ioinject.h"
 #include <injectbase.h>
 
@@ -15,6 +16,7 @@ void FiniIoInject(HMODULE hModule)
     {
         DetourDirectInputFini();
         DetourRawInputFini();
+        DetourMessageInputFini();
     }
     st_IoInjectInited = 0;
     return ;
@@ -34,6 +36,12 @@ BOOL InitIoInject(HMODULE hModule)
     }
 
     bret = DetourRawInputInit();
+    if(!bret)
+    {
+        return TRUE;
+    }
+
+    bret = DetourMessageInputInit();
     if(!bret)
     {
         return TRUE;
