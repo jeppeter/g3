@@ -17,13 +17,26 @@ BOOL WINAPI GetMessageACallBack(
     bret = GetMessageANext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
     if(bret)
     {
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
-                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
-                         lpMsg->wParam,lpMsg->wParam,
-                         lpMsg->lParam,lpMsg->lParam,
-                         lpMsg->time,lpMsg->time,
-                         lpMsg->pt.x,lpMsg->pt.x,
-                         lpMsg->pt.y,lpMsg->pt.y);
+        if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
+        {
+            DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageA Keyboard hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                             lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                             lpMsg->wParam,lpMsg->wParam,
+                             lpMsg->lParam,lpMsg->lParam,
+                             lpMsg->time,lpMsg->time,
+                             lpMsg->pt.x,lpMsg->pt.x,
+                             lpMsg->pt.y,lpMsg->pt.y);
+        }
+        else if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST)
+        {
+            DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageA Mouse hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                             lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                             lpMsg->wParam,lpMsg->wParam,
+                             lpMsg->lParam,lpMsg->lParam,
+                             lpMsg->time,lpMsg->time,
+                             lpMsg->pt.x,lpMsg->pt.x,
+                             lpMsg->pt.y,lpMsg->pt.y);
+        }
     }
     return bret;
 }
@@ -39,16 +52,29 @@ BOOL WINAPI PeekMessageACallBack(
 {
     BOOL bret;
     bret = PeekMessageANext(lpMsg,hWnd,wMsgFilterMin,
-                           wMsgFilterMax,wRemoveMsg);
+                            wMsgFilterMax,wRemoveMsg);
     if(bret)
     {
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
-                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
-                         lpMsg->wParam,lpMsg->wParam,
-                         lpMsg->lParam,lpMsg->lParam,
-                         lpMsg->time,lpMsg->time,
-                         lpMsg->pt.x,lpMsg->pt.x,
-                         lpMsg->pt.y,lpMsg->pt.y);
+        if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
+        {
+            DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA Keyboard hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                             lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                             lpMsg->wParam,lpMsg->wParam,
+                             lpMsg->lParam,lpMsg->lParam,
+                             lpMsg->time,lpMsg->time,
+                             lpMsg->pt.x,lpMsg->pt.x,
+                             lpMsg->pt.y,lpMsg->pt.y);
+        }
+        else if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST)
+        {
+            DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA Mouse hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                             lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                             lpMsg->wParam,lpMsg->wParam,
+                             lpMsg->lParam,lpMsg->lParam,
+                             lpMsg->time,lpMsg->time,
+                             lpMsg->pt.x,lpMsg->pt.x,
+                             lpMsg->pt.y,lpMsg->pt.y);
+        }
     }
     return bret;
 }
@@ -66,13 +92,26 @@ BOOL WINAPI GetMessageWCallBack(
     bret = GetMessageWNext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
     if(bret)
     {
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
-                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
-                         lpMsg->wParam,lpMsg->wParam,
-                         lpMsg->lParam,lpMsg->lParam,
-                         lpMsg->time,lpMsg->time,
-                         lpMsg->pt.x,lpMsg->pt.x,
-                         lpMsg->pt.y,lpMsg->pt.y);
+        if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
+        {
+            DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW Keyboard hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                             lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                             lpMsg->wParam,lpMsg->wParam,
+                             lpMsg->lParam,lpMsg->lParam,
+                             lpMsg->time,lpMsg->time,
+                             lpMsg->pt.x,lpMsg->pt.x,
+                             lpMsg->pt.y,lpMsg->pt.y);
+        }
+        else if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST)
+        {
+            DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW Mouse hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                             lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                             lpMsg->wParam,lpMsg->wParam,
+                             lpMsg->lParam,lpMsg->lParam,
+                             lpMsg->time,lpMsg->time,
+                             lpMsg->pt.x,lpMsg->pt.x,
+                             lpMsg->pt.y,lpMsg->pt.y);
+        }
     }
     return bret;
 }
@@ -88,16 +127,29 @@ BOOL WINAPI PeekMessageWCallBack(
 {
     BOOL bret;
     bret = PeekMessageWNext(lpMsg,hWnd,wMsgFilterMin,
-                           wMsgFilterMax,wRemoveMsg);
+                            wMsgFilterMax,wRemoveMsg);
     if(bret)
     {
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
-                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
-                         lpMsg->wParam,lpMsg->wParam,
-                         lpMsg->lParam,lpMsg->lParam,
-                         lpMsg->time,lpMsg->time,
-                         lpMsg->pt.x,lpMsg->pt.x,
-                         lpMsg->pt.y,lpMsg->pt.y);
+        if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
+        {
+            DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW Keyboard hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                             lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                             lpMsg->wParam,lpMsg->wParam,
+                             lpMsg->lParam,lpMsg->lParam,
+                             lpMsg->time,lpMsg->time,
+                             lpMsg->pt.x,lpMsg->pt.x,
+                             lpMsg->pt.y,lpMsg->pt.y);
+        }
+        else if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST)
+        {
+            DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW Mouse hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                             lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                             lpMsg->wParam,lpMsg->wParam,
+                             lpMsg->lParam,lpMsg->lParam,
+                             lpMsg->time,lpMsg->time,
+                             lpMsg->pt.x,lpMsg->pt.x,
+                             lpMsg->pt.y,lpMsg->pt.y);
+        }
     }
     return bret;
 }
