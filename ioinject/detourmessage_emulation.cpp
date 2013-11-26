@@ -13,8 +13,8 @@ static std::vector<MSG*> st_MessageEmulationQueue;
 static int st_MaxMessageEmulationQueue=20;
 
 static CRITICAL_SECTION  st_KeyStateEmulationCS;
-static uint16_t st_KeyStateArray[KEY_STATE_SIZE];
-static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE];
+static uint16_t st_KeyStateArray[KEY_STATE_SIZE]={0};
+static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]={0};
 
 
 static int st_MessageEmualtionInited=0;
@@ -122,26 +122,56 @@ int SetKeyState(UINT vsk,int keydown)
 USHORT __InnerGetKeyState(UINT vk)
 {
     USHORT uret;
-    USHORT expandvk[2];
-    int exvk[2];
+    UINT uvk[2];
+    UINT exvk[2];
     int expanded=0;
-    if(vk >= 256)
+    if(vk >= KEY_STATE_SIZE)
     {
         return 0;
     }
 
     if(vk == VK_CONTROL)
     {
+        expanded = 1;
+        exvk[0] = VK_LCONTROL;
+        exvk[1] = VK_RCONTROL;
     }
     else if(vk == VK_MENU)
     {
+        expanded = 1;
+        exvk[0] = VK_LMENU;
+        exvk[1] = VK_RMENU;
     }
     else if(vk == VK_SHIFT)
     {
+        expanded = 1;
+        exvk[0] = VK_LSHIFT;
+        exvk[1] = VK_RSHIFT;
     }
 
     EnterCriticalSection(&st_KeyStateEmulationCS);
-    uret = st_KeyStateArray[vk];
+    if(expanded)
+    {
+        uvk[0] = st_KeyStateArray[exvk[0]];
+        uvk[1] = st_KeyStateArray[exvk[1]];
+
+        /*
+        	we call the last more key value ,so it will return for more
+        */
+        if(uvk[0] > uvk[1])
+        {
+            uret = uvk[0];
+        }
+        else
+        {
+            uret = uvk[1];
+        }
+
+    }
+    else
+    {
+        uret = st_KeyStateArray[vk];
+    }
     LeaveCriticalSection(&st_KeyStateEmulationCS);
     return uret;
 }
@@ -149,13 +179,53 @@ USHORT __InnerGetKeyState(UINT vk)
 USHORT __InnerGetAsynState(UINT vk)
 {
     USHORT uret;
-    if(vk >= 256)
+    UINT uvk[2];
+    UINT exvk[2];
+    int expanded=0;
+    if(vk >= KEY_STATE_SIZE)
     {
         return 0;
     }
+    if(vk == VK_CONTROL)
+    {
+        expanded = 1;
+        exvk[0] = VK_LCONTROL;
+        exvk[1] = VK_RCONTROL;
+    }
+    else if(vk == VK_MENU)
+    {
+        expanded = 1;
+        exvk[0] = VK_LMENU;
+        exvk[1] = VK_RMENU;
+    }
+    else if(vk == VK_SHIFT)
+    {
+        expanded = 1;
+        exvk[0] = VK_LSHIFT;
+        exvk[1] = VK_RSHIFT;
+    }
     EnterCriticalSection(&st_KeyStateEmulationCS);
-    uret = st_AsyncKeyStateArray[vk];
-    st_AsyncKeyStateArray[vk] &= ~(ASYNC_KEY_TOGGLED_STATE);
+    if(expanded)
+    {
+        uvk[0] = st_AsyncKeyStateArray[exvk[0]];
+        uvk[1] = st_AsyncKeyStateArray[exvk[1]];
+        st_AsyncKeyStateArray[exvk[0]] &= ~(ASYNC_KEY_TOGGLED_STATE);
+        st_AsyncKeyStateArray[exvk[1]] &= ~(ASYNC_KEY_TOGGLED_STATE);
+
+        if(uvk[0] > uvk[1])
+        {
+            uret = uvk[0];
+        }
+        else
+        {
+            uret = uvk[1];
+        }
+    }
+    else
+    {
+        uret = st_AsyncKeyStateArray[vk];
+        st_AsyncKeyStateArray[vk] &= ~(ASYNC_KEY_TOGGLED_STATE);
+    }
     LeaveCriticalSection(&st_KeyStateEmulationCS);
     return uret;
 }
