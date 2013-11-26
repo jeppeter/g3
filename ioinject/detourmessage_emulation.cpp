@@ -13,8 +13,8 @@ static std::vector<MSG*> st_MessageEmulationQueue;
 static int st_MaxMessageEmulationQueue=20;
 
 static CRITICAL_SECTION  st_KeyStateEmulationCS;
-static uint8_t st_KeyStateArray[KEY_STATE_SIZE];
-static uint8_t st_AsyncKeyStateArray[KEY_STATE_SIZE];
+static uint16_t st_KeyStateArray[KEY_STATE_SIZE];
+static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE];
 
 
 static int st_MessageEmualtionInited=0;
@@ -23,7 +23,7 @@ static int st_MessageEmualtionInited=0;
 #define  EMULATIONMESSAGE_DEBUG_INFO      DEBUG_INFO
 
 
-int InsertEmulationMessageQueue(LPMSG lpMsg)
+int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
 {
     int ret=-ERROR_NOT_SUPPORTED;
     LPMSG lcpMsg=NULL,lpRemove=NULL;
@@ -47,7 +47,14 @@ int InsertEmulationMessageQueue(LPMSG lpMsg)
             st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
         }
 
-        st_MessageEmulationQueue.push_back(lcpMsg);
+        if(back)
+        {
+            st_MessageEmulationQueue.push_back(lcpMsg);
+        }
+        else
+        {
+            st_MessageEmulationQueue.insert(st_MessageEmulationQueue.begin(),lcpMsg);
+        }
         LeaveCriticalSection(&st_MessageEmulationCS);
         if(lpRemove)
         {
@@ -68,15 +75,78 @@ int InsertEmulationMessageQueue(LPMSG lpMsg)
 }
 
 
-int SetKeyState(int scancode,int keydown)
+#define  ASYNC_KEY_PRESSED_STATE   0x8000
+#define  ASYNC_KEY_TOGGLED_STATE   0x1
+
+#define  KEY_PRESSED_STATE         0x8000
+#define  KEY_TOGGLE_STATE          0x1
+
+int SetKeyState(UINT vsk,int keydown)
 {
-	int ret;
-	EnterCriticalSection(&st_KeyStateEmulationCS);
-	LeaveCriticalSection(&st_KeyStateEmulationCS);
-	return 0;
+    int ret;
+    UINT vk;
+    vk = MapVirtualKey(vsk,MAPVK_VSC_TO_VK_EX);
+    if(vk == 0)
+    {
+        /*if not return ,just not set*/
+        return 0;
+    }
+    EnterCriticalSection(&st_KeyStateEmulationCS);
+    if(keydown)
+    {
+        st_KeyStateArray[vk] |= KEY_PRESSED_STATE;
+
+        st_AsyncKeyStateArray[vk] |= ASYNC_KEY_PRESSED_STATE;
+        st_AsyncKeyStateArray[vk] |= ASYNC_KEY_PRESSED_STATE;
+    }
+    else
+    {
+        st_KeyStateArray[vk] &=~(KEY_PRESSED_STATE) ;
+        if(st_KeyStateArray[vk] & KEY_TOGGLE_STATE)
+        {
+            st_KeyStateArray[vk] &= ~(KEY_TOGGLE_STATE);
+        }
+        else
+        {
+            st_KeyStateArray[vk] |= KEY_TOGGLE_STATE;
+        }
+
+        st_AsyncKeyStateArray[vk] &= ~(ASYNC_KEY_PRESSED_STATE);
+        st_AsyncKeyStateArray[vk] |= ASYNC_KEY_TOGGLED_STATE;
+
+    }
+    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    return 0;
 }
 
-LPMSG GetEmulationMessageQueue()
+USHORT __InnerGetKeyState(UINT vk)
+{
+    USHORT uret;
+    if(vk >= 256)
+    {
+        return 0;
+    }
+    EnterCriticalSection(&st_KeyStateEmulationCS);
+    uret = st_KeyStateArray[vk];
+    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    return uret;
+}
+
+USHORT __InnerGetAsynState(UINT vk)
+{
+    USHORT uret;
+    if(vk >= 256)
+    {
+        return 0;
+    }
+    EnterCriticalSection(&st_KeyStateEmulationCS);
+    uret = st_AsyncKeyStateArray[vk];
+    st_AsyncKeyStateArray[vk] &= ~(ASYNC_KEY_TOGGLED_STATE);
+    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    return uret;
+}
+
+LPMSG __GetEmulationMessageQueue()
 {
     LPMSG lGetMsg=NULL;
     if(st_MessageEmualtionInited)
@@ -99,10 +169,12 @@ LPMSG GetEmulationMessageQueue()
 }
 
 
+
+
 int __MessageDetour(void)
 {
     InitializeCriticalSection(&st_MessageEmulationCS);
-	InitializeCriticalSection(&st_KeyStateEmulationCS);
+    InitializeCriticalSection(&st_KeyStateEmulationCS);
     DEBUG_BUFFER_FMT(GetMessageANext,10,"Before GetMessageANext(0x%p)",GetMessageANext);
     DEBUG_BUFFER_FMT(PeekMessageANext,10,"Before PeekMessageANext(0x%p)",PeekMessageANext);
     DEBUG_BUFFER_FMT(GetMessageWNext,10,"Before GetMessageWNext(0x%p)",GetMessageWNext);
