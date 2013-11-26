@@ -23,6 +23,20 @@ typedef UINT(WINAPI *GetRawInputDeviceInfoFunc_t)(
     PUINT pcbSize
 );
 
+typedef UINT(WINAPI *GetRawInputDeviceListFunc_t)(
+    PRAWINPUTDEVICELIST pRawInputDeviceList,
+    PUINT puiNumDevices,
+    UINT cbSize
+);
+
+typedef SHORT(WINAPI *GetKeyStateFunc_t)(
+    int nVirtKey
+);
+
+typedef SHORT(WINAPI *GetAsyncKeyStateFunc_t)(
+    int vKey
+);
+
 
 #include "detourrawinput_debug.cpp"
 
