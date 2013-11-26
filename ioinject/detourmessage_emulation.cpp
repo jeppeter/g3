@@ -122,10 +122,24 @@ int SetKeyState(UINT vsk,int keydown)
 USHORT __InnerGetKeyState(UINT vk)
 {
     USHORT uret;
+    USHORT expandvk[2];
+    int exvk[2];
+    int expanded=0;
     if(vk >= 256)
     {
         return 0;
     }
+
+    if(vk == VK_CONTROL)
+    {
+    }
+    else if(vk == VK_MENU)
+    {
+    }
+    else if(vk == VK_SHIFT)
+    {
+    }
+
     EnterCriticalSection(&st_KeyStateEmulationCS);
     uret = st_KeyStateArray[vk];
     LeaveCriticalSection(&st_KeyStateEmulationCS);
@@ -168,6 +182,212 @@ LPMSG __GetEmulationMessageQueue()
 
 }
 
+
+
+int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilterMax,UINT remove)
+{
+    LPMSG lGetMsg=NULL;
+    int ret = 0,res;
+
+    lGetMsg = __GetEmulationMessageQueue();
+    if(lGetMsg == NULL)
+    {
+        ret = 0;
+        goto out;
+    }
+
+    /*now to compare whether it is the ok*/
+    if(wMsgFilterMin == 0 && wMsgFilterMax == 0)
+    {
+        CopyMemory(lpMsg,lGetMsg,sizeof(*lGetMsg));
+        if(!(remove & PM_REMOVE))
+        {
+            /*not remove ,so we put back*/
+            res = InsertEmulationMessageQueue(lGetMsg,0);
+            assert(res >= 0);
+        }
+        ret = 1;
+    }
+    else if(lGetMsg->message >= wMsgFilterMin && lGetMsg->message <= wMsgFilterMax)
+    {
+        CopyMemory(lpMsg,lGetMsg,sizeof(*lGetMsg));
+        if(!(remove & PM_REMOVE))
+        {
+            /*not remove ,so we put back*/
+            res = InsertEmulationMessageQueue(lGetMsg,0);
+            assert(res >= 0);
+        }
+        ret = 1;
+    }
+    else
+    {
+        /*now in it ,so we do not use this*/
+        res = InsertEmulationMessageQueue(lGetMsg,0);
+        assert(res >= 0);
+        ret = 0;
+    }
+
+out:
+    if(lGetMsg)
+    {
+        free(lGetMsg);
+    }
+    lGetMsg = NULL;
+    SetLastError(0);
+    return ret;
+
+fail:
+    assert(ret > 0);
+    if(lGetMsg)
+    {
+        res = InsertEmulationMessageQueue(lGetMsg,0);
+        assert(res >= 0);
+        free(lGetMsg);
+    }
+    lGetMsg = NULL;
+    SetLastError(ret);
+    return -ret;
+}
+
+BOOL WINAPI GetMessageACallBack(
+    LPMSG lpMsg,
+    HWND hWnd,
+    UINT wMsgFilterMin,
+    UINT wMsgFilterMax
+)
+{
+    BOOL bret;
+    int ret;
+
+try_again:
+    ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
+    if(ret > 0)
+    {
+        return TRUE;
+    }
+
+
+    bret = GetMessageANext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
+    if(bret)
+    {
+        if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+        {
+            /*we discard this message*/
+            goto try_again;
+        }
+    }
+    return bret;
+}
+
+
+BOOL WINAPI PeekMessageACallBack(
+    LPMSG lpMsg,
+    HWND hWnd,
+    UINT wMsgFilterMin,
+    UINT wMsgFilterMax,
+    UINT wRemoveMsg
+)
+{
+    BOOL bret;
+    int ret;
+
+try_again:
+    ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
+    if(ret > 0)
+    {
+        return TRUE;
+    }
+
+    bret = PeekMessageANext(lpMsg,hWnd,wMsgFilterMin,
+                            wMsgFilterMax,wRemoveMsg);
+    if(bret)
+    {
+        if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+        {
+            if(!(wRemoveMsg & PM_REMOVE))
+            {
+                /*this means not remove ,so we should do this removed*/
+                PeekMessageANext(lpMsg,hWnd,wMsgFilterMin,
+                                 wMsgFilterMax,wRemoveMsg|PM_REMOVE);
+
+            }
+            goto try_again;
+        }
+    }
+    return bret;
+}
+
+
+BOOL WINAPI GetMessageWCallBack(
+    LPMSG lpMsg,
+    HWND hWnd,
+    UINT wMsgFilterMin,
+    UINT wMsgFilterMax
+)
+{
+    BOOL bret;
+    int ret;
+
+try_again:
+    ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
+    if(ret > 0)
+    {
+        return TRUE;
+    }
+
+    bret = GetMessageWNext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
+    if(bret)
+    {
+        if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+        {
+            /*we discard this message ,so get the next one*/
+            goto try_again;
+        }
+    }
+    return bret;
+}
+
+
+BOOL WINAPI PeekMessageWCallBack(
+    LPMSG lpMsg,
+    HWND hWnd,
+    UINT wMsgFilterMin,
+    UINT wMsgFilterMax,
+    UINT wRemoveMsg
+)
+{
+    BOOL bret;
+    int ret;
+
+try_again:
+    ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
+    if(ret > 0)
+    {
+        return TRUE;
+    }
+
+    bret = PeekMessageWNext(lpMsg,hWnd,wMsgFilterMin,
+                            wMsgFilterMax,wRemoveMsg);
+    if(bret)
+    {
+        if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)||
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+        {
+            if(!(wRemoveMsg & PM_REMOVE))
+            {
+                /*this means not remove ,so we should do this removed*/
+                PeekMessageWNext(lpMsg,hWnd,wMsgFilterMin,
+                                 wMsgFilterMax,wRemoveMsg|PM_REMOVE);
+
+            }
+            goto try_again;
+        }
+    }
+    return bret;
+}
 
 
 
