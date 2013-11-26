@@ -51,6 +51,7 @@ BOOL WINAPI PeekMessageACallBack(
 )
 {
     BOOL bret;
+    SetUnHandlerExceptionDetour();
     bret = PeekMessageANext(lpMsg,hWnd,wMsgFilterMin,
                             wMsgFilterMax,wRemoveMsg);
     if(bret)

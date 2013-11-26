@@ -1,5 +1,6 @@
 
 #include "detourmessage.h"
+#include <injectbase.h>
 #include <output_debug.h>
 #include <detours/detours.h>
 

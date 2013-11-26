@@ -626,6 +626,7 @@ LONG WINAPI DetourApplicationCrashHandler(EXCEPTION_POINTERS *pException)
     CONTEXT *xc = pException->ContextRecord;
     DEBUG_INFO("Eip 0x%08x\n",xc->Eip);
     sw.ShowCallstack(GetCurrentThread(), pException->ContextRecord,NULL,NULL);
+	abort();
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
@@ -660,7 +661,7 @@ int InjectBaseModuleInit(HMODULE hModule)
 
 void SetUnHandlerExceptionDetour()
 {
-    //SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
+    SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
 }
 
 void InjectBaseModuleFini(HMODULE hModule)

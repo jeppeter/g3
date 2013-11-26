@@ -8,6 +8,9 @@ GetRawInputDeviceListFunc_t GetRawInputDeviceListNext=GetRawInputDeviceList;
 GetKeyStateFunc_t GetKeyStateNext=GetKeyState;
 GetAsyncKeyStateFunc_t GetAsyncKeyStateNext=GetAsyncKeyState;
 
+#define  DETOURRAWINPUT_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
+#define  DETOURRAWINPUT_DEBUG_INFO      DEBUG_INFO
+
 
 BOOL WINAPI RegisterRawInputDevicesCallBack(
     PCRAWINPUTDEVICE pRawInputDevices,
@@ -22,11 +25,11 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
     {
         if(pRawInputDevices)
         {
-            DEBUG_BUFFER_FMT(pRawInputDevices,cbSize*uiNumDevices,"uiNumDevices (%d)",uiNumDevices);
+            DETOURRAWINPUT_DEBUG_BUFFER_FMT(pRawInputDevices,cbSize*uiNumDevices,"uiNumDevices (%d)",uiNumDevices);
         }
         else
         {
-            DEBUG_INFO("uiNumDevices (%d)",uiNumDevices);
+            DETOURRAWINPUT_DEBUG_INFO("uiNumDevices (%d)",uiNumDevices);
         }
     }
 
@@ -52,23 +55,23 @@ UINT WINAPI GetRawInputDataCallBack(
             pRaw = (RAWINPUT*)pData;
             if(pRaw->header.dwType == RIM_TYPEKEYBOARD)
             {
-                DEBUG_BUFFER_FMT(pData,*pcbSize,"KeyBoard rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
+                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"KeyBoard rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
                                  hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
             }
             else if(pRaw->header.dwType == RIM_TYPEMOUSE)
             {
-                DEBUG_BUFFER_FMT(pData,*pcbSize,"Mouse rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
+                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"Mouse rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
                                  hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
             }
             else
             {
-                DEBUG_BUFFER_FMT(pData,*pcbSize,"UnknownType 0x%08x(%d) rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
+                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"UnknownType 0x%08x(%d) rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
                                  pRaw->header.dwType,pRaw->header.dwType,hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
             }
         }
         else
         {
-            DEBUG_INFO("uiCommand rawinput(0x%08x) 0x%08x(%d) sizeheader(%d) uret(%d)",
+            DETOURRAWINPUT_DEBUG_INFO("uiCommand rawinput(0x%08x) 0x%08x(%d) sizeheader(%d) uret(%d)",
                        hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
         }
     }
@@ -88,18 +91,25 @@ UINT WINAPI GetRawInputDeviceInfoACallBack(
     uret = GetRawInputDeviceInfoANext(hDevice,uiCommand,pData,pcbSize);
     if(uret != (UINT)-1)
     {
-        DEBUG_BUFFER_FMT(pData,*pcbSize,"GetRawInputDeviceInfoA hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)",
-                         hDevice,uiCommand,uiCommand,uret);
+        if(pData)
+        {
+            DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"GetRawInputDeviceInfoA hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)",
+                             hDevice,uiCommand,uiCommand,uret);
+        }
+        else
+        {
+            DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceInfoA hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)\n",hDevice,uiCommand,uiCommand,uret);
+        }
     }
     else
     {
         if(pcbSize)
         {
-            DEBUG_INFO("GetRawInputDeviceInfoA hDevice(0x%08x) uiCommand 0x%08x(%d) *pcbSize(%d)\n",hDevice,uiCommand,uiCommand,*pcbSize);
+            DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceInfoA hDevice(0x%08x) uiCommand 0x%08x(%d) *pcbSize(%d)\n",hDevice,uiCommand,uiCommand,*pcbSize);
         }
         else
         {
-            DEBUG_INFO("GetRawInputDeviceInfoA hDevice(0x%08x) uiCommand 0x%08x(%d) pcbSize==NULL\n",hDevice,uiCommand,uiCommand);
+            DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceInfoA hDevice(0x%08x) uiCommand 0x%08x(%d) pcbSize==NULL\n",hDevice,uiCommand,uiCommand);
         }
     }
 
@@ -118,18 +128,25 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
     uret = GetRawInputDeviceInfoWNext(hDevice,uiCommand,pData,pcbSize);
     if(uret != (UINT)-1)
     {
-        DEBUG_BUFFER_FMT(pData,*pcbSize,"GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)",
-                         hDevice,uiCommand,uiCommand,uret);
+        if(pData)
+        {
+            DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)",
+                             hDevice,uiCommand,uiCommand,uret);
+        }
+        else
+        {
+            DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)\n",hDevice,uiCommand,uiCommand,uret);
+        }
     }
     else
     {
         if(pcbSize)
         {
-            DEBUG_INFO("GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) *pcbSize(%d)\n",hDevice,uiCommand,uiCommand,*pcbSize);
+            DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) *pcbSize(%d)\n",hDevice,uiCommand,uiCommand,*pcbSize);
         }
         else
         {
-            DEBUG_INFO("GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) pcbSize==NULL\n",hDevice,uiCommand,uiCommand);
+            DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) pcbSize==NULL\n",hDevice,uiCommand,uiCommand);
         }
     }
 
@@ -150,18 +167,25 @@ UINT WINAPI GetRawInputDeviceListCallBack(
     {
         if(uret != (UINT)-1)
         {
-            DEBUG_BUFFER_FMT(pRawInputDeviceList,uret*cbSize,"GetRawInputDeviceList *puiNumDevices(%d) cbSize(%d)",*puiNumDevices,cbSize);
+            if(pRawInputDeviceList)
+            {
+                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pRawInputDeviceList,uret*cbSize,"GetRawInputDeviceList *puiNumDevices(%d) cbSize(%d)",*puiNumDevices,cbSize);
+            }
+            else
+            {
+                DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceList *puiNumDevices(%d) cbSize(%d)\n",*puiNumDevices,cbSize);
+            }
         }
         else
         {
-            DEBUG_INFO("*puiNumDevices(%d) cbSize(%d)\n",*puiNumDevices,cbSize);
+            DETOURRAWINPUT_DEBUG_INFO("*puiNumDevices(%d) cbSize(%d)\n",*puiNumDevices,cbSize);
         }
     }
     else
     {
-        DEBUG_INFO("GetRawInputDeviceList puiNumDevices==NULL\n");
+        DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceList puiNumDevices==NULL\n");
     }
-	return uret;
+    return uret;
 }
 
 
@@ -172,7 +196,7 @@ SHORT WINAPI GetKeyStateCallBack(
     SHORT sret;
 
     sret = GetKeyStateNext(nVirtKey);
-    DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%4x:%d)\n",
+    DETOURRAWINPUT_DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%4x:%d)\n",
                nVirtKey,nVirtKey,sret,sret);
     return sret;
 }
@@ -184,7 +208,7 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
     SHORT sret;
 
     sret = GetAsyncKeyStateNext(vKey);
-    DEBUG_INFO("GetAsyncState 0x%08x(%d) sret(0x%4x:%d)\n",
+    DETOURRAWINPUT_DEBUG_INFO("GetAsyncState 0x%08x(%d) sret(0x%4x:%d)\n",
                vKey,vKey,sret,sret);
     return sret;
 }
@@ -200,8 +224,8 @@ int DetourRawInputControl(PIO_CAP_CONTROL_t pControl)
 
 int __RawInputDetour(void)
 {
-    DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"Before GetRawInputDataNext(0x%p)",GetRawInputDataNext);
     DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"Before RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
+    DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"Before GetRawInputDataNext(0x%p)",GetRawInputDataNext);
     DEBUG_BUFFER_FMT(GetRawInputDeviceInfoANext,10,"Before GetRawInputDeviceInfoANext(0x%p)",GetRawInputDeviceInfoANext);
     DEBUG_BUFFER_FMT(GetRawInputDeviceInfoWNext,10,"Before GetRawInputDeviceInfoWNext(0x%p)",GetRawInputDeviceInfoWNext);
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"Before GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
@@ -217,8 +241,8 @@ int __RawInputDetour(void)
     DetourAttach((PVOID*)&GetKeyStateNext,GetKeyStateCallBack);
     DetourAttach((PVOID*)&GetAsyncKeyStateNext,GetAsyncKeyStateCallBack);
     DetourTransactionCommit();
-    DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"After GetRawInputDataNext(0x%p)",GetRawInputDataNext);
     DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"After RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
+    DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"After GetRawInputDataNext(0x%p)",GetRawInputDataNext);
     DEBUG_BUFFER_FMT(GetRawInputDeviceInfoANext,10,"After GetRawInputDeviceInfoANext(0x%p)",GetRawInputDeviceInfoANext);
     DEBUG_BUFFER_FMT(GetRawInputDeviceInfoWNext,10,"After GetRawInputDeviceInfoWNext(0x%p)",GetRawInputDeviceInfoWNext);
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"After GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
