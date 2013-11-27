@@ -4,9 +4,9 @@
 
 static CRITICAL_SECTION st_EmulationRawinputCS;
 static std::vector<RAWINPUT*> st_KeyRawInputVecs;
-static HANDLE st_KeyRawInputHandle=NULL;
+static RID_DEVICE_INFO* st_KeyRawInputHandle=NULL;
 static std::vector<RAWINPUT*> st_MouseRawInputVecs;
-static HANDLE st_MouseRawInputHandle=NULL;
+static RID_DEVICE_INFO* st_MouseRawInputHandle=NULL;
 
 
 RegisterRawInputDevicesFunc_t RegisterRawInputDevicesNext=RegisterRawInputDevices;
@@ -20,6 +20,65 @@ GetAsyncKeyStateFunc_t GetAsyncKeyStateNext=GetAsyncKeyState;
 #define  DETOURRAWINPUT_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
 #define  DETOURRAWINPUT_DEBUG_INFO      DEBUG_INFO
 
+
+HANDLE __RegisterKeyboardHandle()
+{
+    RID_DEVICE_INFO *pKeyboardInfo=NULL,*pAllocInfo=NULL;
+    int inserted = 0,ret;
+
+
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    pKeyboardInfo = st_KeyRawInputHandle;
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
+    if(pKeyboardInfo == NULL)
+    {
+        pAllocInfo = calloc(sizeof(*pAllocInfo),1);
+        if(pAllocInfo == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            SetLastError(ret);
+            return NULL;
+        }
+
+        pAllocInfo->cbSize = 8 + sizeof(pAllocInfo->keyboard);
+        pAllocInfo->dwType = RIM_TYPEKEYBOARD;
+        pAllocInfo->keyboard.dwType = 7;
+        pAllocInfo->keyboard.dwSubType = 0;
+        pAllocInfo->keyboard.dwKeyboardMode = 1;
+        pAllocInfo->keyboard.dwNumberOfFunctionKeys = 12;
+        pAllocInfo->keyboard.dwNumberOfIndicators = 3;
+        pAllocInfo->keyboard.dwNumberOfKeysTotal = 101;
+
+        EnterCriticalSection(&st_EmulationRawinputCS);
+        if(st_KeyRawInputHandle == NULL)
+        {
+            inserted = 1;
+            st_KeyRawInputHandle = pAllocInfo;
+            pKeyboardInfo = pAllocInfo;
+        }
+        else
+        {
+            pKeyboardInfo = st_KeyRawInputHandle;
+            inserted = 0;
+        }
+        LeaveCriticalSection(&st_EmulationRawinputCS);
+
+        if(inserted == 0)
+        {
+            DETOURRAWINPUT_DEBUG_INFO("To Free Keyboard DEV INFO 0x%p\n",pKeyboardInfo);
+            free(pAllocInfo);
+            pAllocInfo = NULL;
+        }
+    }
+
+    return pKeyboardInfo;
+}
+
+HANDLE __RegisterMouseHandle()
+{
+
+}
 
 BOOL WINAPI RegisterRawInputDevicesCallBack(
     PCRAWINPUTDEVICE pRawInputDevices,
@@ -43,7 +102,7 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
     for(i=0; i<uiNumDevices; i++)
     {
         pDevice = &(pRawInputDevices[i]);
-		/*we only supported keyboard and mouse ,others are not supported*/
+        /*we only supported keyboard and mouse ,others are not supported*/
         if(pDevice->usUsagePage != 0x1 || (pDevice->usUsage != 0x2 && pDevice->usUsage != 0x6))
         {
             ret = ERROR_NOT_SUPPORTED;
@@ -84,22 +143,11 @@ UINT WINAPI GetRawInputDeviceListCallBack(
         {
             if(pRawInputDeviceList)
             {
-                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pRawInputDeviceList,uret*cbSize,"GetRawInputDeviceList *puiNumDevices(%d) cbSize(%d)",*puiNumDevices,cbSize);
-            }
-            else
-            {
-                DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceList *puiNumDevices(%d) cbSize(%d)\n",*puiNumDevices,cbSize);
+                /*we should make */
             }
         }
-        else
-        {
-            DETOURRAWINPUT_DEBUG_INFO("*puiNumDevices(%d) cbSize(%d)\n",*puiNumDevices,cbSize);
-        }
     }
-    else
-    {
-        DETOURRAWINPUT_DEBUG_INFO("GetRawInputDeviceList puiNumDevices==NULL\n");
-    }
+
     return uret;
 }
 
