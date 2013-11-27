@@ -25,7 +25,18 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
     {
         if(pRawInputDevices)
         {
+            PCRAWINPUTDEVICE pDevice;
+            UINT i;
             DETOURRAWINPUT_DEBUG_BUFFER_FMT(pRawInputDevices,cbSize*uiNumDevices,"uiNumDevices (%d)",uiNumDevices);
+            for(i=0; i<uiNumDevices; i++)
+            {
+                pDevice = &(pRawInputDevices[i]);
+                DETOURRAWINPUT_DEBUG_INFO("[%d] usUsagePage %d usUsage %d dwFlags 0x%08x hwndTarget 0x%08x\n",
+                                          i,pDevice->usUsagePage,
+                                          pDevice->usUsage,
+                                          pDevice->dwFlags,
+                                          pDevice->hwndTarget);
+            }
         }
         else
         {
@@ -130,8 +141,40 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
     {
         if(pData)
         {
+            RID_DEVICE_INFO *pInfo=NULL;
+            UINT size,i;
+
             DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)",
                                             hDevice,uiCommand,uiCommand,uret);
+            for(size=0,i=0; size<uret; i++)
+            {
+                pInfo = (RID_DEVICE_INFO*)((uint8_t*)pData + size);
+                size += pInfo->cbSize;
+                DETOURRAWINPUT_DEBUG_INFO("[%d]cbSize %d dwType %d\n",i,pInfo->cbSize,pInfo->dwType);
+                if(pInfo->dwType == RIM_TYPEMOUSE)
+                {
+                    DETOURRAWINPUT_DEBUG_INFO("dwId %d dwNumberOfButtons %d dwSampleRate %d fHasHorizontalWheel %d\n",
+                                              pInfo->mouse.dwId,pInfo->mouse.dwNumberOfButtons,pInfo->mouse.dwSampleRate,pInfo->mouse.fHasHorizontalWheel);
+                }
+                else if(pInfo->dwType == RIM_TYPEKEYBOARD)
+                {
+                    DETOURRAWINPUT_DEBUG_INFO("dwType %d dwSubType %d dwKeyboardMode %d dwNumberOfFunctionKeys %d dwNumberOfIndicators %d dwNumberOfKeysTotal %d\n",pInfo->keyboard.dwType,pInfo->keyboard.dwSubType,
+                                              pInfo->keyboard.dwKeyboardMode,
+                                              pInfo->keyboard.dwNumberOfFunctionKeys,
+                                              pInfo->keyboard.dwNumberOfIndicators,
+                                              pInfo->keyboard.dwNumberOfKeysTotal);
+                }
+                else if(pInfo->dwType == RIM_TYPEHID)
+                {
+                    DETOURRAWINPUT_DEBUG_INFO("dwVendorId 0x%08x dwProductId 0x%08x dwVersionNumber 0x%08x usUsagePage %d usUsage %d\n",pInfo->hid.dwVendorId,
+						pInfo->hid.dwProductId,pInfo->hid.dwVersionNumber,
+						pInfo->hid.usUsagePage,pInfo->hid.usUsage);
+                }
+                else
+                {
+                    DETOURRAWINPUT_DEBUG_BUFFER_FMT(((uint8_t*)pInfo+4),pInfo->cbSize-4,"Unkown Type %d",pInfo->dwType);
+                }
+            }
         }
         else
         {
@@ -175,7 +218,7 @@ UINT WINAPI GetRawInputDeviceListCallBack(
                 for(i=0; i<*puiNumDevices; i++)
                 {
                     pRawInputDevice = &(pRawInputDeviceList[i]);
-					DETOURRAWINPUT_DEBUG_INFO("[%d]hDevice 0x%08x dwType 0x%08x\n",pRawInputDevice->hDevice,pRawInputDevice->dwType);
+                    DETOURRAWINPUT_DEBUG_INFO("[%d]hDevice 0x%08x dwType 0x%08x\n",i,pRawInputDevice->hDevice,pRawInputDevice->dwType);
                 }
             }
             else
