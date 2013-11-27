@@ -5,8 +5,12 @@
 static CRITICAL_SECTION st_EmulationRawinputCS;
 static std::vector<RAWINPUT*> st_KeyRawInputVecs;
 static RID_DEVICE_INFO* st_KeyRawInputHandle=NULL;
+static uint8_t *st_KeyRawInputName=NULL;
+static wchar_t *st_KeyRawInputNameWide=NULL;
 static std::vector<RAWINPUT*> st_MouseRawInputVecs;
 static RID_DEVICE_INFO* st_MouseRawInputHandle=NULL;
+static uint8_t *st_MouseRawInputName=NULL;
+static wchar_t *st_MouseRawInputNameWide=NULL;
 
 
 RegisterRawInputDevicesFunc_t RegisterRawInputDevicesNext=RegisterRawInputDevices;
@@ -24,6 +28,8 @@ GetAsyncKeyStateFunc_t GetAsyncKeyStateNext=GetAsyncKeyState;
 HANDLE __RegisterKeyboardHandle()
 {
     RID_DEVICE_INFO *pKeyboardInfo=NULL,*pAllocInfo=NULL;
+    uint8_t *pKeyName=NULL;
+    wchar_t *pKeyUnicode=NULL;
     int inserted = 0,ret;
 
 
@@ -41,6 +47,26 @@ HANDLE __RegisterKeyboardHandle()
             return NULL;
         }
 
+        pKeyName = calloc(1,256);
+        if(pKeyName == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            free(pAllocInfo);
+            SetLastError(ret);
+            return NULL;
+        }
+        strncpy_s(pKeyName,256,"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
+        pKeyUnicode = calloc(2,256);
+        if(pKeyUnicode == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            free(pAllocInfo);
+            free(pKeyName);
+            SetLastError(ret);
+            return NULL;
+        }
+        wcsncpy_s(pKeyName,256,L"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
+
         pAllocInfo->cbSize = 8 + sizeof(pAllocInfo->keyboard);
         pAllocInfo->dwType = RIM_TYPEKEYBOARD;
         pAllocInfo->keyboard.dwType = 7;
@@ -56,6 +82,8 @@ HANDLE __RegisterKeyboardHandle()
             inserted = 1;
             st_KeyRawInputHandle = pAllocInfo;
             pKeyboardInfo = pAllocInfo;
+            st_KeyRawInputName = pKeyName;
+            st_KeyRawInputNameWide = pKeyUnicode;
         }
         else
         {
@@ -69,6 +97,10 @@ HANDLE __RegisterKeyboardHandle()
             DETOURRAWINPUT_DEBUG_INFO("To Free Keyboard DEV INFO 0x%p\n",pKeyboardInfo);
             free(pAllocInfo);
             pAllocInfo = NULL;
+            free(pKeyName);
+            pKeyName = NULL
+                       free(pKeyUnicode);
+            pKeyUnicode = NULL;
         }
     }
 
@@ -77,7 +109,82 @@ HANDLE __RegisterKeyboardHandle()
 
 HANDLE __RegisterMouseHandle()
 {
+    RID_DEVICE_INFO *pMouseboardInfo=NULL,*pAllocInfo=NULL;
+    uint8_t *pMouseName=NULL;
+    wchar_t *pMouseUnicode=NULL;
+    int inserted = 0,ret;
 
+
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    pMouseboardInfo = st_MouseRawInputHandle;
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
+    if(pMouseboardInfo == NULL)
+    {
+        pAllocInfo = calloc(sizeof(*pAllocInfo),1);
+        if(pAllocInfo == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            SetLastError(ret);
+            return NULL;
+        }
+
+        pMouseName = calloc(1,256);
+        if(pMouseName == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            free(pAllocInfo);
+            SetLastError(ret);
+            return NULL;
+        }
+        strncpy_s(pMouseName,256,"\\\\?\\Mouse_Emulate",_TRUNCATE);
+        pMouseUnicode = calloc(2,256);
+        if(pMouseUnicode == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            free(pAllocInfo);
+            free(pMouseName);
+            SetLastError(ret);
+            return NULL;
+        }
+        wcsncpy_s(pMouseName,256,L"\\\\?\\Mouse_Emulate",_TRUNCATE);
+
+        pAllocInfo->cbSize = 8 + sizeof(pAllocInfo->keyboard);
+        pAllocInfo->dwType = RIM_TYPEMOUSE;
+        pAllocInfo->mouse.dwId = 256;
+        pAllocInfo->mouse.dwNumberOfButtons = 3;
+        pAllocInfo->mouse.dwSampleRate = 0;
+		pAllocInfo->mouse.fHasHorizontalWheel = 0;
+
+        EnterCriticalSection(&st_EmulationRawinputCS);
+        if(st_MouseRawInputHandle == NULL)
+        {
+            inserted = 1;
+            st_MouseRawInputHandle = pAllocInfo;
+            pMouseboardInfo = pAllocInfo;
+            st_MouseRawInputName = pMouseName;
+            st_MouseRawInputNameWide = pMouseUnicode;
+        }
+        else
+        {
+            pMouseboardInfo = st_KeyRawInputHandle;
+            inserted = 0;
+        }
+        LeaveCriticalSection(&st_EmulationRawinputCS);
+
+        if(inserted == 0)
+        {
+            DETOURRAWINPUT_DEBUG_INFO("To Free Keyboard DEV INFO 0x%p\n",pMouseboardInfo);
+            free(pAllocInfo);
+            pAllocInfo = NULL;
+            free(pMouseName);
+            pMouseName = NULL
+                         free(pMouseUnicode);
+            pMouseUnicode = NULL;
+        }
+    }
+
+    return pMouseboardInfo;
 }
 
 BOOL WINAPI RegisterRawInputDevicesCallBack(
