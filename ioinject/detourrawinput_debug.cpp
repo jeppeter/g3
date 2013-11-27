@@ -56,23 +56,23 @@ UINT WINAPI GetRawInputDataCallBack(
             if(pRaw->header.dwType == RIM_TYPEKEYBOARD)
             {
                 DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"KeyBoard rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                 hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
+                                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
             }
             else if(pRaw->header.dwType == RIM_TYPEMOUSE)
             {
                 DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"Mouse rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                 hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
+                                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
             }
             else
             {
                 DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"UnknownType 0x%08x(%d) rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                 pRaw->header.dwType,pRaw->header.dwType,hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
+                                                pRaw->header.dwType,pRaw->header.dwType,hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
             }
         }
         else
         {
             DETOURRAWINPUT_DEBUG_INFO("uiCommand rawinput(0x%08x) 0x%08x(%d) sizeheader(%d) uret(%d)",
-                       hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
+                                      hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
         }
     }
 
@@ -94,7 +94,7 @@ UINT WINAPI GetRawInputDeviceInfoACallBack(
         if(pData)
         {
             DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"GetRawInputDeviceInfoA hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)",
-                             hDevice,uiCommand,uiCommand,uret);
+                                            hDevice,uiCommand,uiCommand,uret);
         }
         else
         {
@@ -131,7 +131,7 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
         if(pData)
         {
             DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"GetRawInputDeviceInfoW hDevice(0x%08x) uiCommand 0x%08x(%d) uret(%d)",
-                             hDevice,uiCommand,uiCommand,uret);
+                                            hDevice,uiCommand,uiCommand,uret);
         }
         else
         {
@@ -169,7 +169,14 @@ UINT WINAPI GetRawInputDeviceListCallBack(
         {
             if(pRawInputDeviceList)
             {
+                RAWINPUTDEVICELIST *pRawInputDevice;
+                UINT i;
                 DETOURRAWINPUT_DEBUG_BUFFER_FMT(pRawInputDeviceList,uret*cbSize,"GetRawInputDeviceList *puiNumDevices(%d) cbSize(%d)",*puiNumDevices,cbSize);
+                for(i=0; i<*puiNumDevices; i++)
+                {
+                    pRawInputDevice = &(pRawInputDeviceList[i]);
+					DETOURRAWINPUT_DEBUG_INFO("[%d]hDevice 0x%08x dwType 0x%08x\n",pRawInputDevice->hDevice,pRawInputDevice->dwType);
+                }
             }
             else
             {
@@ -197,7 +204,7 @@ SHORT WINAPI GetKeyStateCallBack(
 
     sret = GetKeyStateNext(nVirtKey);
     DETOURRAWINPUT_DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%4x:%d)\n",
-               nVirtKey,nVirtKey,sret,sret);
+                              nVirtKey,nVirtKey,sret,sret);
     return sret;
 }
 
@@ -209,7 +216,7 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
 
     sret = GetAsyncKeyStateNext(vKey);
     DETOURRAWINPUT_DEBUG_INFO("GetAsyncState 0x%08x(%d) sret(0x%4x:%d)\n",
-               vKey,vKey,sret,sret);
+                              vKey,vKey,sret,sret);
     return sret;
 }
 

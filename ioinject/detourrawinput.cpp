@@ -3,6 +3,12 @@
 #include <output_debug.h>
 #include <detours/detours.h>
 
+#define  DETOUR_RAWINPUT_DEBUG      1
+//#undef   DETOUR_RAWINPUT_DEBUG
+
+#define  DETOUR_RAWINPUT_EMULATION  1
+#undef   DETOUR_RAWINPUT_EMULATION
+
 typedef UINT(WINAPI *GetRawInputDataFunc_t)(
     HRAWINPUT hRawInput,
     UINT uiCommand,
@@ -37,9 +43,22 @@ typedef SHORT(WINAPI *GetAsyncKeyStateFunc_t)(
     int vKey
 );
 
+#if defined(DETOUR_RAWINPUT_DEBUG) && defined(DETOUR_RAWINPUT_EMULATION)
+#error "only accept either DETOUR_RAWINPUT_DEBUG or DETOUR_RAWINPUT_EMULATION defined"
+#endif
 
+#if  not (defined(DETOUR_RAWINPUT_DEBUG) || defined(DETOUR_RAWINPUT_EMULATION))
+#error "must define one of DETOUR_RAWINPUT_DEBUG or DETOUR_RAWINPUT_EMULATION"
+#endif
+
+
+#ifdef DETOUR_RAWINPUT_DEBUG
 #include "detourrawinput_debug.cpp"
+#endif
 
+#ifdef DETOUR_RAWINPUT_EMULATION
+#include "detourrawinput_emulation.cpp"
+#endif
 
 
 BOOL DetourRawInputInit(void)
