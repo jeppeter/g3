@@ -94,10 +94,18 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
     return -ret;
 }
 
+int __PrepareMouseButtonMessage(LPMSG lpMsg,UINT message)
+{
+	lpMsg->hwnd = NULL;
+	lpMsg->message = message;
+
+	/*now we should check for the state of*/
+}
+
 
 int InsertMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
-
+	/*now we should check for the message type and get the locate*/
 }
 
 LPMSG __GetEmulationMessageQueue()
