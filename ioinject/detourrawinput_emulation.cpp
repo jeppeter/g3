@@ -154,7 +154,7 @@ HANDLE __RegisterMouseHandle()
         pAllocInfo->mouse.dwId = 256;
         pAllocInfo->mouse.dwNumberOfButtons = 3;
         pAllocInfo->mouse.dwSampleRate = 0;
-		pAllocInfo->mouse.fHasHorizontalWheel = 0;
+        pAllocInfo->mouse.fHasHorizontalWheel = 0;
 
         EnterCriticalSection(&st_EmulationRawinputCS);
         if(st_MouseRawInputHandle == NULL)
@@ -178,8 +178,8 @@ HANDLE __RegisterMouseHandle()
             free(pAllocInfo);
             pAllocInfo = NULL;
             free(pMouseName);
-            pMouseName = NULL
-                         free(pMouseUnicode);
+            pMouseName = NULL;
+            free(pMouseUnicode);
             pMouseUnicode = NULL;
         }
     }
@@ -193,10 +193,26 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
     UINT cbSize
 )
 {
-    BOOL bret;
     RAWINPUTDEVICE *pDevice=NULL;
     int ret;
     UINT i;
+    RID_DEVICE_INFO *pMouse=NULL,*pKeyBoard=NULL;
+    pMouse = __RegisterMouseHandle();
+    if(pMouse == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    pKeyBoard = __RegisterKeyboardHandle();
+    if(pKeyBoard== NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return FALSE;
+    }
+
 
     /*now first check for device is supported*/
     if(cbSize != sizeof(*pDevice) || pRawInputDevices == NULL || uiNumDevices == 0)
@@ -218,20 +234,8 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
         }
     }
 
-    bret = RegisterRawInputDevicesNext(pRawInputDevices,uiNumDevices,cbSize);
-    if(bret)
-    {
-        if(pRawInputDevices)
-        {
-            DETOURRAWINPUT_DEBUG_BUFFER_FMT(pRawInputDevices,cbSize*uiNumDevices,"uiNumDevices (%d)",uiNumDevices);
-        }
-        else
-        {
-            DETOURRAWINPUT_DEBUG_INFO("uiNumDevices (%d)",uiNumDevices);
-        }
-    }
-
-    return bret;
+	/*now all is ok  ,so we do not need any more*/
+    return TRUE;
 }
 
 
@@ -242,6 +246,15 @@ UINT WINAPI GetRawInputDeviceListCallBack(
 )
 {
     UINT uret;
+	int ret;
+
+	/*now check for the input */
+	if (puiNumDevices == NULL || *puiNumDevices == 0)
+		{
+			ret = ERROR_INVALID_PARAMETER;
+			SetLastError(ret);
+		}
+	
 
     uret = GetRawInputDeviceListNext(pRawInputDeviceList,puiNumDevices,cbSize);
     if(puiNumDevices)
