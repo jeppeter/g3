@@ -24,8 +24,8 @@ static int st_MouseLastInfo=DEVICE_GET_INFO;
 
 
 static CRITICAL_SECTION  st_KeyStateEmulationCS;
-static uint16_t st_KeyStateArray[KEY_STATE_SIZE]={0};
-static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]={0};
+static uint16_t st_KeyStateArray[KEY_STATE_SIZE]= {0};
+static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]= {0};
 
 RegisterRawInputDevicesFunc_t RegisterRawInputDevicesNext=RegisterRawInputDevices;
 GetRawInputDataFunc_t GetRawInputDataNext=GetRawInputData;
@@ -222,8 +222,8 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
 
     pInputMsg = NULL;
 
-	/*now to input key state*/
-	SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
+    /*now to input key state*/
+    SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
 
     return 0;
 fail:
@@ -1234,7 +1234,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
                 return (UINT) -1;
             }
             pRawInput = st_KeyRawInputVecs[0];
-			/*not to remove the vectors ,for next read*/
+            /*not to remove the vectors ,for next read*/
             CopyMemory(pData,&(pRawInput->header),sizeof(pRawInput->header));
             return sizeof(pRawInput->header);
         }
@@ -1248,7 +1248,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
                 return (UINT) -1;
             }
             pRawInput = st_MouseRawInputVecs[0];
-			/*not to remove the vectors ,for next read*/
+            /*not to remove the vectors ,for next read*/
             CopyMemory(pData,&(pRawInput->header),sizeof(pRawInput->header));
             return sizeof(pRawInput->header);
         }
@@ -1533,6 +1533,38 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
 
     sret = __InnerGetAsynState(vKey);
     return sret;
+}
+
+
+int __RawInputDetour(void)
+{
+    InitializeCriticalSection(&st_EmulationRawinputCS);
+    InitializeCriticalSection(&st_KeyStateEmulationCS);
+    DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"Before RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
+    DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"Before GetRawInputDataNext(0x%p)",GetRawInputDataNext);
+    DEBUG_BUFFER_FMT(GetRawInputDeviceInfoANext,10,"Before GetRawInputDeviceInfoANext(0x%p)",GetRawInputDeviceInfoANext);
+    DEBUG_BUFFER_FMT(GetRawInputDeviceInfoWNext,10,"Before GetRawInputDeviceInfoWNext(0x%p)",GetRawInputDeviceInfoWNext);
+    DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"Before GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
+    DEBUG_BUFFER_FMT(GetKeyStateNext,10,"Before GetKeyStateNext(0x%p)",GetKeyStateNext);
+    DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"Before GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DetourAttach((PVOID*)&RegisterRawInputDevicesNext,RegisterRawInputDevicesCallBack);
+    DetourAttach((PVOID*)&GetRawInputDataNext,GetRawInputDataCallBack);
+    DetourAttach((PVOID*)&GetRawInputDeviceInfoANext,GetRawInputDeviceInfoACallBack);
+    DetourAttach((PVOID*)&GetRawInputDeviceInfoWNext,GetRawInputDeviceInfoWCallBack);
+    DetourAttach((PVOID*)&GetRawInputDeviceListNext,GetRawInputDeviceListCallBack);
+    DetourAttach((PVOID*)&GetKeyStateNext,GetKeyStateCallBack);
+    DetourAttach((PVOID*)&GetAsyncKeyStateNext,GetAsyncKeyStateCallBack);
+    DetourTransactionCommit();
+    DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"After RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
+    DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"After GetRawInputDataNext(0x%p)",GetRawInputDataNext);
+    DEBUG_BUFFER_FMT(GetRawInputDeviceInfoANext,10,"After GetRawInputDeviceInfoANext(0x%p)",GetRawInputDeviceInfoANext);
+    DEBUG_BUFFER_FMT(GetRawInputDeviceInfoWNext,10,"After GetRawInputDeviceInfoWNext(0x%p)",GetRawInputDeviceInfoWNext);
+    DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"After GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
+    DEBUG_BUFFER_FMT(GetKeyStateNext,10,"After GetKeyStateNext(0x%p)",GetKeyStateNext);
+    DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"After GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
+    return 0;
 }
 
 
