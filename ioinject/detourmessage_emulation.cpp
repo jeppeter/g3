@@ -10,9 +10,6 @@ static PeekMessageFunc_t PeekMessageWNext=PeekMessageW;
 static CRITICAL_SECTION st_MessageEmulationCS;
 static std::vector<MSG*> st_MessageEmulationQueue;
 static int st_MaxMessageEmulationQueue=20;
-static uint32_t st_LastRightBtnUpTimeTick=0;
-static uint32_t st_LastLeftBtnUpTimeTick=0;
-static uint32_t st_LastMiddleBtnUpTimeTick=0;
 
 
 
@@ -21,27 +18,7 @@ static int st_MessageEmualtionInited=0;
 #define  EMULATIONMESSAGE_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
 #define  EMULATIONMESSAGE_DEBUG_INFO      DEBUG_INFO
 
-#define MAX_UINT32_VALUE 0xffffffffUL
 
-int IsNotExpireTime(uint32_t prevtick,uint32_t curtick,uint32_t expire)
-{
-    if(curtick > prevtick)
-    {
-        if((curtick - prevtick) <= expire)
-        {
-            return 1;
-        }
-    }
-    else
-    {
-        if((curtick + (MAX_UINT32_VALUE - prevtick)) <= expire)
-        {
-            return 1;
-        }
-    }
-
-    return 0;
-}
 
 /*return 1 for double click will insert ,
 0 for not
@@ -55,22 +32,6 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
         uint32_t curtick = GetTickCount();
         ret = 0;
         EnterCriticalSection(&st_MessageEmulationCS);
-        if(lpMsg->message == WM_LBUTTONUP)
-        {
-            ret = IsNotExpireTime(st_LastLeftBtnUpTimeTick,curtick,500);
-            st_LastLeftBtnUpTimeTick = curtick;
-        }
-        else if(lpMsg->message == WM_RBUTTONUP)
-        {
-            ret = IsNotExpireTime(st_LastRightBtnUpTimeTick,curtick,500);
-            st_LastRightBtnUpTimeTick = curtick;
-        }
-        else if(lpMsg->message == WM_MBUTTONUP)
-        {
-            ret = IsNotExpireTime(st_LastMiddleBtnUpTimeTick,curtick,500);
-            st_LastMiddleBtnUpTimeTick = curtick;
-        }
-
         if(back)
         {
             if(st_MessageEmulationQueue.size() > st_MaxMessageEmulationQueue)
@@ -124,38 +85,6 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
             return -ret;
         }
         lcpMsg = NULL;
-
-        if(ret > 0)
-        {
-            /*it will insert double click message*/
-            lcpMsg = calloc(sizeof(*lcpMsg),1);
-            if(lcpMsg == NULL)
-            {
-                ret = LAST_ERROR_CODE();
-                SetLastError(ret);
-                return -ret;
-            }
-
-            CopyMemory(lcpMsg,lpMsg,sizeof(*lcpMsg));
-            if(lpMsg->message == WM_LBUTTONUP)
-            {
-                lcpMsg->message = WM_LBUTTONDBLCLK;
-            }
-            else if(lpMsg->message == WM_RBUTTONUP)
-            {
-                lcpMsg->message = WM_RBUTTONDBLCLK;
-            }
-            else if(lpMsg->message == WM_MBUTTONUP)
-            {
-                lcpMsg->message = WM_MBUTTONDBLCLK;
-            }
-            else
-            {
-                assert(0!=0);
-            }
-            ret = __InsertMessageQueue(lcpMsg,1);
-            assert(ret == 0);
-        }
 
         SetLastError(0);
         return 0;
