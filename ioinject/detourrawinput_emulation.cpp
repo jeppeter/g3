@@ -1160,6 +1160,146 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
     return (UINT) -1;
 }
 
+UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
+                             UINT uiCommand,
+                             LPVOID pData,
+                             PUINT pcbSize,
+                             UINT cbSizeHeader)
+{
+    RAWINPUT *pRawInput=NULL;
+    int ret;
+    if(pData == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        if(uiCommand == RID_HEADER)
+        {
+            *pcbSize = sizeof(pRawInput->header);
+        }
+        else if(uiCommand == RID_INPUT)
+        {
+            if(hRawInput == (HRAWINPUT)st_KeyRawInputHandle)
+            {
+                *pcbSize = sizeof(pRawInput->header) + sizeof(pRawInput->keyboard);
+            }
+            else if(hRawInput == (HRAWINPUT) st_MouseRawInputHandle)
+            {
+                *pcbSize = sizeof(pRawInput->header) + sizeof(pRawInput->mouse);
+            }
+            else
+            {
+                ret = ERROR_DEV_NOT_EXIST;
+            }
+        }
+        else
+        {
+            ret = ERROR_NOT_SUPPORTED;
+        }
+        SetLastError(ret);
+        return (UINT) -1;
+    }
+
+    if(uiCommand == RID_HEADER)
+    {
+        if(*pcbSize < sizeof(pRawInput->header))
+        {
+            ret = ERROR_INSUFFIENT_BUFFER;
+            *pcbSize = sizeof(pRawInput->header);
+            SetLastError(ret);
+            return (UINT) -1;
+        }
+
+        if(hRawInput == (HRAWINPUT) st_KeyRawInputHandle)
+        {
+            if(st_KeyRawInputVecs.size() == 0)
+            {
+                ret = ERROR_NO_DATA;
+                ERROR_INFO("No keyboard data for <0x%p>\n",st_KeyRawInputHandle);
+                SetLastError(ret);
+                return (UINT) -1;
+            }
+            pRawInput = st_KeyRawInputVecs[0];
+            CopyMemory(pData,&(pRawInput->header),sizeof(pRawInput->header));
+            return sizeof(pRawInput->header);
+        }
+        else if(hRawInput == (HRAWINPUT) st_MouseRawInputHandle)
+        {
+            if(st_MouseRawInputVecs.size() == 0)
+            {
+                ret = ERROR_NO_DATA;
+                ERROR_INFO("No Mouse data for <0x%p>\n",st_MouseRawInputHandle);
+                SetLastError(ret);
+                return (UINT) -1;
+            }
+            pRawInput = st_MouseRawInputVecs[0];
+            CopyMemory(pData,&(pRawInput->header),sizeof(pRawInput->header));
+            return sizeof(pRawInput->header);
+        }
+        else
+        {
+            ret = ERROR_DEV_NOT_EXIST;
+            SetLastError(ret);
+            return (UINT) -1;
+        }
+    }
+    else if(uiCommand == RID_INPUT)
+    {
+
+        if(hRawInput == (HRAWINPUT) st_KeyRawInputHandle)
+        {
+            if(*pcbSize < (sizeof(pRawInput->header)+sizeof(pRawInput->keyboard)))
+            {
+                ret = ERROR_INSUFFIENT_BUFFER;
+                *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->keyboard));
+                SetLastError(ret);
+                return (UINT) -1;
+            }
+            if(st_KeyRawInputVecs.size() == 0)
+            {
+                ret = ERROR_NO_DATA;
+                ERROR_INFO("No keyboard data for <0x%p>\n",st_KeyRawInputHandle);
+                SetLastError(ret);
+                return (UINT) -1;
+            }
+            pRawInput = st_KeyRawInputVecs[0];
+            /*remove this input handle*/
+            st_KeyRawInputVecs.erase(st_KeyRawInputVecs.begin());
+            CopyMemory(pData,pRawInput,(sizeof(pRawInput->header)+sizeof(pRawInput->keyboard)));
+            return (sizeof(pRawInput->header)+sizeof(pRawInput->keyboard));
+        }
+        else if(hRawInput == (HRAWINPUT) st_MouseRawInputHandle)
+        {
+            if(*pcbSize < (sizeof(pRawInput->header)+sizeof(pRawInput->mouse)))
+            {
+                ret = ERROR_INSUFFIENT_BUFFER;
+                *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->mouse));
+                SetLastError(ret);
+                return (UINT) -1;
+            }
+            if(st_MouseRawInputVecs.size() == 0)
+            {
+                ret = ERROR_NO_DATA;
+                ERROR_INFO("No Mouse data for <0x%p>\n",st_MouseRawInputHandle);
+                SetLastError(ret);
+                return (UINT) -1;
+            }
+            pRawInput = st_MouseRawInputVecs[0];
+            st_MouseRawInputVecs.erase(st_MouseRawInputVecs.begin());
+            CopyMemory(pData,pRawInput,(sizeof(pRawInput->header)+sizeof(pRawInput->mouse)));
+            return (sizeof(pRawInput->header)+sizeof(pRawInput->mouse));
+        }
+        else
+        {
+            ret = ERROR_DEV_NOT_EXIST;
+            SetLastError(ret);
+            return (UINT) -1;
+        }
+    }
+    ret = ERROR_NOT_SUPPORTED;
+    ERROR_INFO("Not Supported uiCommand 0x%08x\n",uiCommand);
+    SetLastError(ret);
+    return (UINT) -1;
+}
+
 
 UINT WINAPI GetRawInputDataCallBack(
     HRAWINPUT hRawInput,
@@ -1171,34 +1311,7 @@ UINT WINAPI GetRawInputDataCallBack(
     UINT uret;
     RAWINPUT *pRaw=NULL;
 
-    uret = GetRawInputDataNext(hRawInput,uiCommand,pData,pcbSize,cbSizeHeader);
-    if(uret != (UINT)-1)
-    {
-        if(pData)
-        {
-            pRaw = (RAWINPUT*)pData;
-            if(pRaw->header.dwType == RIM_TYPEKEYBOARD)
-            {
-                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"KeyBoard rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
-            }
-            else if(pRaw->header.dwType == RIM_TYPEMOUSE)
-            {
-                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"Mouse rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
-            }
-            else
-            {
-                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"UnknownType 0x%08x(%d) rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                                pRaw->header.dwType,pRaw->header.dwType,hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
-            }
-        }
-        else
-        {
-            DETOURRAWINPUT_DEBUG_INFO("uiCommand rawinput(0x%08x) 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                      hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
-        }
-    }
+
 
     return uret;
 }
