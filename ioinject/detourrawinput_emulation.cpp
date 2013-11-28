@@ -125,6 +125,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     int scank;
     int vk;
     LONG wparam;
+    MSG *pInputMsg=NULL;
 
     if(pDevEvent->event.keyboard.code >= 256)
     {
@@ -183,10 +184,48 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     pKeyInput->VKey = vk;
     pKeyInput->ExtraInformation = 0;
 
+    wparam = __InsertKeyboardInput(pKeyInput);
+    if(wparam == 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        goto fail;
+    }
+
+    pKeyInput = NULL;
+    /*now we should make MSG for it will ok*/
+    pInputMsg = calloc(sizeof(*pInputMsg),1);
+    if(pInputMsg == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    pInputMsg->hwnd = NULL ;
+    pInputMsg->message = WM_INPUT;
+    pInputMsg->wParam = wparam;
+    pInputMsg->lParam = 0;
+    pInputMsg->time = GetTickCount();
+    pInputMsg->pt.x = 0;
+    pInputMsg->pt.y = 0;
+
+    ret = InsertEmulationMessageQueue(pInputMsg,1);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    pInputMsg = NULL;
 
     return 0;
 fail:
     assert(ret > 0);
+
+    if(pInputMsg)
+    {
+        free(pInputMsg);
+    }
+    pInputMsg = NULL;
+
     if(pKeyInput)
     {
         free(pKeyInput);
@@ -196,8 +235,145 @@ fail:
     return -ret;
 }
 
+LONG __InsertMouseInput(RAWINPUT * pInput)
+{
+    LONG lret=0;
+    RAWINPUT *pRemove=NULL;
+
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    if(st_MouseRawInputHandle)
+    {
+        lret = (LONG) st_MouseRawInputHandle;
+        pInput->hDevice = (HANDLE) st_MouseRawInputHandle;
+        pInput->wParam = (WPARAM) st_MouseRawInputHandle;
+        if(st_MouseRawInputVecs.size() >= RAW_INPUT_MAX_INPUT_SIZE)
+        {
+            pRemove = st_MouseRawInputVecs[0];
+            st_MouseRawInputVecs.erase(st_MouseRawInputVecs.begin());
+        }
+        st_MouseRawInputVecs.push_back(pInput);
+    }
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
+    if(pRemove)
+    {
+        free(pRemove);
+    }
+    pRemove = NULL;
+    return lret;
+}
+
 int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
 {
+    RAWINPUT* pMouseInput=NULL;
+    int ret;
+    LONG wparam;
+    MSG *pInputMsg=NULL;
+
+
+    pMouseInput = calloc(sizeof(*pMouseInput),1);
+    if(pMouseInput == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    pMouseInput->header.dwType = RIM_TYPEMOUSE;
+    pMouseInput->header.dwSize = sizeof(pMouseInput->header) + sizeof(pMouseInput->mouse);
+
+    pMouseInput->mouse.usFlags = MOUSE_MOVE_RELATIVE;
+    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
+    {
+        /*no buttons push*/
+        pMouseInput->mouse.usButtonFlags = 0;
+        pMouseInput->mouse.usButtonData = 0;
+        pMouseInput->mouse.ulRawButtons = 0;
+        pMouseInput->mouse.lLastX = pDevEvent->event.mouse.x;
+        pMouseInput->mouse.lLastY = pDevEvent->event.mouse.y;
+        pMouseInput->mouse.ulExtraInformation = 0;
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            pMouseInput->mouse.usButtonFlags = RI_MOUSE_LEFT_BUTTON_DOWN;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            pMouseInput->mouse.usButtonFlags = RI_MOUSE_LEFT_BUTTON_UP;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            goto fail;
+        }
+        pMouseInput->mouse.usButtonData = 0;
+        pMouseInput->mouse.ulRawButtons = 0;
+        pMouseInput->mouse.lLastX = 0;
+        pMouseInput->mouse.lLastY = 0;
+        pMouseInput->mouse.ulExtraInformation = 0;
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            pMouseInput->mouse.usButtonFlags = RI_MOUSE_RIGHT_BUTTON_DOWN;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            pMouseInput->mouse.usButtonFlags = RI_MOUSE_RIGHT_BUTTON_UP;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            goto fail;
+        }
+        pMouseInput->mouse.usButtonData = 0;
+        pMouseInput->mouse.ulRawButtons = 0;
+        pMouseInput->mouse.lLastX = 0;
+        pMouseInput->mouse.lLastY = 0;
+        pMouseInput->mouse.ulExtraInformation = 0;
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            pMouseInput->mouse.usButtonFlags = RI_MOUSE_MIDDLE_BUTTON_DOWN;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            pMouseInput->mouse.usButtonFlags = RI_MOUSE_MIDDLE_BUTTON_UP;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            goto fail;
+        }
+        pMouseInput->mouse.usButtonData = 0;
+        pMouseInput->mouse.ulRawButtons = 0;
+        pMouseInput->mouse.lLastX = 0;
+        pMouseInput->mouse.lLastY = 0;
+        pMouseInput->mouse.ulExtraInformation = 0;
+    }
+
+
+
+    return 0;
+fail:
+    assert(ret > 0);
+    if(pInputMsg)
+    {
+        free(pInputMsg);
+    }
+    pInputMsg = NULL;
+    if(pMouseInput)
+    {
+        free(pMouseInput);
+    }
+    pMouseInput = NULL;
+    SetLastError(ret);
+    return -ret;
+
 }
 
 
