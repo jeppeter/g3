@@ -6,6 +6,8 @@
 #define  DEVICE_GET_NAMEA  0x2
 #define  DEVICE_GET_NAMEW  0x3
 
+#define  KEY_STATE_SIZE   256
+
 #define  RAW_INPUT_MAX_INPUT_SIZE  20
 
 static CRITICAL_SECTION st_EmulationRawinputCS;
@@ -20,6 +22,10 @@ static uint8_t *st_MouseRawInputName=NULL;
 static wchar_t *st_MouseRawInputNameWide=NULL;
 static int st_MouseLastInfo=DEVICE_GET_INFO;
 
+
+static CRITICAL_SECTION  st_KeyStateEmulationCS;
+static uint16_t st_KeyStateArray[KEY_STATE_SIZE]={0};
+static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]={0};
 
 RegisterRawInputDevicesFunc_t RegisterRawInputDevicesNext=RegisterRawInputDevices;
 GetRawInputDataFunc_t GetRawInputDataNext=GetRawInputData;
@@ -215,6 +221,9 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     }
 
     pInputMsg = NULL;
+
+	/*now to input key state*/
+	SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
 
     return 0;
 fail:
@@ -1208,6 +1217,13 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             return (UINT) -1;
         }
 
+        if(cbSizeHeader != sizeof(pRawInput->header))
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            SetLastError(ret);
+            return (UINT) -1;
+        }
+
         if(hRawInput == (HRAWINPUT) st_KeyRawInputHandle)
         {
             if(st_KeyRawInputVecs.size() == 0)
@@ -1218,6 +1234,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
                 return (UINT) -1;
             }
             pRawInput = st_KeyRawInputVecs[0];
+			/*not to remove the vectors ,for next read*/
             CopyMemory(pData,&(pRawInput->header),sizeof(pRawInput->header));
             return sizeof(pRawInput->header);
         }
@@ -1231,6 +1248,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
                 return (UINT) -1;
             }
             pRawInput = st_MouseRawInputVecs[0];
+			/*not to remove the vectors ,for next read*/
             CopyMemory(pData,&(pRawInput->header),sizeof(pRawInput->header));
             return sizeof(pRawInput->header);
         }
@@ -1253,6 +1271,12 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
                 SetLastError(ret);
                 return (UINT) -1;
             }
+            if(cbSizeHeader != sizeof(pRawInput->header))
+            {
+                ret = ERROR_INVALID_PARAMETER;
+                SetLastError(ret);
+                return (UINT) -1;
+            }
             if(st_KeyRawInputVecs.size() == 0)
             {
                 ret = ERROR_NO_DATA;
@@ -1272,6 +1296,12 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             {
                 ret = ERROR_INSUFFIENT_BUFFER;
                 *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->mouse));
+                SetLastError(ret);
+                return (UINT) -1;
+            }
+            if(cbSizeHeader != sizeof(pRawInput->header))
+            {
+                ret = ERROR_INVALID_PARAMETER;
                 SetLastError(ret);
                 return (UINT) -1;
             }
@@ -1309,10 +1339,178 @@ UINT WINAPI GetRawInputDataCallBack(
     UINT cbSizeHeader)
 {
     UINT uret;
-    RAWINPUT *pRaw=NULL;
+    int ret;
+
+    if(pcbSize == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return (UINT) -1;
+    }
+
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    uret = __GetRawInputDataNoLock(hRawInput,uiCommand,pData,pcbSize,cbSizeHeader);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+    return uret;
+}
 
 
 
+
+#define  ASYNC_KEY_PRESSED_STATE   0x8000
+#define  ASYNC_KEY_TOGGLED_STATE   0x1
+
+#define  KEY_PRESSED_STATE         0x8000
+#define  KEY_TOGGLE_STATE          0x1
+
+int SetKeyState(UINT vsk,int keydown)
+{
+    int ret;
+    UINT vk;
+    vk = MapVirtualKey(vsk,MAPVK_VSC_TO_VK_EX);
+    if(vk == 0)
+    {
+        /*if not return ,just not set*/
+        return 0;
+    }
+    EnterCriticalSection(&st_KeyStateEmulationCS);
+    if(keydown)
+    {
+        st_KeyStateArray[vk] |= KEY_PRESSED_STATE;
+
+        st_AsyncKeyStateArray[vk] |= ASYNC_KEY_PRESSED_STATE;
+        st_AsyncKeyStateArray[vk] |= ASYNC_KEY_PRESSED_STATE;
+    }
+    else
+    {
+        st_KeyStateArray[vk] &=~(KEY_PRESSED_STATE) ;
+        if(st_KeyStateArray[vk] & KEY_TOGGLE_STATE)
+        {
+            st_KeyStateArray[vk] &= ~(KEY_TOGGLE_STATE);
+        }
+        else
+        {
+            st_KeyStateArray[vk] |= KEY_TOGGLE_STATE;
+        }
+
+        st_AsyncKeyStateArray[vk] &= ~(ASYNC_KEY_PRESSED_STATE);
+        st_AsyncKeyStateArray[vk] |= ASYNC_KEY_TOGGLED_STATE;
+
+    }
+    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    return 0;
+}
+
+
+USHORT __InnerGetKeyState(UINT vk)
+{
+    USHORT uret;
+    UINT uvk[2];
+    UINT exvk[2];
+    int expanded=0;
+    if(vk >= KEY_STATE_SIZE)
+    {
+        return 0;
+    }
+
+    if(vk == VK_CONTROL)
+    {
+        expanded = 1;
+        exvk[0] = VK_LCONTROL;
+        exvk[1] = VK_RCONTROL;
+    }
+    else if(vk == VK_MENU)
+    {
+        expanded = 1;
+        exvk[0] = VK_LMENU;
+        exvk[1] = VK_RMENU;
+    }
+    else if(vk == VK_SHIFT)
+    {
+        expanded = 1;
+        exvk[0] = VK_LSHIFT;
+        exvk[1] = VK_RSHIFT;
+    }
+
+    EnterCriticalSection(&st_KeyStateEmulationCS);
+    if(expanded)
+    {
+        uvk[0] = st_KeyStateArray[exvk[0]];
+        uvk[1] = st_KeyStateArray[exvk[1]];
+
+        /*
+        	we call the last more key value ,so it will return for more
+        */
+        if(uvk[0] > uvk[1])
+        {
+            uret = uvk[0];
+        }
+        else
+        {
+            uret = uvk[1];
+        }
+
+    }
+    else
+    {
+        uret = st_KeyStateArray[vk];
+    }
+    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    return uret;
+}
+
+
+USHORT __InnerGetAsynState(UINT vk)
+{
+    USHORT uret;
+    UINT uvk[2];
+    UINT exvk[2];
+    int expanded=0;
+    if(vk >= KEY_STATE_SIZE)
+    {
+        return 0;
+    }
+    if(vk == VK_CONTROL)
+    {
+        expanded = 1;
+        exvk[0] = VK_LCONTROL;
+        exvk[1] = VK_RCONTROL;
+    }
+    else if(vk == VK_MENU)
+    {
+        expanded = 1;
+        exvk[0] = VK_LMENU;
+        exvk[1] = VK_RMENU;
+    }
+    else if(vk == VK_SHIFT)
+    {
+        expanded = 1;
+        exvk[0] = VK_LSHIFT;
+        exvk[1] = VK_RSHIFT;
+    }
+    EnterCriticalSection(&st_KeyStateEmulationCS);
+    if(expanded)
+    {
+        uvk[0] = st_AsyncKeyStateArray[exvk[0]];
+        uvk[1] = st_AsyncKeyStateArray[exvk[1]];
+        st_AsyncKeyStateArray[exvk[0]] &= ~(ASYNC_KEY_TOGGLED_STATE);
+        st_AsyncKeyStateArray[exvk[1]] &= ~(ASYNC_KEY_TOGGLED_STATE);
+
+        if(uvk[0] > uvk[1])
+        {
+            uret = uvk[0];
+        }
+        else
+        {
+            uret = uvk[1];
+        }
+    }
+    else
+    {
+        uret = st_AsyncKeyStateArray[vk];
+        st_AsyncKeyStateArray[vk] &= ~(ASYNC_KEY_TOGGLED_STATE);
+    }
+    LeaveCriticalSection(&st_KeyStateEmulationCS);
     return uret;
 }
 
@@ -1323,9 +1521,7 @@ SHORT WINAPI GetKeyStateCallBack(
 {
     SHORT sret;
 
-    sret = GetKeyStateNext(nVirtKey);
-    DETOURRAWINPUT_DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%4x:%d)\n",
-                              nVirtKey,nVirtKey,sret,sret);
+    sret = __InnerGetKeyState(nVirtKey);
     return sret;
 }
 
@@ -1335,14 +1531,9 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
 {
     SHORT sret;
 
-    sret = GetAsyncKeyStateNext(vKey);
-    DETOURRAWINPUT_DEBUG_INFO("GetAsyncState 0x%08x(%d) sret(0x%4x:%d)\n",
-                              vKey,vKey,sret,sret);
+    sret = __InnerGetAsynState(vKey);
     return sret;
 }
-
-
-
 
 
 
