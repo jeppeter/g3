@@ -76,6 +76,11 @@ BOOL WINAPI PeekMessageACallBack(
                              lpMsg->pt.x,lpMsg->pt.x,
                              lpMsg->pt.y,lpMsg->pt.y);
         }
+
+        if(lpMsg->message == WM_LBUTTONDBLCLK)
+        {
+            DEBUG_INFO("Left Button Double Click\n");
+        }
     }
     return bret;
 }
