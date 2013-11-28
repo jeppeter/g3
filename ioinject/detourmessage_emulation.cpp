@@ -168,7 +168,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
 
 int InsertMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
-	
+
 }
 
 LPMSG __GetEmulationMessageQueue()
@@ -287,6 +287,11 @@ try_again:
             /*we discard this message*/
             goto try_again;
         }
+
+        if(lpMsg->message == WM_QUIT)
+        {
+            bret = FALSE;
+        }
     }
     return bret;
 }
@@ -395,6 +400,11 @@ try_again:
 
             }
             goto try_again;
+        }
+
+        if(lpMsg->message == WM_QUIT)
+        {
+            bret = FALSE;
         }
     }
     return bret;
