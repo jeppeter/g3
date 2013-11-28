@@ -187,6 +187,196 @@ HANDLE __RegisterMouseHandle()
     return pMouseboardInfo;
 }
 
+int __CopyKeyboardDeviceList(PRAWINPUTDEVICELIST pRawList)
+{
+    int ret;
+    EnterCriticalSection(&st_EmulationRawinputCS);
+
+    if(st_KeyRawInputHandle)
+    {
+        pRawList->hDevice = (HANDLE) st_KeyRawInputHandle;
+        pRawList->dwType = RIM_TYPEKEYBOARD;
+    }
+    else
+    {
+        ret = -ERROR_DEV_NOT_EXIST;
+    }
+
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
+    if(ret < 0)
+    {
+        SetLastError(-ret);
+    }
+    else
+    {
+        SetLastError(0);
+    }
+    return ret;
+
+
+}
+
+int __CopyMouseDeviceList(PRAWINPUTDEVICELIST pRawList)
+{
+    int ret=0;
+
+    EnterCriticalSection(&st_EmulationRawinputCS);
+
+    if(st_MouseRawInputHandle)
+    {
+        pRawList->hDevice = (HANDLE) st_MouseRawInputHandle;
+        pRawList->dwType = RIM_TYPEMOUSE;
+    }
+    else
+    {
+        ret = -ERROR_DEV_NOT_EXIST;
+    }
+
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
+    if(ret < 0)
+    {
+        SetLastError(-ret);
+    }
+    else
+    {
+        SetLastError(0);
+    }
+    return ret;
+}
+
+
+BOOL __GetDeviceInfoNoLock(HANDLE hDevice,RID_DEVICE_INFO* pInfo)
+{
+    BOOL bret=FALSE;
+    int ret=ERROR_DEV_NOT_EXIST;
+    RID_DEVICE_INFO *pGetInfo;
+    if(hDevice == (HANDLE)st_KeyRawInputHandle)
+    {
+        ret = 0 ;
+        bret = TRUE;
+        pInfo->cbSize = 8 + sizeof(pInfo->keyboard);
+        pInfo->dwType = RIM_TYPEKEYBOARD;
+        CopyMemory(&(pInfo->keyboard),&(st_KeyRawInputHandle->keyboard),sizeof(pInfo->keyboard));
+    }
+    else if(hDevice == (HANDLE)st_MouseRawInputHandle)
+    {
+        ret = 0;
+        bret = TRUE;
+        pInfo->cbSize = 8 + sizeof(pInfo->mouse);
+        pInfo->dwType = RIM_TYPEMOUSE;
+        CopyMemory(&(pInfo->mouse),&(st_MouseRawInputHandle->mouse),sizeof(pInfo->mouse));
+    }
+    SetLastError(ret);
+    return bret;
+}
+
+BOOL __GetDeviceInfo(HANDLE hDevice,RID_DEVICE_INFO* pInfo)
+{
+    BOOL bret;
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    bret = __GetDeviceInfoNoLock(hDevice,pInfo);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+    return bret;
+}
+
+BOOL __GetDeviceNameANoLock(HANDLE hDevice,void* pData, UINT* pcbSize)
+{
+    BOOL bret=FALSE;
+    int ret=ERROR_DEV_NOT_EXIST;
+    if(hDevice == (HANDLE)st_KeyRawInputHandle)
+    {
+        if(*pcbSize <= strlen(st_KeyRawInputName) || pData == NULL)
+        {
+            ret = ERROR_INSUFFICIENT_BUFFER;
+            *pcbSize = strlen(st_KeyRawInputName) + 1;
+        }
+        else
+        {
+            ret = 0;
+            bret = TRUE;
+            *pcbSize = strlen(st_KeyRawInputName) + 1;
+            strncpy_s(pData,*pcbSize,st_KeyRawInputName,_TRUNCATE);
+        }
+    }
+    else if(hDevice == (HANDLE)st_MouseRawInputHandle)
+    {
+        if(*pcbSize <= strlen(st_MouseRawInputName) || pData == NULL)
+        {
+            ret = ERROR_INSUFFICIENT_BUFFER;
+            *pcbSize = strlen(st_MouseRawInputName) + 1;
+        }
+        else
+        {
+            ret = 0;
+            bret = TRUE;
+            *pcbSize = strlen(st_MouseRawInputName) + 1;
+            strncpy_s(pData,*pcbSize,st_MouseRawInputName,_TRUNCATE);
+        }
+    }
+    SetLastError(ret);
+    return bret;
+}
+
+BOOL __GetDeviceNameA(HANDLE hDevice,void* pData, UINT* pcbSize)
+{
+    BOOL bret;
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    bret = __GetDeviceNameANoLock(hDevice,pData,pcbSize);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+    return bret;
+}
+
+BOOL __GetDeviceNameWNoLock(HANDLE hDevice,void * pData,UINT * pcbSize)
+{
+    BOOL bret=FALSE;
+    int ret=ERROR_DEV_NOT_EXIST;
+    if(hDevice == (HANDLE)st_KeyRawInputHandle)
+    {
+        if(*pcbSize <= (wcslen(st_KeyRawInputName)*2 +1) || pData == NULL)
+        {
+            ret = ERROR_INSUFFICIENT_BUFFER;
+            *pcbSize = wcslen(st_KeyRawInputName)*2 + 2;
+        }
+        else
+        {
+            ret = 0;
+            bret = TRUE;
+            *pcbSize = wcslen(st_KeyRawInputName)*2 + 2;
+            wcsncpy_s(pData,(*pcbSize)/2,st_KeyRawInputName,_TRUNCATE);
+        }
+    }
+    else if(hDevice == (HANDLE)st_MouseRawInputHandle)
+    {
+        if(*pcbSize <= (wcslen(st_MouseRawInputName)*2+1) || pData == NULL)
+        {
+            ret = ERROR_INSUFFICIENT_BUFFER;
+            *pcbSize = wcslen(st_MouseRawInputName)*2 + 2;
+        }
+        else
+        {
+            ret = 0;
+            bret = TRUE;
+            *pcbSize = wcslen(st_MouseRawInputName)*2 + 2;
+            wcsncpy_s(pData,(*pcbSize)/2,st_MouseRawInputName,_TRUNCATE);
+        }
+    }
+    SetLastError(ret);
+    return bret;
+}
+
+
+BOOL __GetDeviceNameW(HANDLE hDevice,void* pData, UINT* pcbSize)
+{
+    BOOL bret;
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    bret = __GetDeviceNameWNoLock(hDevice,pData,pcbSize);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+    return bret;
+}
+
+
 BOOL WINAPI RegisterRawInputDevicesCallBack(
     PCRAWINPUTDEVICE pRawInputDevices,
     UINT uiNumDevices,
@@ -234,7 +424,7 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
         }
     }
 
-	/*now all is ok  ,so we do not need any more*/
+    /*now all is ok  ,so we do not need any more*/
     return TRUE;
 }
 
@@ -246,29 +436,45 @@ UINT WINAPI GetRawInputDeviceListCallBack(
 )
 {
     UINT uret;
-	int ret;
+    int ret;
 
-	/*now check for the input */
-	if (puiNumDevices == NULL || *puiNumDevices == 0)
-		{
-			ret = ERROR_INVALID_PARAMETER;
-			SetLastError(ret);
-		}
-	
-
-    uret = GetRawInputDeviceListNext(pRawInputDeviceList,puiNumDevices,cbSize);
-    if(puiNumDevices)
+    /*now check for the input */
+    if(puiNumDevices == NULL || cbSize != sizeof(*pRawInputDeviceList))
     {
-        if(uret != (UINT)-1)
-        {
-            if(pRawInputDeviceList)
-            {
-                /*we should make */
-            }
-        }
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return (UINT) -1;
     }
 
-    return uret;
+    if(*puiNumDevices < 2 || pRawInputDeviceList == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        *puiNumDevices = 2;
+        SetLastError(ret);
+        return (UINT) -1;
+    }
+
+    *puiNumDevices = 2;
+    /*now we should copy the memory*/
+    ret = __CopyKeyboardDeviceList(&(pRawInputDeviceList[0]));
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Copy Keyboard DeviceList Error(%d)\n",ret);
+        SetLastError(ret);
+        return (UINT) -1;
+    }
+
+    ret = __CopyMouseDeviceList(&(pRawInputDeviceList[1]));
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Copy Mouse DeviceList Error(%d)\n",ret);
+        SetLastError(ret);
+        return (UINT) -1;
+    }
+
+    return 2;
 }
 
 UINT WINAPI GetRawInputDeviceInfoACallBack(
@@ -279,6 +485,39 @@ UINT WINAPI GetRawInputDeviceInfoACallBack(
 )
 {
     UINT uret;
+    BOOL bret;
+    int ret;
+
+
+    /*now first to copy the data*/
+    if(uiCommand == RIDI_DEVICENAME)
+    {
+        if(pcbSize == NULL)
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            SetLastError(ret);
+            return (UINT) -1;
+        }
+        bret= __GetDeviceNameA(hDevice,pData,pcbSize);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            SetLastError(ret);
+            return (UINT) -1;
+        }
+        return strlen(pData);
+    }
+    else if(uiCommand == RIDI_DEVICEINFO)
+    {
+        if(pcbSize == NULL)
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            SetLastError(ret);
+            return (UINT) -1;
+        }
+    }
+
+
 
     uret = GetRawInputDeviceInfoANext(hDevice,uiCommand,pData,pcbSize);
     if(uret != (UINT)-1)
