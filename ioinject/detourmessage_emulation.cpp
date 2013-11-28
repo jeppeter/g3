@@ -10,6 +10,9 @@ static PeekMessageFunc_t PeekMessageWNext=PeekMessageW;
 static CRITICAL_SECTION st_MessageEmulationCS;
 static std::vector<MSG*> st_MessageEmulationQueue;
 static int st_MaxMessageEmulationQueue=20;
+static uint32_t st_LastRightBtnUpTimeTick=0;
+static uint32_t st_LastLeftBtnUpTimeTick=0;
+static uint32_t st_LastMiddleBtnUpTimeTick=0;
 
 
 
@@ -18,6 +21,14 @@ static int st_MessageEmualtionInited=0;
 #define  EMULATIONMESSAGE_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
 #define  EMULATIONMESSAGE_DEBUG_INFO      DEBUG_INFO
 
+
+/*return 1 for double click will insert ,
+0 for not 
+negative for error ,not insert into it*/
+int __InsertMessageQueue(LPMSG lpMsg,int back)
+{
+	if (st_Mess)
+}
 
 int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
 {
@@ -35,16 +46,16 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
         CopyMemory(lcpMsg,lpMsg,sizeof(*lpMsg));
         ret = 1;
         EnterCriticalSection(&st_MessageEmulationCS);
-        if(st_MessageEmulationQueue.size() >= st_MaxMessageEmulationQueue)
-        {
-            /*now we should remove the message*/
-            ret = 0;
-            lpRemove = st_MessageEmulationQueue[0];
-            st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
-        }
-
         if(back)
         {
+            /*before insert back ,just remove the header one*/
+            if(st_MessageEmulationQueue.size() >= st_MaxMessageEmulationQueue)
+            {
+                /*now we should remove the message*/
+                ret = 0;
+                lpRemove = st_MessageEmulationQueue[0];
+                st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
+            }
             st_MessageEmulationQueue.push_back(lcpMsg);
         }
         else
@@ -68,6 +79,11 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
         return -ret;
     }
     return ret;
+}
+
+
+int InsertMessageDevEvent(LPDEVICEEVENT pDevEvent)
+{
 }
 
 LPMSG __GetEmulationMessageQueue()

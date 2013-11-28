@@ -131,7 +131,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     int scank;
     int vk;
     LONG wparam;
-    MSG *pInputMsg=NULL;
+    MSG InputMsg= {0};
 
     if(pDevEvent->event.keyboard.code >= 256)
     {
@@ -198,29 +198,22 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     }
 
     pKeyInput = NULL;
-    /*now we should make MSG for it will ok*/
-    pInputMsg = calloc(sizeof(*pInputMsg),1);
-    if(pInputMsg == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        goto fail;
-    }
-    pInputMsg->hwnd = NULL ;
-    pInputMsg->message = WM_INPUT;
-    pInputMsg->wParam = wparam;
-    pInputMsg->lParam = 0;
-    pInputMsg->time = GetTickCount();
-    pInputMsg->pt.x = 0;
-    pInputMsg->pt.y = 0;
+    InputMsg.hwnd = NULL ;
+    InputMsg.message = WM_INPUT;
+    InputMsg.wParam = wparam;
+    InputMsg.lParam = 0;
+    InputMsg.time = GetTickCount();
+    InputMsg.pt.x = 0;
+    InputMsg.pt.y = 0;
 
-    ret = InsertEmulationMessageQueue(pInputMsg,1);
+    ret = InsertEmulationMessageQueue(&InputMsg,1);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
+        ERROR_INFO("Insert Message WM_INPUT wparam 0x%08x Error(%d)\n",wparam,ret);
         goto fail;
     }
 
-    pInputMsg = NULL;
 
     /*now to input key state*/
     SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
@@ -228,13 +221,6 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     return 0;
 fail:
     assert(ret > 0);
-
-    if(pInputMsg)
-    {
-        free(pInputMsg);
-    }
-    pInputMsg = NULL;
-
     if(pKeyInput)
     {
         free(pKeyInput);
@@ -277,7 +263,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     RAWINPUT* pMouseInput=NULL;
     int ret;
     LONG wparam;
-    MSG *pInputMsg=NULL;
+    MSG InputMsg={0};
 
 
     pMouseInput = calloc(sizeof(*pMouseInput),1);
@@ -373,39 +359,26 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     }
     pMouseInput = NULL;
 
-    pInputMsg = calloc(sizeof(*pInputMsg),1);
-    if(pInputMsg == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        goto fail;
-    }
+    InputMsg.hwnd = NULL ;
+    InputMsg.message = WM_INPUT;
+    InputMsg.wParam = wparam;
+    InputMsg.lParam = 0;
+    InputMsg.time = GetTickCount();
+    InputMsg.pt.x = 0;
+    InputMsg.pt.y = 0;
 
-    pInputMsg->hwnd = NULL ;
-    pInputMsg->message = WM_INPUT;
-    pInputMsg->wParam = wparam;
-    pInputMsg->lParam = 0;
-    pInputMsg->time = GetTickCount();
-    pInputMsg->pt.x = 0;
-    pInputMsg->pt.y = 0;
-
-    ret = InsertEmulationMessageQueue(pInputMsg,1);
+    ret = InsertEmulationMessageQueue(&InputMsg,1);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
         goto fail;
     }
 
-    pInputMsg = NULL;
 
 
     return 0;
 fail:
     assert(ret > 0);
-    if(pInputMsg)
-    {
-        free(pInputMsg);
-    }
-    pInputMsg = NULL;
     if(pMouseInput)
     {
         free(pMouseInput);
