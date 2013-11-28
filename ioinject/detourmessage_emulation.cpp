@@ -21,19 +21,91 @@ static int st_MessageEmualtionInited=0;
 #define  EMULATIONMESSAGE_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
 #define  EMULATIONMESSAGE_DEBUG_INFO      DEBUG_INFO
 
+#define MAX_UINT32_VALUE 0xffffffffUL
+
+int IsNotExpireTime(uint32_t prevtick,uint32_t curtick,uint32_t expire)
+{
+    if(curtick > prevtick)
+    {
+        if((curtick - prevtick) <= expire)
+        {
+            return 1;
+        }
+    }
+    else
+    {
+        if((curtick + (MAX_UINT32_VALUE - prevtick)) <= expire)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
 
 /*return 1 for double click will insert ,
-0 for not 
+0 for not
 negative for error ,not insert into it*/
 int __InsertMessageQueue(LPMSG lpMsg,int back)
 {
-	if (st_Mess)
+    int ret;
+    LPMSG lpRemove=NULL;
+    if(st_MessageEmualtionInited)
+    {
+        uint32_t curtick = GetTickCount();
+        ret = 0;
+        EnterCriticalSection(&st_MessageEmulationCS);
+        if(lpMsg->message == WM_LBUTTONUP)
+        {
+            ret = IsNotExpireTime(st_LastLeftBtnUpTimeTick,curtick,500);
+            st_LastLeftBtnUpTimeTick = curtick;
+        }
+        else if(lpMsg->message == WM_RBUTTONUP)
+        {
+            ret = IsNotExpireTime(st_LastRightBtnUpTimeTick,curtick,500);
+            st_LastRightBtnUpTimeTick = curtick;
+        }
+        else if(lpMsg->message == WM_MBUTTONUP)
+        {
+            ret = IsNotExpireTime(st_LastMiddleBtnUpTimeTick,curtick,500);
+            st_LastMiddleBtnUpTimeTick = curtick;
+        }
+
+        if(back)
+        {
+            if(st_MessageEmulationQueue.size() > st_MaxMessageEmulationQueue)
+            {
+                lpRemove = st_MessageEmulationQueue[0];
+                st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
+            }
+            st_MessageEmulationQueue.push_back(lpMsg);
+        }
+        else
+        {
+            st_MessageEmulationQueue.insert(st_MessageEmulationQueue.begin(),lpMsg);
+        }
+        LeaveCriticalSection(&st_MessageEmulationCS);
+
+        if(lpRemove)
+        {
+            EMULATIONMESSAGE_DEBUG_INFO("remove 0x%p Message Code(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
+                                        lpRemove,lpRemove->message,lpRemove->message,
+                                        lpRemove->wParam,lpRemove->wParam,
+                                        lpRemove->lParam,lpRemove->lParam);
+            free(lpRemove);
+        }
+        lpRemove = NULL;
+        return ret;
+    }
+    ret = ERROR_NOT_INITED;
+    SetLastError(ret);
+    return -1;
 }
 
 int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
 {
     int ret=-ERROR_NOT_SUPPORTED;
-    LPMSG lcpMsg=NULL,lpRemove=NULL;
+    LPMSG lcpMsg=NULL;
     if(st_MessageEmualtionInited)
     {
         lcpMsg = calloc(sizeof(*lcpMsg),1);
@@ -44,46 +116,59 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
             return -ret;
         }
         CopyMemory(lcpMsg,lpMsg,sizeof(*lpMsg));
-        ret = 1;
-        EnterCriticalSection(&st_MessageEmulationCS);
-        if(back)
+        ret = __InsertMessageQueue(lcpMsg,back);
+        if(ret < 0)
         {
-            /*before insert back ,just remove the header one*/
-            if(st_MessageEmulationQueue.size() >= st_MaxMessageEmulationQueue)
+            ret = LAST_ERROR_CODE();
+            free(lcpMsg);
+            return -ret;
+        }
+        lcpMsg = NULL;
+
+        if(ret > 0)
+        {
+            /*it will insert double click message*/
+            lcpMsg = calloc(sizeof(*lcpMsg),1);
+            if(lcpMsg == NULL)
             {
-                /*now we should remove the message*/
-                ret = 0;
-                lpRemove = st_MessageEmulationQueue[0];
-                st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
             }
-            st_MessageEmulationQueue.push_back(lcpMsg);
+
+            CopyMemory(lcpMsg,lpMsg,sizeof(*lcpMsg));
+            if(lpMsg->message == WM_LBUTTONUP)
+            {
+                lcpMsg->message = WM_LBUTTONDBLCLK;
+            }
+            else if(lpMsg->message == WM_RBUTTONUP)
+            {
+                lcpMsg->message = WM_RBUTTONDBLCLK;
+            }
+            else if(lpMsg->message == WM_MBUTTONUP)
+            {
+                lcpMsg->message = WM_MBUTTONDBLCLK;
+            }
+            else
+            {
+                assert(0!=0);
+            }
+            ret = __InsertMessageQueue(lcpMsg,1);
+            assert(ret == 0);
         }
-        else
-        {
-            st_MessageEmulationQueue.insert(st_MessageEmulationQueue.begin(),lcpMsg);
-        }
-        LeaveCriticalSection(&st_MessageEmulationCS);
-        if(lpRemove)
-        {
-            EMULATIONMESSAGE_DEBUG_INFO("remove 0x%p Message Code(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
-                                        lpRemove,lpRemove->message,lpRemove->message,
-                                        lpRemove->wParam,lpRemove->wParam,
-                                        lpRemove->lParam,lpRemove->lParam);
-            free(lpRemove);
-        }
-        lpRemove = NULL;
+
+        SetLastError(0);
+        return 0;
     }
-    else
-    {
-        SetLastError(ret);
-        return -ret;
-    }
-    return ret;
+    ret = ERROR_NOT_SUPPORTED;
+    SetLastError(ret);
+    return -ret;
 }
 
 
 int InsertMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
+	
 }
 
 LPMSG __GetEmulationMessageQueue()
