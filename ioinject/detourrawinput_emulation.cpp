@@ -356,6 +356,37 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         pMouseInput->mouse.ulExtraInformation = 0;
     }
 
+    wparam = __InsertMouseInput(pMouseInput);
+    if(wparam == 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        goto fail;
+    }
+    pMouseInput = NULL;
+
+    pInputMsg = calloc(sizeof(*pInputMsg),1);
+    if(pInputMsg == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    pInputMsg->hwnd = NULL ;
+    pInputMsg->message = WM_INPUT;
+    pInputMsg->wParam = wparam;
+    pInputMsg->lParam = 0;
+    pInputMsg->time = GetTickCount();
+    pInputMsg->pt.x = 0;
+    pInputMsg->pt.y = 0;
+
+    ret = InsertEmulationMessageQueue(pInputMsg,1);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    pInputMsg = NULL;
 
 
     return 0;
