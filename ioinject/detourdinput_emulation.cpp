@@ -3394,3 +3394,12 @@ fail:
 
 
 
+int DetourDinputPressKeyDown(UINT scancode)
+{
+}
+
+int DetourDinputScreenMousePoint(POINT* pPoint)
+{
+}
+
+

@@ -1469,4 +1469,16 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
 	return -ERROR_NOT_SUPPORTED;
 }
 
+int DetourDinputPressKeyDown(UINT scancode)
+{
+	return 0;
+}
+
+int DetourDinputScreenMousePoint(POINT* pPoint)
+{
+	pPoint->x = 0;
+	pPoint->y = 0;
+	return 0;
+}
+
 

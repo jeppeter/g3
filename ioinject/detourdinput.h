@@ -10,8 +10,8 @@ void DetourDirectInputFini(void);
 
 int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl);
 
-//int DetourDinputPressKeyDown(UINT scancode);
-//int DetourDinputClientRectMousePoint(POINT* pPoint);
+int DetourDinputPressKeyDown(UINT scancode);
+int DetourDinputScreenMousePoint(POINT* pPoint);
 
 #endif /*__DETOUR_DINPUT_H__*/
 
