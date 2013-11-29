@@ -152,6 +152,7 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
     int ret = 0;
     UINT vk;
     int repeat;
+    POINT pt;
     lpMsg->hwnd = NULL;
     if(keydown)
     {
@@ -184,21 +185,64 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
             repeat = 1;
         }
     }
+    else
+    {
+        repeat = 1;
+    }
 
     lpMsg->lParam |= (repeat & 0xffff);
     lpMsg->lParam |= (scancode & 0xff) << 16;
-    lpMsg->
+
+    if(scancode == DIK_RCONTROL || scancode == DIK_RMENU)
+    {
+        lpMsg->lParam |= (1 << 24);
+    }
+    /*if it is keydown and repeats*/
+    if((repeat > 1 && keydown)|| keydown == 0)
+    {
+        lpMsg->lParam |= (1 << 30);
+    }
+
+    if(keydown == 0)
+    {
+        lpMsg->lParam |= (1 << 31);
+    }
+
+    lpMsg->time = GetTimeTick();
+
+    DetourDinputClientMousePoint(&pt);
+    lpMsg->pt.x = pt.x;
+    lpMsg->pt.y = pt.y;
+    return 0;
 
 }
 
+int __InsertKeyboardMessageDevEvent(LPDEVICEEVENT pDevEvent)
+{
+}
+
+
+int __InsertMouseMessageDevEvent(LPDEVICEEVENT pDevEvent)
+{
+}
 
 /*return 0 for not insert ,1 for insert ,negative for error*/
 int InsertMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
+    int ret;
     /*now to test for the dev event*/
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
+        return __InsertKeyboardMessageDevEvent(pDevEvent);
     }
+    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
+    {
+        return __InsertMouseMessageDevEvent(pDevEvent);
+    }
+
+    ret = ERROR_NOT_SUPPORTED;
+    SetLastError(ret);
+    return -ret;
 }
 
 LPMSG __GetEmulationMessageQueue()
