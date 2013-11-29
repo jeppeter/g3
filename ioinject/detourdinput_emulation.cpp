@@ -3407,3 +3407,8 @@ int DetourDinputMouseBtnDown(UINT btn)
 {
 }
 
+int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
+{
+}
+
+

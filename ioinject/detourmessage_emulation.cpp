@@ -519,6 +519,34 @@ fail:
     return -ret;
 }
 
+int __SetWindowRect(HWND hWnd)
+{
+    RECT rRect;
+    BOOL bret;
+    int ret;
+    bret = GetWindowRect(hWnd,&rRect);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("GetWindowRect(0x%08x) Error(%d)\n",hWnd,ret);
+        return 0;
+    }
+
+    ret = DetourDinputSetWindowsRect(hWnd,&rRect);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("DetourDinputSetWindowRect(0x%08x) left-top(%d-%d) right-bottom(%d-%d) Error(%d)\n",
+                   hWnd,rRect.left,
+                   rRect.top,
+                   rRect.right,
+                   rRect.bottom,
+                   ret);
+    }
+
+    return 0;
+}
+
 BOOL WINAPI GetMessageACallBack(
     LPMSG lpMsg,
     HWND hWnd,
@@ -529,6 +557,7 @@ BOOL WINAPI GetMessageACallBack(
     BOOL bret;
     int ret;
 
+    __SetWindowRect(hWnd);
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -566,6 +595,8 @@ BOOL WINAPI PeekMessageACallBack(
 {
     BOOL bret;
     int ret;
+
+    __SetWindowRect(hWnd);
 
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
@@ -605,6 +636,7 @@ BOOL WINAPI GetMessageWCallBack(
     BOOL bret;
     int ret;
 
+    __SetWindowRect(hWnd);
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -637,6 +669,7 @@ BOOL WINAPI PeekMessageWCallBack(
     BOOL bret;
     int ret;
 
+    __SetWindowRect(hWnd);
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)

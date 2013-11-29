@@ -1465,24 +1465,30 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
 
 int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
 {
-	SetLastError(ERROR_NOT_SUPPORTED);
-	return -ERROR_NOT_SUPPORTED;
+    SetLastError(ERROR_NOT_SUPPORTED);
+    return -ERROR_NOT_SUPPORTED;
 }
 
 int DetourDinputPressKeyDown(UINT scancode)
 {
-	return 0;
+    return 0;
 }
 
 int DetourDinputClientMousePoint(POINT* pPoint)
 {
-	pPoint->x = 0;
-	pPoint->y = 0;
-	return 0;
+    pPoint->x = 0;
+    pPoint->y = 0;
+    return 0;
 }
 
 int DetourDinputMouseBtnDown(UINT btn)
 {
-	return 0;
+    return 0;
 }
+
+int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
+{
+    return 0;
+}
+
 
