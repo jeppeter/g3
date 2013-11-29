@@ -147,11 +147,58 @@ int __PrepareMouseButtonMessage(LPMSG lpMsg,UINT message)
 
 }
 
+int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
+{
+    int ret = 0;
+    UINT vk;
+    int repeat;
+    lpMsg->hwnd = NULL;
+    if(keydown)
+    {
+        lpMsg->message = WM_KEYDOWN;
+    }
+    else
+    {
+        lpMsg->message = WM_KEYUP;
+    }
+
+    lpMsg->wParam = 0;
+    vk = MapVirtualKey(scancode,MAPVK_VSC_TO_VK_EX);
+    if(vk == 0)
+    {
+        /*can not find virtual key ,so we should return error*/
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("scancode (0x%08x:%d) can not find virtual key\n",scancode,scancode);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    lpMsg->wParam = vk;
+
+    lpMsg->lParam = 0;
+    if(keydown)
+    {
+        repeat = DetourDinputPressKeyDown(scancode);
+        if(repeat == 0)
+        {
+            repeat = 1;
+        }
+    }
+
+    lpMsg->lParam |= (repeat & 0xffff);
+    lpMsg->lParam |= (scancode & 0xff) << 16;
+    lpMsg->
+
+}
+
 
 /*return 0 for not insert ,1 for insert ,negative for error*/
 int InsertMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
-	
+    /*now to test for the dev event*/
+    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
+    {
+    }
 }
 
 LPMSG __GetEmulationMessageQueue()
