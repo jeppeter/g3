@@ -302,6 +302,10 @@ int __InsertMouseMessageDevEvent(LPDEVICEEVENT pDevEvent)
         {
             message = WM_MOUSEMOVE;
         }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_SLIDE)
+        {
+            message = WM_MOUSEHWHEEL;
+        }
         else
         {
             ret = ERROR_INVALID_PARAMETER;
@@ -330,16 +334,75 @@ int __InsertMouseMessageDevEvent(LPDEVICEEVENT pDevEvent)
             goto fail;
         }
     }
-    else if()
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
     {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            message = WM_RBUTTONDOWN;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            message = WM_RBUTTONUP;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> Mouse event(%d) code(%d) not valid\n",
+                       pDevEvent,pDevEvent->event.mouse.event,
+                       pDevEvent->event.mouse.code);
+            goto fail;
+        }
     }
-    else if()
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
     {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            message = WM_RBUTTONDOWN;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            message = WM_RBUTTONUP;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> Mouse event(%d) code(%d) not valid\n",
+                       pDevEvent,pDevEvent->event.mouse.event,
+                       pDevEvent->event.mouse.code);
+            goto fail;
+        }
     }
     else
     {
+        assert(0!=0);
     }
 
+    ret = __PrepareMouseButtonMessage(&Msg,message);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("<0x%p>Prepare code (%d) event(%d) message(0x%08x) Error(%d)\n",
+                   pDevEvent,pDevEvent->event.mouse.code,
+                   pDevEvent->event.mouse.event,
+                   message,ret);
+        goto fail;
+    }
+
+    if(message == WM_MOUSEHWHEEL)
+    {
+        int wdelta;
+        /*it is wheel ,so we should do this for wheel handle*/
+        Msg.wParam &= (0xffff);
+        wdelta = (pDevEvent->event.mouse.x << 16);
+        Msg.wParam |= (wdelta);
+    }
+
+    ret = __InsertMessageQueue(&Msg,1);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
 
     return 1;
 fail:
