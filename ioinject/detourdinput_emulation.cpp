@@ -3576,10 +3576,23 @@ int RawInputSetWindowsRect(HWND hWnd,RECT *pRect)
 
 int MoveMouseRelative(int x,int y)
 {
+    int ret= 0;
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    st_MousePoint.x += x;
+    st_MousePoint.y += y;
+    __ReCalculateMousePoint();
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+    return 0;
 }
 
 int MoveMouseAbsolute(int clientx,int clienty)
 {
+	int ret = 0;
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    st_MousePoint.x = st_MaxRect.left + clientx;
+    st_MousePoint.y = st_MaxRect.top + clienty;
+    __ReCalculateMousePoint();
+    LeaveCriticalSection(&st_KeyMouseStateCS);
 }
 
 
