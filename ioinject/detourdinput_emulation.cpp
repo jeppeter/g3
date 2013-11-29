@@ -1295,7 +1295,7 @@ fail:
         EnterCriticalSection(&(this->m_StateCS));
         while(this->m_EventList.size() > 0)
         {
-			DEBUG_INFO("Event Size (%d)\n",this->m_EventList.size());
+            DEBUG_INFO("Event Size (%d)\n",this->m_EventList.size());
             assert(pEventList == NULL);
             pEventList = this->m_EventList[0];
             this->m_EventList.erase(this->m_EventList.begin());
@@ -3392,23 +3392,171 @@ fail:
 
 }
 
+#define MAX_HWND_SIZE   20
+
+static CRITICAL_SECTION st_KeyMouseStateCS;
+static std::vector<HWND> st_hWndVecs;
+static std::vector<RECT> st_hWndRectVecs;
+static std::vector<UINT> st_hWndLastTick;
+static unsigned int st_KeyDownTimes[256];
+static RECT st_MaxRect;
+static POIN st_MousePoint;
+
+int RawInputPressKeyDown(UINT scancode)
+{
+    int cnt;
+
+    if(scancode >= 256)
+    {
+        cnt = ERROR_INVALID_PARAMETER;
+        SetLastError(cnt);
+        return -cnt;
+    }
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    st_KeyDownTimes[scancode] ++;
+    cnt = st_KeyDownTimes[scancode];
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+    return cnt;
+}
+
+int RawInputPressKeyUp(UINT scancode)
+{
+    int cnt;
+
+    if(scancode >= 256)
+    {
+        cnt = ERROR_INVALID_PARAMETER;
+        SetLastError(cnt);
+        return -cnt;
+    }
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    st_KeyDownTimes[scancode] =0;
+    cnt = 0;
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+    return cnt;
+
+}
 
 
 
-int DetourDinputPressKeyDown(UINT scancode)
+int RawInputPressKeyDownTimes(UINT scancode)
+{
+    int cnt;
+
+    if(scancode >= 256)
+    {
+        cnt = ERROR_INVALID_PARAMETER;
+        SetLastError(cnt);
+        return -cnt;
+    }
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    cnt = st_KeyDownTimes[scancode];
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+    return cnt;
+}
+
+#define RAWINPUT_WND_STATE_EQUAL() \
+do\
+{\
+	assert(st_hWndVecs.size() == st_hWndLastTick.size());\
+	assert(st_hWndLastTick.size() == st_hWndRectVecs.size());\
+}while(0)
+
+int __RawInputResizeWindowNoLock()
+{
+    UINT i;
+    int ret= 0;
+    int pickidx=-1;
+
+    if(st_hWndVecs.size() >= MAX_HWND_SIZE)
+    {
+        pickidx = 0;
+        for(i=0; i<st_hWndVecs.size(); i++)
+        {
+            if(st_hWndLastTick[i] < st_hWndLastTick[pickidx])
+            {
+                /*it is earlier one ,so we should pick it as it detroyed*/
+                pickidx = i;
+            }
+        }
+
+        /*now to erase the hwnd*/
+        st_hWndLastTick.erase(st_hWndLastTick.begin()+pickidx);
+        st_hWndRectVecs.erase(st_hWndRectVecs.begin() + pickidx);
+        st_hWndVecs.erase(st_hWndVecs.begin()+pickidx);
+    }
+
+    return ret;
+}
+
+int __ReCalculateMaxWindowRectNoLock()
+{
+    UINT i;
+    int pickidx=0;
+
+    assert(st_hWndVecs.size() > 0);
+    for(i=0; i<st_hWndVecs.size() ; i++)
+    {
+        if(((st_hWndRectVecs[i].right - st_hWndRectVecs[i].left) > (st_hWndRectVecs[pickidx].right - st_hWndRectVecs[pickidx].left)) &&
+                ((st_hWndRectVecs[i].botton - st_hWndRectVecs[i].top) > (st_hWndRectVecs[i].botton - st_hWndRectVecs[i].top)))
+        {
+            pickidx = i;
+        }
+    }
+
+    /*now max window size is rect*/
+    CopyMemory(&st_MaxRect,&(st_hWndRectVecs[pickidx]),sizeof(st_MaxRect));
+    return pickidx;
+}
+
+
+int RawInputSetWindowsRect(HWND hWnd,RECT *pRect)
+{
+    int ret;
+    int findidx=-1;
+    UINT i;
+    RECT rRect = *pRect;
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    RAWINPUT_WND_STATE_EQUAL();
+    /*now first to find the window*/
+    for(i=0; i<st_hWndVecs.size(); i++)
+    {
+        if(hWnd == st_hWndVecs[i])
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        st_hWndRectVecs[findidx] = rRect;
+        st_hWndLastTick[findidx] = GetTickCount();
+    }
+    else
+    {
+        /*it is a new one ,so we should push back*/
+        __RawInputResizeWindowNoLock();
+        /*now we push it*/
+        st_hWndVecs.push_back(hWnd);
+        st_hWndLastTick.push_back(GetTickCount());
+        st_hWndRectVecs.push_back(rRect);
+    }
+	__ReCalculateMaxWindowRectNoLock();
+
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+    return ret;
+
+}
+
+
+int RawInputScreenMousePoint(POINT* pPoint)
 {
 }
 
-int DetourDinputScreenMousePoint(POINT* pPoint)
+int RawInputMouseBtnDown(UINT btn)
 {
 }
 
-int DetourDinputMouseBtnDown(UINT btn)
-{
-}
-
-int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
-{
-}
 
 
