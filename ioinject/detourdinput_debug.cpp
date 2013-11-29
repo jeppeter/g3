@@ -1474,11 +1474,15 @@ int DetourDinputPressKeyDown(UINT scancode)
 	return 0;
 }
 
-int DetourDinputScreenMousePoint(POINT* pPoint)
+int DetourDinputClientMousePoint(POINT* pPoint)
 {
 	pPoint->x = 0;
 	pPoint->y = 0;
 	return 0;
 }
 
+int DetourDinputMouseBtnDown(UINT btn)
+{
+	return 0;
+}
 

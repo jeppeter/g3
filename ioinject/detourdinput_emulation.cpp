@@ -3403,4 +3403,7 @@ int DetourDinputScreenMousePoint(POINT* pPoint)
 {
 }
 
+int DetourDinputMouseBtnDown(UINT btn)
+{
+}
 

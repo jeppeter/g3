@@ -191,6 +191,7 @@ typedef enum IO_MOUSE_EVENT
 	MOUSE_EVENT_KEYUP, 
 	MOUSE_EVNET_MOVING, 
 	MOUSE_EVENT_SLIDE,			// SLIDE
+	MOUSE_EVENT_ABS_MOVING,     //  absolute position sending ,this is for checking position
 } IO_MOUSE_EVENT_t,*PIO_MOUSE_EVENT_t;
 
 

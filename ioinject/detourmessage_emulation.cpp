@@ -96,16 +96,62 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
 
 int __PrepareMouseButtonMessage(LPMSG lpMsg,UINT message)
 {
-	lpMsg->hwnd = NULL;
-	lpMsg->message = message;
+    POINT pt;
+    lpMsg->hwnd = NULL;
+    lpMsg->message = message;
 
-	/*now we should check for the state of*/
+    /*now we should check for the state of*/
+    lpMsg->wParam = 0;
+    /*check for button down*/
+    if(DetourDinputPressKeyDown(DIK_RCONTROL) ||
+            DetourDinputPressKeyDown(DIK_LCONTROL))
+    {
+        lpMsg->wParam |= MK_CONTROL;
+    }
+
+    if(DetourDinputMouseBtnDown(MOUSE_LEFT_BTN))
+    {
+        lpMsg->wParam |= MK_LBUTTON;
+    }
+
+    if(DetourDinputMouseBtnDown(MOUSE_RIGHT_BTN))
+    {
+        lpMsg->wParam |= MK_RBUTTON;
+    }
+
+    if(DetourDinputMouseBtnDown(MOUSE_MIDDLE_BTN))
+    {
+        lpMsg->wParam |= MK_MBUTTON;
+    }
+
+    if(DetourDinputPressKeyDown(DIK_RSHIFT) ||
+            DetourDinputPressKeyDown(DIK_LSHIFT))
+    {
+        lpMsg->wParam |= MK_SHIFT;
+    }
+
+    /*now we should change it for the point*/
+
+    DetourDinputClientMousePoint(&pt);
+    /*now to change the client*/
+    lpMsg->lParam = 0;
+    lpMsg->lParam |= (pt.x & 0xffff);
+    lpMsg->lParam |= ((pt.y & 0xffff) << 16);
+
+    /*now we should set the time and point*/
+    lpMsg->time = GetTickCount();
+    lpMsg->pt.x = pt.x;
+    lpMsg->pt.y = pt.y;
+
+    return 0;
+
 }
 
 
+/*return 0 for not insert ,1 for insert ,negative for error*/
 int InsertMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
-	/*now we should check for the message type and get the locate*/
+	
 }
 
 LPMSG __GetEmulationMessageQueue()
