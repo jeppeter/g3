@@ -219,11 +219,133 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
 
 int __InsertKeyboardMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
+    MSG Msg= {0};
+    int ret;
+    UINT scancode;
+    int keydown;
+
+    if(pDevEvent->devid != 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("KeyBoard(%d) not exist\n",pDevEvent->devid);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.keyboard.event >= KEYBOARD_EVENT_MAX ||
+            pDevEvent->event.keyboard.code >= KEYBOARD_CODE_NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p> event(%d) code (%d) not valid\n",
+                   pDevEvent->event.keyboard.event,
+                   pDevEvent->event.keyboard.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+
+    scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
+    keydown = (pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN) ? 1 : 0;
+    ret = __PrepareKeyPressMessage(&Msg,scancode,keydown);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Prepare Key scancode(%d) Error(%d)\n",scancode,keydown);
+        goto fail;
+    }
+
+    ret= __InsertMessageQueue(&Msg,1);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    return 1;
+fail:
+    assert(ret > 0);
+    SetLastError(ret);
+    return -ret;
 }
 
 
 int __InsertMouseMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
+    MSG Msg= {0};
+    UINT message;
+    int ret;
+
+    if(pDevEvent->devid != 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("<0x%p> Mouse devid(%d)\n",pDevEvent,pDevEvent->devid);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX ||
+            pDevEvent->event.mouse.code >= MOUSE_CODE_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p> Mouse event(%d) code(%d) not valid\n",
+                   pDevEvent,pDevEvent->event.mouse.event,
+                   pDevEvent->event.mouse.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE &&
+      )
+    {
+        if((pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING ||
+                pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING))
+        {
+            message = WM_MOUSEMOVE;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> Mouse event(%d) code(%d) not valid\n",
+                       pDevEvent,pDevEvent->event.mouse.event,
+                       pDevEvent->event.mouse.code);
+            goto fail;
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            message = WM_LBUTTONDOWN;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            message = WM_LBUTTONUP;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> Mouse event(%d) code(%d) not valid\n",
+                       pDevEvent,pDevEvent->event.mouse.event,
+                       pDevEvent->event.mouse.code);
+            goto fail;
+        }
+    }
+    else if()
+    {
+    }
+    else if()
+    {
+    }
+    else
+    {
+    }
+
+
+    return 1;
+fail:
+    assert(ret > 0);
+    SetLastError(ret);
+    return -ret;
 }
 
 /*return 0 for not insert ,1 for insert ,negative for error*/
