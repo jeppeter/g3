@@ -3596,8 +3596,12 @@ int MoveMouseAbsolute(int clientx,int clienty)
 }
 
 
-int RawInputScreenMousePoint(POINT* pPoint)
+int RawInputScreenMousePoint(HWND hwnd,POINT* pPoint)
 {
+	/*we test for the client point of this window*/
+	int ret;
+	EnterCriticalSection();
+	LeaveCriticalSection();
 }
 
 int RawInputMouseBtnDown(UINT btn)
