@@ -3574,6 +3574,14 @@ int RawInputSetWindowsRect(HWND hWnd,RECT *pRect)
 
 }
 
+int MoveMouseRelative(int x,int y)
+{
+}
+
+int MoveMouseAbsolute(int clientx,int clienty)
+{
+}
+
 
 int RawInputScreenMousePoint(POINT* pPoint)
 {
