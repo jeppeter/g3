@@ -18,6 +18,7 @@ typedef enum IO_DEVICE_TYPE
     DEVICE_TYPE_MAX
 } IO_DEVICE_TYPE_t,*PIO_DEVICE_TYPE_t;
 
+
 typedef enum IO_KEYBOARD_CODE
 {
     KEYBOARD_CODE_A = 0,
@@ -45,7 +46,7 @@ typedef enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_W,
     KEYBOARD_CODE_X,
     KEYBOARD_CODE_Y,          /*25*/
-    KEYBOARD_CODE_Z,             
+    KEYBOARD_CODE_Z,
     KEYBOARD_CODE_0,
     KEYBOARD_CODE_1,
     KEYBOARD_CODE_2,
@@ -55,12 +56,12 @@ typedef enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_6,
     KEYBOARD_CODE_7,
     KEYBOARD_CODE_8,          /*35*/
-    KEYBOARD_CODE_9,             
+    KEYBOARD_CODE_9,
     KEYBOARD_CODE_ESCAPE,
     KEYBOARD_CODE_MINUS,
     KEYBOARD_CODE_EQUALS,         /*equals */
     KEYBOARD_CODE_BACK,           /*back space*/        /*40*/
-    KEYBOARD_CODE_TAB,            /**/                   
+    KEYBOARD_CODE_TAB,            /**/
     KEYBOARD_CODE_LBRACKET,       /*[*/
     KEYBOARD_CODE_RBRACKET,       /*]*/
     KEYBOARD_CODE_RETURN,
@@ -70,18 +71,18 @@ typedef enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_GRAVE,           /*'*/
     KEYBOARD_CODE_LSHIFT,
     KEYBOARD_CODE_BACKSLASH,       /*\\*/               /*50*/
-    KEYBOARD_CODE_COMMA,           /*,*/                  
+    KEYBOARD_CODE_COMMA,           /*,*/
     KEYBOARD_CODE_PERIOD,          /*.*/
     KEYBOARD_CODE_SLASH,           /* / */
-    KEYBOARD_CODE_RSHIFT,          
+    KEYBOARD_CODE_RSHIFT,
     KEYBOARD_CODE_NUM_MULTIPLY,    /* numpad * */       /*55*/
     KEYBOARD_CODE_LALT,
     KEYBOARD_CODE_SPACE,
     KEYBOARD_CODE_CAPITAL,         /*caps lock*/
     KEYBOARD_CODE_F1,
     KEYBOARD_CODE_F2,                                    /*60*/
-    KEYBOARD_CODE_F3,                                     
-    KEYBOARD_CODE_F4,                                      
+    KEYBOARD_CODE_F3,
+    KEYBOARD_CODE_F4,
     KEYBOARD_CODE_F5,
     KEYBOARD_CODE_F6,
     KEYBOARD_CODE_F7,                                    /*65*/
@@ -90,28 +91,28 @@ typedef enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_F10,
     KEYBOARD_CODE_F11,
     KEYBOARD_CODE_F12,                                    /*70*/
-    KEYBOARD_CODE_NUMLOCK,
-    KEYBOARD_CODE_SCROLL,
-    KEYBOARD_CODE_NUM_7,
-    KEYBOARD_CODE_NUM_8,
-    KEYBOARD_CODE_NUM_9,                                  /*75*/
-    KEYBOARD_CODE_SUBTRACT,         /*-*/
-    KEYBOARD_CODE_NUM_4,
-    KEYBOARD_CODE_NUM_5,
-    KEYBOARD_CODE_NUM_6,
-    KEYBOARD_CODE_NUM_ADD,                                /*80*/
-    KEYBOARD_CODE_NUM_1,
-    KEYBOARD_CODE_NUM_2,                                    
-    KEYBOARD_CODE_NUM_3,
-    KEYBOARD_CODE_NUM_0,
-    KEYBOARD_CODE_DECIMAL,          /* . on numeric keypad *//*85*/
-    KEYBOARD_CODE_OEM_102,          /* <> or \| on RT 102-key keyboard (Non-U.S.) */
     KEYBOARD_CODE_F13,
     KEYBOARD_CODE_F14,
     KEYBOARD_CODE_F15,
+    KEYBOARD_CODE_NUMLOCK,
+    KEYBOARD_CODE_SCROLL,                                 /*75*/
+    KEYBOARD_CODE_SUBTRACT,         /*-*/
+    KEYBOARD_CODE_NUM_0,
+    KEYBOARD_CODE_NUM_1,
+    KEYBOARD_CODE_NUM_2,
+    KEYBOARD_CODE_NUM_3,                                  /*80*/
+    KEYBOARD_CODE_NUM_4,
+    KEYBOARD_CODE_NUM_5,
+    KEYBOARD_CODE_NUM_6,
+    KEYBOARD_CODE_NUM_7,
+    KEYBOARD_CODE_NUM_8,                                  /*85*/
+    KEYBOARD_CODE_NUM_9,
+    KEYBOARD_CODE_NUM_ADD,
+    KEYBOARD_CODE_DECIMAL,          /* . on numeric keypad */
+    KEYBOARD_CODE_OEM_102,          /* <> or \| on RT 102-key keyboard (Non-U.S.) */
     KEYBOARD_CODE_KANA,             /* (Japanese keyboard)            */    /*90*/
     KEYBOARD_CODE_ABNT_C1,          /* /? on Brazilian keyboard */
-    KEYBOARD_CODE_CONVERT,          /* (Japanese keyboard)            */        
+    KEYBOARD_CODE_CONVERT,          /* (Japanese keyboard)            */
     KEYBOARD_CODE_NONCONVERT,       /* (Japanese keyboard)            */
     KEYBOARD_CODE_YEN,              /* (Japanese keyboard)            */
     KEYBOARD_CODE_ABNT_C2,          /* Numpad . on Brazilian keyboard */   /*95*/
@@ -121,7 +122,7 @@ typedef enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_COLON,            /*                     (NEC PC98) */
     KEYBOARD_CODE_UNDERLINE,        /*                     (NEC PC98) */         /*100*/
     KEYBOARD_CODE_KANJI,            /* (Japanese keyboard)            */
-    KEYBOARD_CODE_STOP,             /*                     (NEC PC98) */            
+    KEYBOARD_CODE_STOP,             /*                     (NEC PC98) */
     KEYBOARD_CODE_AX,               /*                     (Japan AX) */
     KEYBOARD_CODE_UNLABELED,        /*                        (J3100) */
     KEYBOARD_CODE_NEXT_TRACK,       /* Next Track */                       /*105*/
@@ -141,7 +142,7 @@ typedef enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_PAUSE,
     KEYBOARD_CODE_HOME,                                                     /*120*/
     KEYBOARD_CODE_UP,
-    KEYBOARD_CODE_PRIOR,            /*pageup*/                                
+    KEYBOARD_CODE_PRIOR,            /*pageup*/
     KEYBOARD_CODE_LEFT,
     KEYBOARD_CODE_RIGHT,
     KEYBOARD_CODE_END,                                                      /*125*/
@@ -151,7 +152,7 @@ typedef enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_DELETE,
     KEYBOARD_CODE_LWIN,                                                      /*130*/
     KEYBOARD_CODE_RWIN,
-    KEYBOARD_CODE_APPMENU,                                                      
+    KEYBOARD_CODE_APPMENU,
     KEYBOARD_CODE_POWER,
     KEYBOARD_CODE_SLEEP,
     KEYBOARD_CODE_WAKE,                                                      /*135*/
@@ -161,11 +162,11 @@ typedef enum IO_KEYBOARD_CODE
     KEYBOARD_CODE_WEB_STOP,
     KEYBOARD_CODE_WEB_FORWARD,                                                /*140*/
     KEYBOARD_CODE_WEB_BACK,
-    KEYBOARD_CODE_MY_COMPUTER,                                                   
+    KEYBOARD_CODE_MY_COMPUTER,
     KEYBOARD_CODE_MAIL,
     KEYBOARD_CODE_MEDIA_SELECT,
 
-   KEYBOARD_CODE_NULL = 255
+    KEYBOARD_CODE_NULL = 255
 } IO_KEYBOARD_CODE_t,*PIO_KEYBOARD_CODE_t;
 
 
