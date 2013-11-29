@@ -3506,7 +3506,31 @@ int __ReCalculateMaxWindowRectNoLock()
 
     /*now max window size is rect*/
     CopyMemory(&st_MaxRect,&(st_hWndRectVecs[pickidx]),sizeof(st_MaxRect));
+
+
     return pickidx;
+}
+
+int __ReCalculateMousePoint()
+{
+    if(st_MousePoint.x <= st_MaxRect.left)
+    {
+        st_MousePoint.x = st_MaxRect.left + 1;
+    }
+    else if(st_MousePoint.x >= st_MaxRect.right)
+    {
+        st_MousePoint.x = st_MaxRect.right - 1;
+    }
+    if(st_MousePoint.y  <= st_MaxRect.top)
+    {
+        st_MousePoint.y = st_MaxRect.top + 1;
+    }
+    else if(st_MousePoint.y >= st_MaxRect.bottom)
+    {
+        st_MousePoint.y = st_MaxRect.bottom - 1;
+    }
+
+    return 0;
 }
 
 
@@ -3542,7 +3566,8 @@ int RawInputSetWindowsRect(HWND hWnd,RECT *pRect)
         st_hWndLastTick.push_back(GetTickCount());
         st_hWndRectVecs.push_back(rRect);
     }
-	__ReCalculateMaxWindowRectNoLock();
+    __ReCalculateMaxWindowRectNoLock();
+    __ReCalculateMousePoint();
 
     LeaveCriticalSection(&st_KeyMouseStateCS);
     return ret;
