@@ -133,11 +133,106 @@ int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
     {
         st_Dinput8KeyState[scancode] = 0x00;
     }
-	return 0;
+    return 0;
 }
 
 int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
 {
+    int ret;
+
+    if(pDevEvent->devid != 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("<0x%p>Mouse devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.mouse.code >= MOUSE_CODE_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Mouse code(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Mouse event(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.event);
+        SetLastError(ret);
+        return -ret;
+    }
+
+
+    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+        	/*this is relative one*/
+			st_Dinput8MouseState.lX += pDevEvent->event.mouse.x;
+			st_Dinput8MouseState.lY += pDevEvent->event.mouse.y;
+        }
+        else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
+        {
+        	st_Dinput8MouseState.lZ += pDevEvent->event.mouse.x;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
+        {
+        	
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+			ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+				pDevEvent->event.mouse.code,
+				pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+        }
+        else if(pDevEvent->event.mouse.event ==)
+        {
+        }
+        else
+        {
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+        }
+        else if(pDevEvent->event.mouse.event ==)
+        {
+        }
+        else
+        {
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+        }
+        else if(pDevEvent->event.mouse.event ==)
+        {
+        }
+        else
+        {
+        }
+    }
+    else
+    {
+        /*we check before*/
+        assert(0!=0);
+    }
+
 }
 
 int DetourDinput8SetKeyMouseState(LPDEVICEEVENT pDevEvent)
