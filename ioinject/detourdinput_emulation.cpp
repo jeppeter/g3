@@ -85,8 +85,71 @@ static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
 static unsigned char st_Dinput8KeyState[MAX_STATE_BUFFER_SIZE];
 static DIMOUSESTATE  st_Dinput8MouseState;
 
+int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
+{
+    int ret;
+    int scancode;
+    if(pDevEvent->devid != 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("<0x%p>Keyboard devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    /*not check for the code*/
+
+    if(pDevEvent->event.keyboard.code >= KEYBOARD_CODE_NULL)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard code(%d) invalid\n",pDevEvent,pDevEvent->event.keyboard.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
+    if(scancode == DIK_NULL)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard code(%d) TO DIK_NULL invalid\n",pDevEvent,pDevEvent->event.keyboard.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+}
+
+int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
+{
+}
+
 int DetourDinput8SetKeyMouseState(LPDEVICEEVENT pDevEvent)
 {
+    int ret;
+    if(pDevEvent->devtype != DEVICE_TYPE_KEYBOARD &&
+            pDevEvent->devtype != DEVICE_TYPE_MOUSE)
+    {
+        ret = ERROR_NOT_SUPPORTED;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        ret= __DetourDinput8SetKeyStateNoLock(pDevEvent);
+    }
+    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
+    {
+        ret=  __DetourDinput8SetMouseStateNoLock(pDevEvent);
+    }
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+
+    if(ret != 0)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+    }
+    return -ret;
 }
 
 
@@ -3636,7 +3699,7 @@ int RawInputScreenMousePoint(HWND hwnd,POINT* pPoint)
                 pPoint->x = (st_MousePoint.x - st_hWndRectVecs[findidx].left)
             }
 
-            if(st_MousePoint.y <= st_hWndRectVecs[findidx].top)
+                        if(st_MousePoint.y <= st_hWndRectVecs[findidx].top)
             {
                 pPoint->y = 1;
             }
