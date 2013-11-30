@@ -3401,6 +3401,7 @@ static std::vector<UINT> st_hWndLastTick;
 static unsigned int st_KeyDownTimes[256];
 static RECT st_MaxRect;
 static POIN st_MousePoint;
+static UINT st_MouseBtnState[MOUSE_MAX_BTN];
 
 int RawInputPressKeyDown(UINT scancode)
 {
@@ -3622,28 +3623,41 @@ int RawInputScreenMousePoint(HWND hwnd,POINT* pPoint)
             pPoint->x = (st_MousePoint.x - st_hWndRectVecs[findidx].left);
             pPoint->y = (st_MousePoint.y - st_hWndRectVecs[findidx].top);
         }
-        else 
-            {
+        else
+        {
             ERROR_INFO("Mouse(x:%d:y:%d) [%d] Rect(top-left:%d-%d  bottom-right:%d-%d)\n",
-                st_MousePoint.x,st_MousePoint.y,
-                findidx,
-                st_hWndRectVecs[findidx].top,
-                st_hWndRectVecs[findidx].left,
-                st_hWndRectVecs[findidx].bottom,
-                st_hWndRectVecs[findidx].right);
-                if (st_MousePoint.x <= st_hWndRectVecs[findidx].left)
-                    {
-                        pPoint->x = 1;
-                    }
-                else if (st_MousePoint.x >= st_hWndRectVecs[findidx].right)
-                    {
-                        pPoint->x = (st_hWndRectVecs[findidx].right - st_hWndRectVecs[findidx].left - 1);
-                    }
-                else
-                    {
-                        pPoint->x = (st_MousePoint.x - st_hWndRectVecs[findidx].left)
-                    }
+                       st_MousePoint.x,st_MousePoint.y,
+                       findidx,
+                       st_hWndRectVecs[findidx].top,
+                       st_hWndRectVecs[findidx].left,
+                       st_hWndRectVecs[findidx].bottom,
+                       st_hWndRectVecs[findidx].right);
+            if(st_MousePoint.x <= st_hWndRectVecs[findidx].left)
+            {
+                pPoint->x = 1;
             }
+            else if(st_MousePoint.x >= st_hWndRectVecs[findidx].right)
+            {
+                pPoint->x = (st_hWndRectVecs[findidx].right - st_hWndRectVecs[findidx].left - 1);
+            }
+            else
+            {
+                pPoint->x = (st_MousePoint.x - st_hWndRectVecs[findidx].left)
+            }
+
+            if(st_MousePoint.y <= st_hWndRectVecs[findidx].top)
+            {
+                pPoint->y = 1;
+            }
+            else if(st_MousePoint.y >= st_hWndRectVecs[findidx].bottom)
+            {
+                pPoint->y = (st_hWndRectVecs[findidx].bottom - st_hWndRectVecs[findidx].top - 1);
+            }
+            else
+            {
+                pPoint->y = (st_MousePoint.y -st_hWndRectVecs[findidx].top);
+            }
+        }
     }
     else
     {
@@ -3657,8 +3671,48 @@ int RawInputScreenMousePoint(HWND hwnd,POINT* pPoint)
     return 0;
 }
 
+
+int SetRawInputMouseBtn(UINT btn,int down)
+{
+    int ret;
+
+    if(btn > MOUSE_MAX_BTN || btn < MOUSE_MIN_BTN)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+    EnterCriticalSection(&st_KeyMouseStateCS);
+
+    if(down)
+    {
+        st_MouseBtnState[btn - 1] = 0x1;
+    }
+    else
+    {
+        st_MouseBtnState[ btn - 1] = 0x0;
+    }
+
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+
+    return 0;
+}
+
 int RawInputMouseBtnDown(UINT btn)
 {
+    int ret;
+
+    if(btn > MOUSE_MAX_BTN || btn < MOUSE_MIN_BTN)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    ret = st_MouseBtnState[btn - 1];
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+
+    return ret;
 }
 
 

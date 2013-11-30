@@ -5,9 +5,11 @@
 #include <Windows.h>
 #include <ioinject.h>
 
-#define  MOUSE_LEFT_BTN   1
-#define  MOUSE_RIGHT_BTN  2
-#define  MOUSE_MIDDLE_BTN 3
+#define  MOUSE_LEFT_BTN          1
+#define  MOUSE_RIGHT_BTN       2
+#define  MOUSE_MIDDLE_BTN    3
+#define  MOUSE_MIN_BTN          1
+#define  MOUSE_MAX_BTN         3
 
 BOOL DetourDirectInputInit(void);
 void DetourDirectInputFini(void);
