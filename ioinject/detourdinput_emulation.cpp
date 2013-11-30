@@ -3587,7 +3587,7 @@ int MoveMouseRelative(int x,int y)
 
 int MoveMouseAbsolute(int clientx,int clienty)
 {
-	int ret = 0;
+    int ret = 0;
     EnterCriticalSection(&st_KeyMouseStateCS);
     st_MousePoint.x = st_MaxRect.left + clientx;
     st_MousePoint.y = st_MaxRect.top + clienty;
@@ -3598,10 +3598,63 @@ int MoveMouseAbsolute(int clientx,int clienty)
 
 int RawInputScreenMousePoint(HWND hwnd,POINT* pPoint)
 {
-	/*we test for the client point of this window*/
-	int ret;
-	EnterCriticalSection();
-	LeaveCriticalSection();
+    /*we test for the client point of this window*/
+    int ret;
+    UINT i;
+    int findidx = -1;
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    /*now first to make sure */
+    for(i=0; i<st_hWndVecs.size(); i++)
+    {
+        if(st_hWndVecs[i] == hwnd)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        /*now to make sure this mouse point is in the kernel*/
+        if(st_MousePoint.x > st_hWndRectVecs[findidx].left && st_MousePoint.x < st_hWndRectVecs[findidx].right &&
+                st_MousePoint.y > st_hWndRectVecs[findidx].top && st_MousePoint.y < st_hWndRectVecs[findidx].bottom)
+        {
+            pPoint->x = (st_MousePoint.x - st_hWndRectVecs[findidx].left);
+            pPoint->y = (st_MousePoint.y - st_hWndRectVecs[findidx].top);
+        }
+        else 
+            {
+            ERROR_INFO("Mouse(x:%d:y:%d) [%d] Rect(top-left:%d-%d  bottom-right:%d-%d)\n",
+                st_MousePoint.x,st_MousePoint.y,
+                findidx,
+                st_hWndRectVecs[findidx].top,
+                st_hWndRectVecs[findidx].left,
+                st_hWndRectVecs[findidx].bottom,
+                st_hWndRectVecs[findidx].right);
+                if (st_MousePoint.x <= st_hWndRectVecs[findidx].left)
+                    {
+                        pPoint->x = 1;
+                    }
+                else if (st_MousePoint.x >= st_hWndRectVecs[findidx].right)
+                    {
+                        pPoint->x = (st_hWndRectVecs[findidx].right - st_hWndRectVecs[findidx].left - 1);
+                    }
+                else
+                    {
+                        pPoint->x = (st_MousePoint.x - st_hWndRectVecs[findidx].left)
+                    }
+            }
+    }
+    else
+    {
+        /*not find ,so we put it in the top-left point*/
+        ERROR_INFO("could not find 0x%08x hwnd\n",hwnd);
+        pPoint->x = 1;
+        pPoint->y = 1;
+    }
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+
+    return 0;
 }
 
 int RawInputMouseBtnDown(UINT btn)
