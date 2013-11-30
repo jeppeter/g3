@@ -107,6 +107,15 @@ int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
         return -ret;
     }
 
+    if(pDevEvent->event.keyboard.event >= KEYBOARD_EVENT_MAX)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard event(%d) invalid\n",pDevEvent,pDevEvent->event.keyboard.event);
+        SetLastError(ret);
+        return -ret;
+    }
+
+
     scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
     if(scancode == DIK_NULL)
     {
@@ -116,6 +125,15 @@ int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
         return -ret;
     }
 
+    if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
+    {
+        st_Dinput8KeyState[scancode] = 0x80;
+    }
+    else
+    {
+        st_Dinput8KeyState[scancode] = 0x00;
+    }
+	return 0;
 }
 
 int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
