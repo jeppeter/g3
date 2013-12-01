@@ -23,7 +23,7 @@ typedef struct
 
 static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
 static HANDLE st_hDetourDinputSema=NULL;
-static PDETOUR_DIRECTINPUT_STATUS_t st_pDinputStatus=NULL;
+static PDETOUR_THREAD_STATUS_t st_pDinputStatus=NULL;
 
 
 int IoInjectInput(PEVENT_LIST_t pEvent)
@@ -160,7 +160,7 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
 
 DWORD WINAPI DetourDirectInputThreadImpl(LPVOID pParam)
 {
-    PDETOUR_DIRECTINPUT_STATUS_t pStatus = (PDETOUR_DIRECTINPUT_STATUS_t)pParam;
+    PDETOUR_THREAD_STATUS_t pStatus = (PDETOUR_THREAD_STATUS_t)pParam;
     HANDLE *pWaitHandles=NULL;
     unsigned int waitnum=0;
     DWORD dret,idx;
@@ -234,7 +234,7 @@ out:
 }
 
 
-void __ClearEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+void __ClearEventList(PDETOUR_THREAD_STATUS_t pStatus)
 {
     int tries = 0;
     int fullfreelist=0;
@@ -299,7 +299,7 @@ void __ClearEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
 }
 
 
-void __FreeDetourEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+void __FreeDetourEvents(PDETOUR_THREAD_STATUS_t pStatus)
 {
     unsigned int i;
 
@@ -341,7 +341,7 @@ void __FreeDetourEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     return ;
 }
 
-void __UnMapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+void __UnMapMemBase(PDETOUR_THREAD_STATUS_t pStatus)
 {
 
     if(pStatus == NULL)
@@ -356,9 +356,9 @@ void __UnMapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     return ;
 }
 
-void __FreeDetourDinputStatus(PDETOUR_DIRECTINPUT_STATUS_t *ppStatus)
+void __FreeDetourDinputStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 {
-    PDETOUR_DIRECTINPUT_STATUS_t pStatus ;
+    PDETOUR_THREAD_STATUS_t pStatus ;
     if(ppStatus == NULL || *ppStatus == NULL)
     {
         return;
@@ -396,12 +396,12 @@ int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
 }
 
 
-PDETOUR_DIRECTINPUT_STATUS_t __AllocateDetourStatus()
+PDETOUR_THREAD_STATUS_t __AllocateDetourStatus()
 {
-    PDETOUR_DIRECTINPUT_STATUS_t pStatus=NULL;
+    PDETOUR_THREAD_STATUS_t pStatus=NULL;
     int ret;
 
-    pStatus =(PDETOUR_DIRECTINPUT_STATUS_t) calloc(sizeof(*pStatus),1);
+    pStatus =(PDETOUR_THREAD_STATUS_t) calloc(sizeof(*pStatus),1);
     if(pStatus == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -415,7 +415,7 @@ PDETOUR_DIRECTINPUT_STATUS_t __AllocateDetourStatus()
 }
 
 
-int __MapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pMemName,uint32_t bufsectsize,uint32_t bufnum)
+int __MapMemBase(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pMemName,uint32_t bufsectsize,uint32_t bufnum)
 {
     int ret;
     __UnMapMemBase(pStatus);
@@ -454,7 +454,7 @@ fail:
 }
 
 
-int __AllocateFreeEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pFreeEvtBaseName)
+int __AllocateFreeEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pFreeEvtBaseName)
 {
     uint8_t fullname[IO_NAME_MAX_SIZE];
     int ret;
@@ -490,7 +490,7 @@ fail:
     return -ret;
 }
 
-int __AllocateEventList(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+int __AllocateEventList(PDETOUR_THREAD_STATUS_t pStatus)
 {
     int ret;
     uint32_t i;
@@ -539,7 +539,7 @@ fail:
     return -ret;
 }
 
-int __AllocateInputEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pInputEvtBaseName)
+int __AllocateInputEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pInputEvtBaseName)
 {
     uint8_t fullname[IO_NAME_MAX_SIZE];
     int ret;
@@ -579,7 +579,7 @@ fail:
 int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
 {
     int ret;
-    PDETOUR_DIRECTINPUT_STATUS_t pStatus=NULL;
+    PDETOUR_THREAD_STATUS_t pStatus=NULL;
 
     if(pControl == NULL || pControl->memsharenum == 0 ||
             pControl->memsharesectsize == 0 ||
