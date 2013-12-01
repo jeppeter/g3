@@ -156,6 +156,10 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
     return ;
 }
 
+int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
+{
+}
+
 
 
 DWORD WINAPI DetourDirectInputThreadImpl(LPVOID pParam)
