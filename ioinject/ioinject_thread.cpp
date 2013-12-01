@@ -18,10 +18,100 @@ typedef struct
     CRITICAL_SECTION m_ListCS;
     int m_ListCSInited;
     std::vector<EVENT_LIST_t*>* m_pFreeList;
-} DETOUR_DIRECTINPUT_STATUS_t,*PDETOUR_DIRECTINPUT_STATUS_t;
+} DETOUR_THREAD_STATUS_t,*PDETOUR_THREAD_STATUS_t;
 
 
 static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
+static HANDLE st_hDetourDinputSema=NULL;
+static PDETOUR_DIRECTINPUT_STATUS_t st_pDinputStatus=NULL;
+
+
+int IoInjectInput(PEVENT_LIST_t pEvent)
+{
+    int ret=0,res;
+    LPDEVICEEVENT pDevEvent=NULL;
+    int findidx=-1;
+    unsigned int i;
+    int cnt=0;
+
+    pDevEvent = (LPDEVICEEVENT)(pEvent->m_BaseAddr+pEvent->m_Offset);
+    /*now make sure*/
+    EnterCriticalSection(&(st_Dinput8DeviceCS));
+
+    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        cnt = 0;
+        for(i=0; i<st_Key8WHookVecs.size(); i++)
+        {
+            if(cnt == pDevEvent->devid)
+            {
+                findidx = i;
+                res = st_Key8WHookVecs[i]->PutEventList(pEvent);
+                assert(res > 0);
+                ret = 1;
+                break;
+            }
+            cnt +=1;
+        }
+
+        if(findidx < 0)
+        {
+            for(i=0; i<st_Key8AHookVecs.size(); i++)
+            {
+                if(cnt == pDevEvent->devid)
+                {
+                    findidx = i;
+                    res = st_Key8AHookVecs[i]->PutEventList(pEvent);
+                    assert(res > 0);
+                    ret = 1;
+                    break;
+                }
+                cnt += 1;
+            }
+        }
+    }
+    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
+    {
+        cnt = 0;
+        for(i=0; i<st_Mouse8WHookVecs.size() ; i++)
+        {
+            if(cnt  == pDevEvent->devid)
+            {
+                findidx = i;
+                res = st_Mouse8WHookVecs[i]->PutEventList(pEvent);
+                assert(res > 0);
+                ret = 1;
+                break;
+            }
+            cnt += 1;
+        }
+
+        if(findidx < 0)
+        {
+            for(i=0; i<st_Mouse8AHookVecs.size(); i++)
+            {
+                if(cnt == pDevEvent->devid)
+                {
+                    findidx = i;
+                    res = st_Mouse8AHookVecs[i]->PutEventList(pEvent);
+                    assert(res > 0);
+                    ret = 1;
+                    break;
+                }
+                cnt += 1;
+            }
+        }
+    }
+    else
+    {
+        /*now we do not support this*/
+        ERROR_INFO("not supported type %d\n",pDevEvent->devtype);
+        ret = 0;
+    }
+    LeaveCriticalSection(&(st_Dinput8DeviceCS));
+    return ret;
+}
+
 
 static void IoFreeEventList(EVENT_LIST_t* pEventList)
 {
@@ -249,5 +339,117 @@ void __FreeDetourEvents(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
     pStatus->m_pInputEvts = NULL;
     ZeroMemory(pStatus->m_InputEvtBaseName,sizeof(pStatus->m_InputEvtBaseName));
     return ;
+}
+
+void __UnMapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus)
+{
+
+    if(pStatus == NULL)
+    {
+        return ;
+    }
+    UnMapFileBuffer((unsigned char**)&(pStatus->m_pMemShareBase));
+    CloseMapFileHandle(&(pStatus->m_hMapFile));
+    ZeroMemory(pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName));
+    pStatus->m_Bufnumm = 0;
+    pStatus->m_BufSectSize = 0;
+    return ;
+}
+
+void __FreeDetourDinputStatus(PDETOUR_DIRECTINPUT_STATUS_t *ppStatus)
+{
+    PDETOUR_DIRECTINPUT_STATUS_t pStatus ;
+    if(ppStatus == NULL || *ppStatus == NULL)
+    {
+        return;
+    }
+    pStatus = *ppStatus;
+    /*make sure this is stopped ,so we can do things safe*/
+    pStatus->m_Started = 0;
+    /*now first to stop thread */
+    StopThreadControl(&(pStatus->m_ThreadControl));
+
+    /*now we should free all the events*/
+    __FreeDeviceEvents(pStatus);
+
+    /*now to delete all the free event*/
+    __ClearEventList(pStatus);
+    __FreeDetourEvents(pStatus);
+
+    /*now to unmap memory*/
+    __UnMapMemBase(pStatus);
+
+    /*not make not started*/
+    pStatus->m_Started = 0;
+    free(pStatus);
+    *ppStatus = NULL;
+
+    return ;
+}
+
+
+int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
+{
+    __FreeDetourDinputStatus(&st_pDinputStatus);
+    SetLastError(0);
+    return 0;
+}
+
+
+PDETOUR_DIRECTINPUT_STATUS_t __AllocateDetourStatus()
+{
+    PDETOUR_DIRECTINPUT_STATUS_t pStatus=NULL;
+    int ret;
+
+    pStatus =(PDETOUR_DIRECTINPUT_STATUS_t) calloc(sizeof(*pStatus),1);
+    if(pStatus == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return NULL;
+    }
+
+    /*to make it ok for exited*/
+    pStatus->m_ThreadControl.exited = 1;
+    return pStatus;
+}
+
+
+int __MapMemBase(PDETOUR_DIRECTINPUT_STATUS_t pStatus,uint8_t* pMemName,uint32_t bufsectsize,uint32_t bufnum)
+{
+    int ret;
+    __UnMapMemBase(pStatus);
+    /*now we should first to get map file handle*/
+    pStatus->m_hMapFile = CreateMapFile((const char*)pMemName,bufsectsize*bufnum,0);
+    if(pStatus->m_hMapFile == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not createmapfile(%s) bufsectsize(%d) bufnum(%d) Error(%d)\n",
+                   pMemName,bufsectsize,bufnum,ret);
+        goto fail;
+    }
+
+    pStatus->m_pMemShareBase = (ptr_t)MapFileBuffer(pStatus->m_hMapFile,bufsectsize*bufnum);
+    if(pStatus->m_pMemShareBase == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not mapfile buffer(%s) bufsectsize(%d) bufnum(%d) Error(%d)\n",
+                   pMemName,bufsectsize,bufnum,ret);
+        goto fail;
+    }
+
+    pStatus->m_Bufnumm = bufnum;
+    pStatus->m_BufSectSize = bufsectsize;
+    strncpy_s((char*)pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName),(const char*)pMemName,_TRUNCATE);
+
+
+    SetLastError(0);
+    return 0;
+
+fail:
+    assert(ret > 0);
+    __UnMapMemBase(pStatus);
+    SetLastError(ret);
+    return -ret;
 }
 
