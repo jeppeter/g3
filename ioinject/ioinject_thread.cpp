@@ -21,3 +21,5 @@ typedef struct
 } DETOUR_DIRECTINPUT_STATUS_t,*PDETOUR_DIRECTINPUT_STATUS_t;
 
 
+static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
+
