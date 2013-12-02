@@ -167,7 +167,7 @@ int __ReCalculateMaxWindowRectNoLock()
     return pickidx;
 }
 
-int __ReCalculateMousePointNoLock()
+int __ReCalculateMousePointNoLock(int check)
 {
     if(st_MousePoint.x <= st_MaxRect.left)
     {
@@ -184,6 +184,15 @@ int __ReCalculateMousePointNoLock()
     else if(st_MousePoint.y >= st_MaxRect.bottom)
     {
         st_MousePoint.y = st_MaxRect.bottom - 1;
+    }
+    if(check && (st_MousePoint.x != st_MouseLastPoint.x ||
+                 st_MousePoint.y != st_MouseLastPoint.y))
+    {
+        ERROR_INFO("Should MousePoint(x:%d:y:%d) But MousePoint(x:%d:y:%d)\n",
+                   st_MousePoint.x,
+                   st_MousePoint.y,
+                   st_MouseLastPoint.x,
+                   st_MouseLastPoint.y);
     }
 
     /*now we should make sure the point for the last mouse point*/
@@ -208,7 +217,7 @@ int __MoveMouseRelativeNoLock(int x,int y)
     int ret= 0;
     st_MousePoint.x += x;
     st_MousePoint.y += y;
-    __ReCalculateMousePointNoLock();
+    __ReCalculateMousePointNoLock(0);
     return 0;
 }
 
@@ -217,7 +226,7 @@ int __MoveMouseAbsoluteNoLock(int clientx,int clienty)
     int ret = 0;
     st_MousePoint.x = st_MaxRect.left + clientx;
     st_MousePoint.y = st_MaxRect.top + clienty;
-    __ReCalculateMousePointNoLock();
+    __ReCalculateMousePointNoLock(1);
     return ret;
 }
 
@@ -359,7 +368,7 @@ int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
 {
     int ret;
     int scancode;
-	
+
     if(pDevEvent->devid != 0)
     {
         ret = ERROR_DEV_NOT_EXIST;
@@ -399,12 +408,12 @@ int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
     if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
     {
         st_Dinput8KeyState[scancode] = 0x80;
-		__DetourDinputPressKeyDownNoLock(scancode);
+        __DetourDinputPressKeyDownNoLock(scancode);
     }
     else
     {
         st_Dinput8KeyState[scancode] = 0x00;
-		__DetourDinputPressKeyUpNoLock(scancode);
+        __DetourDinputPressKeyUpNoLock(scancode);
     }
     return 0;
 }
@@ -443,8 +452,7 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
         {
             /*this is relative one*/
-            st_Dinput8MouseState.lX += pDevEvent->event.mouse.x;
-            st_Dinput8MouseState.lY += pDevEvent->event.mouse.y;
+            __MoveMouseRelativeNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
         }
         else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
         {
@@ -452,7 +460,7 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
         {
-
+            __MoveMouseAbsoluteNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
         }
         else
         {
@@ -466,38 +474,68 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
     }
     else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
     {
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
+        	st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x80;
+			__SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,1);
         }
-        else if(pDevEvent->event.mouse.event ==)
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
+        	st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x0;
+			__SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,0);
         }
         else
         {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
         }
     }
     else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
     {
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
+        	st_Dinput8MouseState.rgbButtons[MOUSE_RIGHT_BTN - 1] = 0x80;
+			__SetDetourDinputMouseBtnNoLock(MOUSE_RIGHT_BTN,1);
         }
-        else if(pDevEvent->event.mouse.event ==)
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
+        	st_Dinput8MouseState.rgbButtons[MOUSE_RIGHT_BTN - 1] = 0x0;
+			__SetDetourDinputMouseBtnNoLock(MOUSE_RIGHT_BTN,0);
         }
         else
         {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
         }
     }
     else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
     {
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
+        	st_Dinput8MouseState.rgbButtons[MOUSE_MIDDLE_BTN - 1] = 0x80;
+			__SetDetourDinputMouseBtnNoLock(MOUSE_MIDDLE_BTN,1);
         }
-        else if(pDevEvent->event.mouse.event ==)
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
+        	st_Dinput8MouseState.rgbButtons[MOUSE_MIDDLE_BTN - 1] = 0x0;
+			__SetDetourDinputMouseBtnNoLock(MOUSE_MIDDLE_BTN,0);
         }
         else
         {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
         }
     }
     else
@@ -584,7 +622,7 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
         st_hWndRectVecs.push_back(rRect);
     }
     __ReCalculateMaxWindowRectNoLock();
-    __ReCalculateMousePointNoLock();
+    __ReCalculateMousePointNoLock(0);
 
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return ret;
