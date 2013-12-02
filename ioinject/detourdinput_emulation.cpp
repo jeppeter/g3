@@ -81,191 +81,6 @@ static int st_CodeMapDik[256] =
     DIK_NULL
 };
 
-static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
-static unsigned char st_Dinput8KeyState[MAX_STATE_BUFFER_SIZE];
-static DIMOUSESTATE  st_Dinput8MouseState;
-
-int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
-{
-    int ret;
-    int scancode;
-    if(pDevEvent->devid != 0)
-    {
-        ret = ERROR_DEV_NOT_EXIST;
-        ERROR_INFO("<0x%p>Keyboard devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    /*not check for the code*/
-
-    if(pDevEvent->event.keyboard.code >= KEYBOARD_CODE_NULL)
-    {
-        ret= ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p>Keyboard code(%d) invalid\n",pDevEvent,pDevEvent->event.keyboard.code);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    if(pDevEvent->event.keyboard.event >= KEYBOARD_EVENT_MAX)
-    {
-        ret= ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p>Keyboard event(%d) invalid\n",pDevEvent,pDevEvent->event.keyboard.event);
-        SetLastError(ret);
-        return -ret;
-    }
-
-
-    scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
-    if(scancode == DIK_NULL)
-    {
-        ret= ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p>Keyboard code(%d) TO DIK_NULL invalid\n",pDevEvent,pDevEvent->event.keyboard.code);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
-    {
-        st_Dinput8KeyState[scancode] = 0x80;
-    }
-    else
-    {
-        st_Dinput8KeyState[scancode] = 0x00;
-    }
-    return 0;
-}
-
-int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
-{
-    int ret;
-
-    if(pDevEvent->devid != 0)
-    {
-        ret = ERROR_DEV_NOT_EXIST;
-        ERROR_INFO("<0x%p>Mouse devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    if(pDevEvent->event.mouse.code >= MOUSE_CODE_MAX)
-    {
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p>Mouse code(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.code);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
-    {
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p>Mouse event(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.event);
-        SetLastError(ret);
-        return -ret;
-    }
-
-
-    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
-    {
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
-        {
-            /*this is relative one*/
-            st_Dinput8MouseState.lX += pDevEvent->event.mouse.x;
-            st_Dinput8MouseState.lY += pDevEvent->event.mouse.y;
-        }
-        else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
-        {
-            st_Dinput8MouseState.lZ += pDevEvent->event.mouse.x;
-        }
-        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
-        {
-
-        }
-        else
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
-                       pDevEvent->event.mouse.code,
-                       pDevEvent->event.mouse.event);
-            SetLastError(ret);
-            return -ret;
-        }
-    }
-    else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
-    {
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
-        {
-        }
-        else if(pDevEvent->event.mouse.event ==)
-        {
-        }
-        else
-        {
-        }
-    }
-    else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
-    {
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
-        {
-        }
-        else if(pDevEvent->event.mouse.event ==)
-        {
-        }
-        else
-        {
-        }
-    }
-    else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
-    {
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
-        {
-        }
-        else if(pDevEvent->event.mouse.event ==)
-        {
-        }
-        else
-        {
-        }
-    }
-    else
-    {
-        /*we check before*/
-        assert(0!=0);
-    }
-
-}
-
-int DetourDinput8SetKeyMouseState(LPDEVICEEVENT pDevEvent)
-{
-    int ret;
-    if(pDevEvent->devtype != DEVICE_TYPE_KEYBOARD &&
-            pDevEvent->devtype != DEVICE_TYPE_MOUSE)
-    {
-        ret = ERROR_NOT_SUPPORTED;
-        SetLastError(ret);
-        return -ret;
-    }
-
-    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
-    {
-        ret= __DetourDinput8SetKeyStateNoLock(pDevEvent);
-    }
-    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
-    {
-        ret=  __DetourDinput8SetMouseStateNoLock(pDevEvent);
-    }
-    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-
-    if(ret != 0)
-    {
-        ret = LAST_ERROR_CODE();
-        SetLastError(ret);
-    }
-    return -ret;
-}
-
-
 
 
 #define IS_IID_MOUSE(riid)  ( (riid)	== GUID_SysMouse ||(riid) == GUID_SysMouseEm ||(riid) == GUID_SysMouseEm2 )
@@ -2577,7 +2392,6 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
 
 #define MAX_HWND_SIZE   20
 
-static CRITICAL_SECTION st_KeyMouseStateCS;
 static std::vector<HWND> st_hWndVecs;
 static std::vector<RECT> st_hWndRectVecs;
 static std::vector<UINT> st_hWndLastTick;
@@ -2586,7 +2400,7 @@ static RECT st_MaxRect;
 static POIN st_MousePoint;
 static UINT st_MouseBtnState[MOUSE_MAX_BTN];
 
-int DetourDinputPressKeyDown(UINT scancode)
+int __DetourDinputPressKeyDownNoLock(UINT scancode)
 {
     int cnt;
 
@@ -2596,14 +2410,12 @@ int DetourDinputPressKeyDown(UINT scancode)
         SetLastError(cnt);
         return -cnt;
     }
-    EnterCriticalSection(&st_KeyMouseStateCS);
     st_KeyDownTimes[scancode] ++;
     cnt = st_KeyDownTimes[scancode];
-    LeaveCriticalSection(&st_KeyMouseStateCS);
     return cnt;
 }
 
-int DetourDinputPressKeyUp(UINT scancode)
+int __DetourDinputPressKeyUpNoLock(UINT scancode)
 {
     int cnt;
 
@@ -2613,10 +2425,8 @@ int DetourDinputPressKeyUp(UINT scancode)
         SetLastError(cnt);
         return -cnt;
     }
-    EnterCriticalSection(&st_KeyMouseStateCS);
     st_KeyDownTimes[scancode] =0;
     cnt = 0;
-    LeaveCriticalSection(&st_KeyMouseStateCS);
     return cnt;
 
 }
@@ -2633,9 +2443,9 @@ int DetourDinputPressKeyDownTimes(UINT scancode)
         SetLastError(cnt);
         return -cnt;
     }
-    EnterCriticalSection(&st_KeyMouseStateCS);
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     cnt = st_KeyDownTimes[scancode];
-    LeaveCriticalSection(&st_KeyMouseStateCS);
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return cnt;
 }
 
@@ -2724,7 +2534,7 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
     int findidx=-1;
     UINT i;
     RECT rRect = *pRect;
-    EnterCriticalSection(&st_KeyMouseStateCS);
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     DetourDinput_WND_STATE_EQUAL();
     /*now first to find the window*/
     for(i=0; i<st_hWndVecs.size(); i++)
@@ -2753,7 +2563,7 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
     __ReCalculateMaxWindowRectNoLock();
     __ReCalculateMousePoint();
 
-    LeaveCriticalSection(&st_KeyMouseStateCS);
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return ret;
 
 }
@@ -2761,22 +2571,22 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
 int MoveMouseRelative(int x,int y)
 {
     int ret= 0;
-    EnterCriticalSection(&st_KeyMouseStateCS);
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     st_MousePoint.x += x;
     st_MousePoint.y += y;
     __ReCalculateMousePoint();
-    LeaveCriticalSection(&st_KeyMouseStateCS);
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return 0;
 }
 
 int MoveMouseAbsolute(int clientx,int clienty)
 {
     int ret = 0;
-    EnterCriticalSection(&st_KeyMouseStateCS);
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     st_MousePoint.x = st_MaxRect.left + clientx;
     st_MousePoint.y = st_MaxRect.top + clienty;
     __ReCalculateMousePoint();
-    LeaveCriticalSection(&st_KeyMouseStateCS);
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
 }
 
 
@@ -2786,7 +2596,7 @@ int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint)
     int ret;
     UINT i;
     int findidx = -1;
-    EnterCriticalSection(&st_KeyMouseStateCS);
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     /*now first to make sure */
     for(i=0; i<st_hWndVecs.size(); i++)
     {
@@ -2849,7 +2659,7 @@ int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint)
         pPoint->x = 1;
         pPoint->y = 1;
     }
-    LeaveCriticalSection(&st_KeyMouseStateCS);
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
 
     return 0;
 }
@@ -2865,7 +2675,7 @@ int SetDetourDinputMouseBtn(UINT btn,int down)
         SetLastError(ret);
         return -ret;
     }
-    EnterCriticalSection(&st_KeyMouseStateCS);
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
 
     if(down)
     {
@@ -2876,7 +2686,7 @@ int SetDetourDinputMouseBtn(UINT btn,int down)
         st_MouseBtnState[ btn - 1] = 0x0;
     }
 
-    LeaveCriticalSection(&st_KeyMouseStateCS);
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
 
     return 0;
 }
@@ -2891,9 +2701,9 @@ int DetourDinputMouseBtnDown(UINT btn)
         SetLastError(ret);
         return -ret;
     }
-    EnterCriticalSection(&st_KeyMouseStateCS);
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     ret = st_MouseBtnState[btn - 1];
-    LeaveCriticalSection(&st_KeyMouseStateCS);
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
 
     return ret;
 }
@@ -2905,7 +2715,7 @@ static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
     UINT i;
     int findidx = -1;
 
-    EnterCriticalSection(&st_KeyMouseStateCS);
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     for(i=0; i<st_hWndVecs.size() ; i++)
     {
         if(st_hWndVecs[i] == hwnd)
@@ -2925,11 +2735,194 @@ static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
     {
         ERROR_INFO("hwnd (0x%08x) not register in the windows size\n",hwnd);
     }
-    LeaveCriticalSection(&st_KeyMouseStateCS);
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return ret;
 }
 
 
+static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
+static unsigned char st_Dinput8KeyState[MAX_STATE_BUFFER_SIZE];
+static DIMOUSESTATE  st_Dinput8MouseState;
+
+int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
+{
+    int ret;
+    int scancode;
+    if(pDevEvent->devid != 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("<0x%p>Keyboard devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    /*not check for the code*/
+
+    if(pDevEvent->event.keyboard.code >= KEYBOARD_CODE_NULL)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard code(%d) invalid\n",pDevEvent,pDevEvent->event.keyboard.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.keyboard.event >= KEYBOARD_EVENT_MAX)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard event(%d) invalid\n",pDevEvent,pDevEvent->event.keyboard.event);
+        SetLastError(ret);
+        return -ret;
+    }
+
+
+    scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
+    if(scancode == DIK_NULL)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard code(%d) TO DIK_NULL invalid\n",pDevEvent,pDevEvent->event.keyboard.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
+    {
+        st_Dinput8KeyState[scancode] = 0x80;
+    }
+    else
+    {
+        st_Dinput8KeyState[scancode] = 0x00;
+    }
+    return 0;
+}
+
+int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
+{
+    int ret;
+
+    if(pDevEvent->devid != 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("<0x%p>Mouse devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.mouse.code >= MOUSE_CODE_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Mouse code(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Mouse event(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.event);
+        SetLastError(ret);
+        return -ret;
+    }
+
+
+    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+            /*this is relative one*/
+            st_Dinput8MouseState.lX += pDevEvent->event.mouse.x;
+            st_Dinput8MouseState.lY += pDevEvent->event.mouse.y;
+        }
+        else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
+        {
+            st_Dinput8MouseState.lZ += pDevEvent->event.mouse.x;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
+        {
+
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+        }
+        else if(pDevEvent->event.mouse.event ==)
+        {
+        }
+        else
+        {
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+        }
+        else if(pDevEvent->event.mouse.event ==)
+        {
+        }
+        else
+        {
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+        }
+        else if(pDevEvent->event.mouse.event ==)
+        {
+        }
+        else
+        {
+        }
+    }
+    else
+    {
+        /*we check before*/
+        assert(0!=0);
+    }
+
+}
+
+int DetourDinput8SetKeyMouseState(LPDEVICEEVENT pDevEvent)
+{
+    int ret;
+    if(pDevEvent->devtype != DEVICE_TYPE_KEYBOARD &&
+            pDevEvent->devtype != DEVICE_TYPE_MOUSE)
+    {
+        ret = ERROR_NOT_SUPPORTED;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        ret= __DetourDinput8SetKeyStateNoLock(pDevEvent);
+    }
+    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
+    {
+        ret=  __DetourDinput8SetMouseStateNoLock(pDevEvent);
+    }
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+
+    if(ret != 0)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+    }
+    return -ret;
+}
 
 
 
