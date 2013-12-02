@@ -399,10 +399,12 @@ int __DetourDinput8SetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
     if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
     {
         st_Dinput8KeyState[scancode] = 0x80;
+		__DetourDinputPressKeyDownNoLock(scancode);
     }
     else
     {
         st_Dinput8KeyState[scancode] = 0x00;
+		__DetourDinputPressKeyUpNoLock(scancode);
     }
     return 0;
 }
