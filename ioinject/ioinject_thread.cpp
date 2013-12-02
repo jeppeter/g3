@@ -3,7 +3,6 @@
 
 typedef struct
 {
-    uint32_t m_Started;
     thread_control_t m_ThreadControl;
     uint32_t m_Bufnumm;
     uint32_t m_BufSectSize;
@@ -116,11 +115,6 @@ void __ClearEventList(PDETOUR_THREAD_STATUS_t pStatus)
     }
     pStatus->m_pEventListArray = NULL;
 
-    if(pStatus->m_ListCSInited)
-    {
-        DeleteCriticalSection(&(pStatus->m_ListCS));
-    }
-    pStatus->m_ListCSInited = 0;
 
     return ;
 }
@@ -195,9 +189,6 @@ void __FreeDetourDinputStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
     pStatus->m_Started = 0;
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
-
-    /*now we should free all the events*/
-    __FreeDeviceEvents(pStatus);
 
     /*now to delete all the free event*/
     __ClearEventList(pStatus);
@@ -437,7 +428,6 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
     }
 
     /*we put here for it will let the start ok*/
-    pStatus->m_Started = 1;
 
     ret = __MapMemBase(pStatus,pControl->memsharename,pControl->memsharesectsize,pControl->memsharenum);
     if(ret < 0)
@@ -468,7 +458,6 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-    pStatus->m_Started = 1;
     ret = StartThreadControl(&(pStatus->m_ThreadControl),DetourDirectInputThreadImpl,pStatus,1);
     if(ret < 0)
     {
@@ -500,63 +489,17 @@ int __DetourDirectInputAddDevice(PIO_CAP_CONTROL_t pControl)
     devtype = pControl->devtype;
     devid = pControl->devid;
 
-    EnterCriticalSection(&st_Dinput8DeviceCS);
-    if(devtype == DEVICE_TYPE_KEYBOARD)
+    if(devtype != DEVICE_TYPE_KEYBOARD && devtype != DEVICE_TYPE_MOUSE)
     {
-        count = 0;
-        for(i=0; i<st_Key8WVecs.size() ; i++)
-        {
-            if(count == devid)
-            {
-                ret = 0;
-                goto unlock;
-            }
-            count ++;
-        }
-
-        for(i=0; i<st_Key8AVecs.size(); i++)
-        {
-            if(count == devid)
-            {
-                ret = 0;
-                goto unlock;
-            }
-            count ++;
-        }
+        ret = ERROR_NOT_SUPPORTED;
+        ERROR_INFO("devtype (%d) not supported\n",devtype);
+        goto fail;
     }
-    else if(devtype == DEVICE_TYPE_MOUSE)
-    {
-        count = 0;
-        for(i=0; i<st_Mouse8WVecs.size() ; i++)
-        {
-            if(count == devid)
-            {
-                ret = 0;
-                goto unlock;
-            }
-            count ++;
-        }
 
-        for(i=0; i<st_Mouse8AVes.size(); i++)
-        {
-            if(count == devid)
-            {
-                ret = 0;
-                goto unlock;
-            }
-            count ++;
-        }
-    }
-    else
+    if(devid != 0)
     {
-        ret =ERROR_INVALID_PARAMETER;
-        ERROR_INFO("Invalid devtype(%d)\n",devtype);
-    }
-unlock:
-    LeaveCriticalSection(&st_Dinput8DeviceCS);
-
-    if(ret > 0)
-    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("devid(%d) outof range\n",devid);
         goto fail;
     }
 
@@ -579,64 +522,17 @@ int __DetourDirectInputRemoveDevice(PIO_CAP_CONTROL_t pControl)
 
     devtype = pControl->devtype;
     devid = pControl->devid;
-
-    EnterCriticalSection(&st_Dinput8DeviceCS);
-    if(devtype == DEVICE_TYPE_KEYBOARD)
+    if(devtype != DEVICE_TYPE_KEYBOARD && devtype != DEVICE_TYPE_MOUSE)
     {
-        count = 0;
-        for(i=0; i<st_Key8WVecs.size() ; i++)
-        {
-            if(count == devid)
-            {
-                ret = 0;
-                goto unlock;
-            }
-            count ++;
-        }
-
-        for(i=0; i<st_Key8AVecs.size(); i++)
-        {
-            if(count == devid)
-            {
-                ret = 0;
-                goto unlock;
-            }
-            count ++;
-        }
+        ret = ERROR_NOT_SUPPORTED;
+        ERROR_INFO("devtype (%d) not supported\n",devtype);
+        goto fail;
     }
-    else if(devtype == DEVICE_TYPE_MOUSE)
-    {
-        count = 0;
-        for(i=0; i<st_Mouse8WVecs.size() ; i++)
-        {
-            if(count == devid)
-            {
-                ret = 0;
-                goto unlock;
-            }
-            count ++;
-        }
 
-        for(i=0; i<st_Mouse8AVes.size(); i++)
-        {
-            if(count == devid)
-            {
-                ret = 0;
-                goto unlock;
-            }
-            count ++;
-        }
-    }
-    else
+    if(devid != 0)
     {
-        ret =ERROR_INVALID_PARAMETER;
-        ERROR_INFO("Invalid devtype(%d)\n",devtype);
-    }
-unlock:
-    LeaveCriticalSection(&st_Dinput8DeviceCS);
-
-    if(ret > 0)
-    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("devid(%d) outof range\n",devid);
         goto fail;
     }
 
