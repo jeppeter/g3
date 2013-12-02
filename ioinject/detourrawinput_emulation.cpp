@@ -264,7 +264,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     RAWINPUT* pMouseInput=NULL;
     int ret;
     LONG wparam;
-    MSG InputMsg={0};
+    MSG InputMsg= {0};
+    POINT pt;
 
 
     pMouseInput = calloc(sizeof(*pMouseInput),1);
@@ -277,79 +278,122 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     pMouseInput->header.dwType = RIM_TYPEMOUSE;
     pMouseInput->header.dwSize = sizeof(pMouseInput->header) + sizeof(pMouseInput->mouse);
 
-    pMouseInput->mouse.usFlags = MOUSE_MOVE_RELATIVE;
+    pMouseInput->mouse.usFlags = MOUSE_MOVE_ABSOLUTE;
+    pMouseInput->mouse.ulButtons = 0;
+    DetourDinput8GetMousePointAbsolution(&pt);
     if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
     {
         /*no buttons push*/
-        pMouseInput->mouse.usButtonFlags = 0;
-        pMouseInput->mouse.usButtonData = 0;
-        pMouseInput->mouse.ulRawButtons = 0;
-        pMouseInput->mouse.lLastX = pDevEvent->event.mouse.x;
-        pMouseInput->mouse.lLastY = pDevEvent->event.mouse.y;
-        pMouseInput->mouse.ulExtraInformation = 0;
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING ||
+                pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
+        {
+            pMouseInput->mouse.usButtonFlags = 0;
+            pMouseInput->mouse.usButtonData = 0;
+            pMouseInput->mouse.ulRawButtons = 0;
+            pMouseInput->mouse.lLastX = pt.x;
+            pMouseInput->mouse.lLastY = pt.y;
+            pMouseInput->mouse.ulExtraInformation = 0;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_SLIDE)
+        {
+            pMouseInput->mouse.usButtonFlags = RI_MOUSE_WHEEL;
+            pMouseInput->mouse.usButtonData = pDevEvent->event.mouse.x;
+            pMouseInput->mouse.ulRawButtons = 0;
+            pMouseInput->mouse.lLastX = pt.x;
+            pMouseInput->mouse.lLastY = pt.y;
+            pMouseInput->mouse.ulExtraInformation = 0;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> Mouse invalid code(%d) event(%d)\n",pDevEvent,pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            goto fail;
+        }
     }
     else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
     {
         if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
             pMouseInput->mouse.usButtonFlags = RI_MOUSE_LEFT_BUTTON_DOWN;
+            pMouseInput->mouse.usButtonData = 0;
+            pMouseInput->mouse.ulRawButtons = 0;
+            pMouseInput->mouse.lLastX = pt.x;
+            pMouseInput->mouse.lLastY = pt.y;
+            pMouseInput->mouse.ulExtraInformation = 0;
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
             pMouseInput->mouse.usButtonFlags = RI_MOUSE_LEFT_BUTTON_UP;
+            pMouseInput->mouse.usButtonData = 0;
+            pMouseInput->mouse.ulRawButtons = 0;
+            pMouseInput->mouse.lLastX = pt.x;
+            pMouseInput->mouse.lLastY = pt.y;
+            pMouseInput->mouse.ulExtraInformation = 0;
         }
         else
         {
             ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> Mouse invalid code(%d) event(%d)\n",pDevEvent,pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
             goto fail;
         }
-        pMouseInput->mouse.usButtonData = 0;
-        pMouseInput->mouse.ulRawButtons = 0;
-        pMouseInput->mouse.lLastX = 0;
-        pMouseInput->mouse.lLastY = 0;
-        pMouseInput->mouse.ulExtraInformation = 0;
     }
     else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
     {
         if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
             pMouseInput->mouse.usButtonFlags = RI_MOUSE_RIGHT_BUTTON_DOWN;
+            pMouseInput->mouse.usButtonData = 0;
+            pMouseInput->mouse.ulRawButtons = 0;
+            pMouseInput->mouse.lLastX = pt.x;
+            pMouseInput->mouse.lLastY = pt.y;
+            pMouseInput->mouse.ulExtraInformation = 0;
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
             pMouseInput->mouse.usButtonFlags = RI_MOUSE_RIGHT_BUTTON_UP;
+            pMouseInput->mouse.usButtonData = 0;
+            pMouseInput->mouse.ulRawButtons = 0;
+            pMouseInput->mouse.lLastX = pt.x;
+            pMouseInput->mouse.lLastY = pt.y;
+            pMouseInput->mouse.ulExtraInformation = 0;
         }
         else
         {
             ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> Mouse invalid code(%d) event(%d)\n",pDevEvent,pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
             goto fail;
         }
-        pMouseInput->mouse.usButtonData = 0;
-        pMouseInput->mouse.ulRawButtons = 0;
-        pMouseInput->mouse.lLastX = 0;
-        pMouseInput->mouse.lLastY = 0;
-        pMouseInput->mouse.ulExtraInformation = 0;
     }
     else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
     {
         if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
             pMouseInput->mouse.usButtonFlags = RI_MOUSE_MIDDLE_BUTTON_DOWN;
+            pMouseInput->mouse.usButtonData = 0;
+            pMouseInput->mouse.ulRawButtons = 0;
+            pMouseInput->mouse.lLastX = pt.x;
+            pMouseInput->mouse.lLastY = pt.y;
+            pMouseInput->mouse.ulExtraInformation = 0;
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
             pMouseInput->mouse.usButtonFlags = RI_MOUSE_MIDDLE_BUTTON_UP;
+            pMouseInput->mouse.usButtonData = 0;
+            pMouseInput->mouse.ulRawButtons = 0;
+            pMouseInput->mouse.lLastX = pt.x;
+            pMouseInput->mouse.lLastY = pt.y;
+            pMouseInput->mouse.ulExtraInformation = 0;
         }
         else
         {
             ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> Mouse invalid code(%d) event(%d)\n",pDevEvent,pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
             goto fail;
         }
-        pMouseInput->mouse.usButtonData = 0;
-        pMouseInput->mouse.ulRawButtons = 0;
-        pMouseInput->mouse.lLastX = 0;
-        pMouseInput->mouse.lLastY = 0;
-        pMouseInput->mouse.ulExtraInformation = 0;
     }
 
     wparam = __InsertMouseInput(pMouseInput);

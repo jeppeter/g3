@@ -630,6 +630,16 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
 }
 
 
+int DetourDinput8GetMousePointAbsolution(POINT *pPoint)
+{
+	int ret=0;
+
+	EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+	pPoint->x = st_MousePoint.x;
+	pPoint->y = st_MousePoint.y;
+	LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+	return ret;
+}
 
 
 /***************************************************
