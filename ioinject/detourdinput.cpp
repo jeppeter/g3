@@ -190,6 +190,14 @@ BOOL DetourDirectInputInit(void)
         ERROR_INFO("could not register destroy window Notify Error(%d)\n",ret);
         goto fail;
     }
+    ret = RegisterEventListHandler(DetourDinput8SetKeyMouseState,NULL);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not register Eventlist Handler Error(%d)\n",ret);
+        goto fail;
+    }
+
 #endif
     InitializeCriticalSection(&st_DI8ACS);
     InitializeCriticalSection(&st_DI8WCS);
@@ -210,6 +218,7 @@ BOOL DetourDirectInputInit(void)
 
 fail:
 #ifdef EMULATION_MODE
+	UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
     UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
     if(st_hDetourDinputSema)
     {
