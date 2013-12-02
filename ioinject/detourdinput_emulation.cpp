@@ -5,6 +5,8 @@
 
 
 #define MAX_HWND_SIZE   20
+#define  MAX_STATE_BUFFER_SIZE   256
+
 
 static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
 static unsigned char st_Dinput8KeyState[MAX_STATE_BUFFER_SIZE];
@@ -13,7 +15,13 @@ static DIMOUSESTATE  st_Dinput8MouseState;
 static std::vector<HWND> st_hWndVecs;
 static std::vector<RECT> st_hWndRectVecs;
 static unsigned int st_KeyDownTimes[256];
-static RECT st_MaxRect = { .top : 0 ; .left : 0 ; .right : 2; .bottom : 2;};
+/********************************************
+.left 0
+.top 0
+.right 2
+.bottom 2
+********************************************/
+static RECT st_MaxRect = {0,0,2,2};
 static POINT st_MousePoint = { 1,1};
 static POINT st_MouseLastPoint = {1,1};
 static UINT st_MouseBtnState[MOUSE_MAX_BTN] = {0};
@@ -154,7 +162,7 @@ int __ReCalculateMaxWindowRectNoLock()
     for(i=0; i<st_hWndVecs.size() ; i++)
     {
         if(((st_hWndRectVecs[i].right - st_hWndRectVecs[i].left) > (st_hWndRectVecs[pickidx].right - st_hWndRectVecs[pickidx].left)) &&
-                ((st_hWndRectVecs[i].botton - st_hWndRectVecs[i].top) > (st_hWndRectVecs[i].botton - st_hWndRectVecs[i].top)))
+                ((st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top) > (st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top)))
         {
             pickidx = i;
         }
@@ -274,7 +282,6 @@ static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
     }
     if(findidx >= 0)
     {
-        st_hWndLastTick.erase(st_hWndLastTick.begin() + findidx);
         st_hWndRectVecs.erase(st_hWndRectVecs.begin() + findidx);
         st_hWndVecs.erase(st_hWndVecs.begin() + findidx);
         ret = 1;
@@ -808,7 +815,6 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
 #define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 
-#define  MAX_STATE_BUFFER_SIZE   256
 
 #define  SET_BIT(c)  ((c)=0x80)
 #define  CLEAR_BIT(c)  ((c)=0x00)

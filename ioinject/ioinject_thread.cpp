@@ -632,3 +632,37 @@ int UnRegisterEventListHandler(FuncCall_t pFunc)
     return st_EventHandlerFuncList.RemoveFuncList(pFunc);
 }
 
+void __IoInjectThreadFini(HMODULE hModule)
+{
+    if(st_hDetourDinputSema)
+    {
+        CloseHandle(st_hDetourDinputSema);
+    }
+    st_hDetourDinputSema = NULL;
+}
+
+int __IoInjectThreadInit(HMODULE hModule)
+{
+	int ret;
+    st_hDetourDinputSema = CreateSemaphore(NULL,1,10,NULL);
+    if(st_hDetourDinputSema == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Create Semaphore Error(%d)\n",ret);
+        goto fail;
+    }
+
+	SetLastError(0);
+	return 0;
+fail:
+	assert(ret > 0);
+    if(st_hDetourDinputSema)
+    {
+        CloseHandle(st_hDetourDinputSema);
+    }
+    st_hDetourDinputSema = NULL;
+	
+	SetLastError(ret);
+	return -ret;
+}
+

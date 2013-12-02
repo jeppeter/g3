@@ -12,20 +12,20 @@
 #include "detourdinput.h"
 #include <injectbase.h>
 
-#define  DEBUG_MODE       1
-#undef   DEBUG_MODE
+#define  DETOUR_DINPUT_DEBUG       1
+#undef   DETOUR_DINPUT_DEBUG
 
-#define  EMULATION_MODE   1
-//#undef   EMULATION_MODE
+#define  DETOUR_DINPUT_EMULATION   1
+//#undef   DETOUR_DINPUT_EMULATION
 
-#if defined(DEBUG_MODE) && defined(EMULATION_MODE)
-#error "could not define DEBUG_MODE and EMULATION_MODE both"
+#if defined(DETOUR_DINPUT_DEBUG) && defined(DETOUR_DINPUT_EMULATION)
+#error "could not define DETOUR_DINPUT_DEBUG and DETOUR_DINPUT_EMULATION both"
 #endif
 
-#if defined(DEBUG_MODE)
-#elif defined(EMULATION_MODE)
+#if defined(DETOUR_DINPUT_DEBUG)
+#elif defined(DETOUR_DINPUT_EMULATION)
 #else
-#error "must specify EMULATION_MODE or DEBUG_MODE"
+#error "must specify DETOUR_DINPUT_EMULATION or DETOUR_DINPUT_DEBUG"
 #endif
 
 
@@ -55,14 +55,14 @@ static int st_IOInjectInit=0;
 *  to make the IDirectInputDevice8A hook
 *
 *****************************************/
-#ifdef DEBUG_MODE
+#ifdef DETOUR_DINPUT_DEBUG
 #include "detourdinput_debug.cpp"
 #endif
 
 /*********************************************
 * emulation mode for direct input
 *********************************************/
-#ifdef EMULATION_MODE
+#ifdef DETOUR_DINPUT_EMULATION
 #include "detourdinput_emulation.cpp"
 #endif
 
@@ -133,14 +133,6 @@ void DetourDirectInputFini(void)
         /*nothing to done*/
     }
 
-#ifdef EMULATION_MODE
-    if(st_hDetourDinputSema)
-    {
-        CloseHandle(st_hDetourDinputSema);
-    }
-    st_hDetourDinputSema = NULL;
-#endif
-
     st_IOInjectInit = 0;
     return ;
 }
@@ -168,21 +160,14 @@ BOOL DetourDirectInputInit(void)
         DINPUT_DEBUG_INFO("\n");
         return TRUE;
     }
-#ifdef 	DEBUG_MODE
+#ifdef 	DETOUR_DINPUT_DEBUG
     /*now first to init all the critical section*/
     InitializeCriticalSection(&st_DIDevice8ACS);
     InitializeCriticalSection(&st_DIDevice8WCS);
 #endif
 
-#ifdef  EMULATION_MODE
+#ifdef  DETOUR_DINPUT_EMULATION
     InitializeCriticalSection(&st_Dinput8DeviceCS);
-    st_hDetourDinputSema = CreateSemaphore(NULL,1,10,NULL);
-    if(st_hDetourDinputSema == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not Create Semaphore Error(%d)\n",ret);
-        goto fail;
-    }
     ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL);
     if(ret < 0)
     {
@@ -217,7 +202,7 @@ BOOL DetourDirectInputInit(void)
     return TRUE;
 
 fail:
-#ifdef EMULATION_MODE
+#ifdef DETOUR_DINPUT_EMULATION
 	UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
     UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
     if(st_hDetourDinputSema)
