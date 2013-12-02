@@ -1,6 +1,9 @@
 
 #include <vector>
 #include "ioinject_thread.h"
+#include <Windows.h>
+#define   DIRECTINPUT_VERSION  0x0800
+#include <dinput.h>
 
 
 static GetMessageFunc_t GetMessageANext= GetMessageA;
@@ -10,7 +13,7 @@ static PeekMessageFunc_t PeekMessageWNext=PeekMessageW;
 
 static CRITICAL_SECTION st_MessageEmulationCS;
 static std::vector<MSG*> st_MessageEmulationQueue;
-static int st_MaxMessageEmulationQueue=20;
+static UINT st_MaxMessageEmulationQueue=20;
 
 
 
@@ -59,7 +62,7 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
         lpRemove = NULL;
         return ret;
     }
-    ret = ERROR_NOT_INITED;
+    ret = ERROR_APP_INIT_FAILURE;
     SetLastError(ret);
     return -1;
 }
@@ -70,7 +73,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
     LPMSG lcpMsg=NULL;
     if(st_MessageEmualtionInited)
     {
-        lcpMsg = calloc(sizeof(*lcpMsg),1);
+        lcpMsg = (LPMSG)calloc(sizeof(*lcpMsg),1);
         if(lcpMsg == NULL)
         {
             ret = LAST_ERROR_CODE();

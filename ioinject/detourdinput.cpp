@@ -205,11 +205,6 @@ fail:
 #ifdef DETOUR_DINPUT_EMULATION
 	UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
     UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
-    if(st_hDetourDinputSema)
-    {
-        CloseHandle(st_hDetourDinputSema);
-    }
-    st_hDetourDinputSema = NULL;
 #endif
     SetLastError(ret);
     return FALSE;

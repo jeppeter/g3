@@ -1,7 +1,9 @@
 
 #include <iocapcommon.h>
 #include <vector>
-
+#include "ioinject_thread.h"
+#define  DIRECTINPUT_VERSION 0x800
+#include <dinput.h>
 
 
 #define MAX_HWND_SIZE   20
