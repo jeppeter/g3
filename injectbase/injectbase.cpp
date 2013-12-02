@@ -626,10 +626,12 @@ LONG WINAPI DetourApplicationCrashHandler(EXCEPTION_POINTERS *pException)
     CONTEXT *xc = pException->ContextRecord;
     DEBUG_INFO("Eip 0x%08x\n",xc->Eip);
     sw.ShowCallstack(GetCurrentThread(), pException->ContextRecord,NULL,NULL);
-	abort();
+    abort();
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+
+static int DetourDestroyWindow();
 
 int InjectBaseModuleInit(HMODULE hModule)
 {
@@ -638,6 +640,12 @@ int InjectBaseModuleInit(HMODULE hModule)
 
     DEBUG_INFO("\n");
     ret = DetourCreateProcessFunctions();
+    if(ret < 0)
+    {
+        return 0;
+    }
+
+    ret = DetourDestroyWindow();
     if(ret < 0)
     {
         return 0;
@@ -769,14 +777,53 @@ int ResumeThreadControl(thread_control_t * pThrControl)
     if(dret == (DWORD)-1)
     {
         ret = LAST_ERROR_CODE();
-		/*we make sure this will exited ,when it */
-		pThrControl->exited = 1;
+        /*we make sure this will exited ,when it */
+        pThrControl->exited = 1;
         ERROR_INFO("Thread[0x%p] resume Error(%d)\n",pThrControl->thread,ret);
         SetLastError(ret);
         return -ret;
     }
 
-	SetLastError(0);
+    SetLastError(0);
     return dret;
+}
+
+CFuncList st_DestroyFuncList;
+typedef BOOL (WINAPI *DestroyWindowFunc_t)(HWND hWnd);
+
+static DestroyWindowFunc_t DestroyWindowNext=DestroyWindow;
+
+BOOL WINAPI DestroyWindowCallBack(HWND hwnd)
+{
+    BOOL bret;
+
+    bret = DestroyWindowNext(hwnd);
+    if(bret)
+    {
+        st_DestroyFuncList.CallList(hwnd);
+    }
+    return bret;
+}
+
+
+static int DetourDestroyWindow()
+{
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DEBUG_BUFFER_FMT(DestroyWindowNext,10,"Before DestroyWindowNext (0x%p)",DestroyWindowNext);
+    DetourAttach((PVOID*)&DestroyWindowNext,DestroyWindowCallBack);
+    DEBUG_BUFFER_FMT(DestroyWindowNext,10,"After DestroyWindowNext (0x%p)",DestroyWindowNext);
+    DetourTransactionCommit();
+    return 0;
+}
+
+int RegisterDestroyWindowFunc(FuncCall_t pFunc,LPVOID pParam)
+{
+    return st_DestroyFuncList.AddFuncList(pFunc,pParam);
+}
+
+int UnRegisterDestroyWindowFunc(FuncCall_t pFunc)
+{
+    return st_DestroyFuncList.RemoveFuncList(pFunc);
 }
 

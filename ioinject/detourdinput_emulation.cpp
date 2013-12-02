@@ -169,24 +169,24 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
     {
         if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
         {
-        	/*this is relative one*/
-			st_Dinput8MouseState.lX += pDevEvent->event.mouse.x;
-			st_Dinput8MouseState.lY += pDevEvent->event.mouse.y;
+            /*this is relative one*/
+            st_Dinput8MouseState.lX += pDevEvent->event.mouse.x;
+            st_Dinput8MouseState.lY += pDevEvent->event.mouse.y;
         }
         else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
         {
-        	st_Dinput8MouseState.lZ += pDevEvent->event.mouse.x;
+            st_Dinput8MouseState.lZ += pDevEvent->event.mouse.x;
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
         {
-        	
+
         }
         else
         {
             ret = ERROR_INVALID_PARAMETER;
-			ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
-				pDevEvent->event.mouse.code,
-				pDevEvent->event.mouse.event);
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
             SetLastError(ret);
             return -ret;
         }
@@ -2586,7 +2586,7 @@ static RECT st_MaxRect;
 static POIN st_MousePoint;
 static UINT st_MouseBtnState[MOUSE_MAX_BTN];
 
-int RawInputPressKeyDown(UINT scancode)
+int DetourDinputPressKeyDown(UINT scancode)
 {
     int cnt;
 
@@ -2603,7 +2603,7 @@ int RawInputPressKeyDown(UINT scancode)
     return cnt;
 }
 
-int RawInputPressKeyUp(UINT scancode)
+int DetourDinputPressKeyUp(UINT scancode)
 {
     int cnt;
 
@@ -2623,7 +2623,7 @@ int RawInputPressKeyUp(UINT scancode)
 
 
 
-int RawInputPressKeyDownTimes(UINT scancode)
+int DetourDinputPressKeyDownTimes(UINT scancode)
 {
     int cnt;
 
@@ -2639,14 +2639,14 @@ int RawInputPressKeyDownTimes(UINT scancode)
     return cnt;
 }
 
-#define RAWINPUT_WND_STATE_EQUAL() \
+#define DetourDinput_WND_STATE_EQUAL() \
 do\
 {\
 	assert(st_hWndVecs.size() == st_hWndLastTick.size());\
 	assert(st_hWndLastTick.size() == st_hWndRectVecs.size());\
 }while(0)
 
-int __RawInputResizeWindowNoLock()
+int __DetourDinputResizeWindowNoLock()
 {
     UINT i;
     int ret= 0;
@@ -2718,14 +2718,14 @@ int __ReCalculateMousePoint()
 }
 
 
-int RawInputSetWindowsRect(HWND hWnd,RECT *pRect)
+int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
 {
     int ret;
     int findidx=-1;
     UINT i;
     RECT rRect = *pRect;
     EnterCriticalSection(&st_KeyMouseStateCS);
-    RAWINPUT_WND_STATE_EQUAL();
+    DetourDinput_WND_STATE_EQUAL();
     /*now first to find the window*/
     for(i=0; i<st_hWndVecs.size(); i++)
     {
@@ -2744,7 +2744,7 @@ int RawInputSetWindowsRect(HWND hWnd,RECT *pRect)
     else
     {
         /*it is a new one ,so we should push back*/
-        __RawInputResizeWindowNoLock();
+        __DetourDinputResizeWindowNoLock();
         /*now we push it*/
         st_hWndVecs.push_back(hWnd);
         st_hWndLastTick.push_back(GetTickCount());
@@ -2780,7 +2780,7 @@ int MoveMouseAbsolute(int clientx,int clienty)
 }
 
 
-int RawInputScreenMousePoint(HWND hwnd,POINT* pPoint)
+int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint)
 {
     /*we test for the client point of this window*/
     int ret;
@@ -2855,7 +2855,7 @@ int RawInputScreenMousePoint(HWND hwnd,POINT* pPoint)
 }
 
 
-int SetRawInputMouseBtn(UINT btn,int down)
+int SetDetourDinputMouseBtn(UINT btn,int down)
 {
     int ret;
 
@@ -2881,7 +2881,7 @@ int SetRawInputMouseBtn(UINT btn,int down)
     return 0;
 }
 
-int RawInputMouseBtnDown(UINT btn)
+int DetourDinputMouseBtnDown(UINT btn)
 {
     int ret;
 
@@ -2897,6 +2897,39 @@ int RawInputMouseBtnDown(UINT btn)
 
     return ret;
 }
+
+static int DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
+{
+    HANDLE hwnd = (HANDLE) pInput;
+    int ret = 0;
+    UINT i;
+    int findidx = -1;
+
+    EnterCriticalSection(&st_KeyMouseStateCS);
+    for(i=0; i<st_hWndVecs.size() ; i++)
+    {
+        if(st_hWndVecs[i] == hwnd)
+        {
+            findidx = i;
+            break;
+        }
+    }
+    if(findidx >= 0)
+    {
+        st_hWndLastTick.erase(st_hWndLastTick.begin() + findidx);
+        st_hWndRectVecs.erase(st_hWndRectVecs.begin() + findidx);
+        st_hWndVecs.erase(st_hWndVecs.begin() + findidx);
+        ret = 1;
+    }
+    else
+    {
+        ERROR_INFO("hwnd (0x%08x) not register in the windows size\n",hwnd);
+    }
+    LeaveCriticalSection(&st_KeyMouseStateCS);
+    return ret;
+}
+
+
 
 
 

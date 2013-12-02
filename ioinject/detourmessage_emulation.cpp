@@ -1,5 +1,6 @@
 
 #include <vector>
+#include "ioinject_thread.h"
 
 
 static GetMessageFunc_t GetMessageANext= GetMessageA;
@@ -103,36 +104,36 @@ int __PrepareMouseButtonMessage(LPMSG lpMsg,UINT message)
     /*now we should check for the state of*/
     lpMsg->wParam = 0;
     /*check for button down*/
-    if(RawInputPressKeyDownTimes(DIK_RCONTROL) ||
-            RawInputPressKeyDownTimes(DIK_LCONTROL))
+    if(DetourDinputPressKeyDownTimes(DIK_RCONTROL) ||
+            DetourDinputPressKeyDownTimes(DIK_LCONTROL))
     {
         lpMsg->wParam |= MK_CONTROL;
     }
 
-    if(RawInputMouseBtnDown(MOUSE_LEFT_BTN))
+    if(DetourDinputMouseBtnDown(MOUSE_LEFT_BTN))
     {
         lpMsg->wParam |= MK_LBUTTON;
     }
 
-    if(RawInputMouseBtnDown(MOUSE_RIGHT_BTN))
+    if(DetourDinputMouseBtnDown(MOUSE_RIGHT_BTN))
     {
         lpMsg->wParam |= MK_RBUTTON;
     }
 
-    if(RawInputMouseBtnDown(MOUSE_MIDDLE_BTN))
+    if(DetourDinputMouseBtnDown(MOUSE_MIDDLE_BTN))
     {
         lpMsg->wParam |= MK_MBUTTON;
     }
 
-    if(RawInputPressKeyDownTimes(DIK_RSHIFT) ||
-            RawInputPressKeyDownTimes(DIK_LSHIFT))
+    if(DetourDinputPressKeyDownTimes(DIK_RSHIFT) ||
+            DetourDinputPressKeyDownTimes(DIK_LSHIFT))
     {
         lpMsg->wParam |= MK_SHIFT;
     }
 
     /*now we should change it for the point*/
 
-    RawInputClientMousePoint(&pt);
+    DetourDinputClientMousePoint(&pt);
     /*now to change the client*/
     lpMsg->lParam = 0;
     lpMsg->lParam |= (pt.x & 0xffff);
@@ -179,7 +180,7 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
     lpMsg->lParam = 0;
     if(keydown)
     {
-        repeat = RawInputPressKeyDownTimes(scancode);
+        repeat = DetourDinputPressKeyDownTimes(scancode);
         if(repeat == 0)
         {
             repeat = 1;
@@ -210,7 +211,7 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
 
     lpMsg->time = GetTimeTick();
 
-    RawInputClientMousePoint(&pt);
+    DetourDinputClientMousePoint(&pt);
     lpMsg->pt.x = pt.x;
     lpMsg->pt.y = pt.y;
     return 0;
@@ -532,11 +533,11 @@ int __SetWindowRect(HWND hWnd)
         return 0;
     }
 
-    ret = RawInputSetWindowsRect(hWnd,&rRect);
+    ret = DetourDinputSetWindowsRect(hWnd,&rRect);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("RawInputSetWindowRect(0x%08x) left-top(%d-%d) right-bottom(%d-%d) Error(%d)\n",
+        ERROR_INFO("DetourDinputSetWindowRect(0x%08x) left-top(%d-%d) right-bottom(%d-%d) Error(%d)\n",
                    hWnd,rRect.left,
                    rRect.top,
                    rRect.right,

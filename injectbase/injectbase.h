@@ -24,6 +24,7 @@
 #include <procex.h>
 #include <timeticks.h>
 #include <injectcommon.h>
+#include <funclist.h>
 
 typedef struct
 {
@@ -42,6 +43,8 @@ INJECTBASE_API void SetUnHandlerExceptionDetour();
 INJECTBASE_API void StopThreadControl(thread_control_t *pThrControl);
 INJECTBASE_API int StartThreadControl(thread_control_t *pThrControl,ThreadFunc_t pStartFunc,LPVOID pParam,int startnow);
 INJECTBASE_API int ResumeThreadControl(thread_control_t *pThrControl);
+INJECTBASE_API int RegisterDestroyWindowFunc(FuncCall_t pFunc,LPVOID pParam);
+INJECTBASE_API int UnRegisterDestroyWindowFunc(FuncCall_t pFunc);
 
 
 
