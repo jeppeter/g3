@@ -15,9 +15,6 @@ typedef struct
     uint8_t m_InputEvtBaseName[IO_NAME_MAX_SIZE];
     HANDLE *m_pInputEvts;
     EVENT_LIST_t* m_pEventListArray;
-    CRITICAL_SECTION m_ListCS;
-    int m_ListCSInited;
-    std::vector<EVENT_LIST_t*>* m_pFreeList;
 } DETOUR_THREAD_STATUS_t,*PDETOUR_THREAD_STATUS_t;
 
 CFuncList st_EventHandlerFuncList;
@@ -28,140 +25,21 @@ static HANDLE st_hDetourDinputSema=NULL;
 static PDETOUR_THREAD_STATUS_t st_pDinputStatus=NULL;
 
 
-int IoInjectInput(PEVENT_LIST_t pEvent)
-{
-    int ret=0,res;
-    LPDEVICEEVENT pDevEvent=NULL;
-    int findidx=-1;
-    unsigned int i;
-    int cnt=0;
-
-    pDevEvent = (LPDEVICEEVENT)(pEvent->m_BaseAddr+pEvent->m_Offset);
-    /*now make sure*/
-    EnterCriticalSection(&(st_Dinput8DeviceCS));
-
-    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
-    {
-        cnt = 0;
-        for(i=0; i<st_Key8WHookVecs.size(); i++)
-        {
-            if(cnt == pDevEvent->devid)
-            {
-                findidx = i;
-                res = st_Key8WHookVecs[i]->PutEventList(pEvent);
-                assert(res > 0);
-                ret = 1;
-                break;
-            }
-            cnt +=1;
-        }
-
-        if(findidx < 0)
-        {
-            for(i=0; i<st_Key8AHookVecs.size(); i++)
-            {
-                if(cnt == pDevEvent->devid)
-                {
-                    findidx = i;
-                    res = st_Key8AHookVecs[i]->PutEventList(pEvent);
-                    assert(res > 0);
-                    ret = 1;
-                    break;
-                }
-                cnt += 1;
-            }
-        }
-    }
-    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
-    {
-        cnt = 0;
-        for(i=0; i<st_Mouse8WHookVecs.size() ; i++)
-        {
-            if(cnt  == pDevEvent->devid)
-            {
-                findidx = i;
-                res = st_Mouse8WHookVecs[i]->PutEventList(pEvent);
-                assert(res > 0);
-                ret = 1;
-                break;
-            }
-            cnt += 1;
-        }
-
-        if(findidx < 0)
-        {
-            for(i=0; i<st_Mouse8AHookVecs.size(); i++)
-            {
-                if(cnt == pDevEvent->devid)
-                {
-                    findidx = i;
-                    res = st_Mouse8AHookVecs[i]->PutEventList(pEvent);
-                    assert(res > 0);
-                    ret = 1;
-                    break;
-                }
-                cnt += 1;
-            }
-        }
-    }
-    else
-    {
-        /*now we do not support this*/
-        ERROR_INFO("not supported type %d\n",pDevEvent->devtype);
-        ret = 0;
-    }
-    LeaveCriticalSection(&(st_Dinput8DeviceCS));
-    return ret;
-}
-
-
-static void IoFreeEventList(EVENT_LIST_t* pEventList)
-{
-    unsigned int i;
-    int findidx = -1;
-    int ret = 0;
-    int* pnullptr=NULL;
-    if(st_pDinputStatus == NULL)
-    {
-        ERROR_INFO("FreeEventList<0x%p> no DinputStatus\n",pEventList);
-        /*this may not be right ,but it notifies the free event ,so it will ok to get the event ok*/
-        SetEvent(pEventList->m_hFillEvt);
-        return;
-    }
-
-    EnterCriticalSection(&(st_pDinputStatus->m_ListCS));
-    for(i=0; i<st_pDinputStatus->m_pFreeList->size(); i++)
-    {
-        if(st_pDinputStatus->m_pFreeList->at(i) == pEventList)
-        {
-            findidx = i;
-            break;
-        }
-    }
-
-    if(findidx >= 0)
-    {
-        ERROR_INFO("We have input the Event List<0x%p> idx(%d)\n",pEventList,pEventList->m_Idx);
-    }
-    else
-    {
-        st_pDinputStatus->m_pFreeList->push_back(pEventList);
-        /*to notify the free list*/
-        ret = 1;
-    }
-    LeaveCriticalSection(&(st_pDinputStatus->m_ListCS));
-    if(ret > 0)
-    {
-        SetEvent(pEventList->m_hFillEvt);
-    }
-
-    return ;
-}
-
 int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 {
-	/*now we should handle this function*/
-	EVENT_LIST_t pEventList=NULL;
+    /*now we should handle this function*/
+    EVENT_LIST_t pEventList=NULL;
+    int totalret=0;
+
+    assert(idx < pStatus->m_Bufnumm);
+    pEventList = &(pStatus->m_pEventListArray[idx]);
+    totalret = st_EventHandlerFuncList.CallList(pEventList);
+    if(totalret < 0)
+    {
+        ERROR_INFO("CallEventList[%d](0x%p) Error (%d)\n",idx,pEventList,totalret);
+    }
+    SetEvent(pEventList->m_hFillEvt);
+    return totalret;
 }
 
 
@@ -194,26 +72,7 @@ DWORD WINAPI DetourDirectInputThreadImpl(LPVOID pParam)
         if((dret >= WAIT_OBJECT_0) && (dret <= (WAIT_OBJECT_0+waitnum - 2)))
         {
             idx = dret - WAIT_OBJECT_0;
-            tries = 0;
-            while(1)
-            {
-                ret = DetourDirectInputChangeFreeToInput(pStatus,idx);
-                if(ret > 0)
-                {
-                    break;
-                }
-                tries ++;
-                if(tries > 5)
-                {
-                    dret =ERROR_TOO_MANY_MUXWAITERS ;
-                    ERROR_INFO("could not change %d into free more than %d\n",idx,tries);
-                    goto out;
-                }
-
-                SchedOut();
-                ERROR_INFO("Change[%d] wait[%d]\n",idx,tries);
-            }
-
+            __HandleStatusEvent(pStatus,idx);
         }
         else if((dret == (WAIT_OBJECT_0+waitnum - 1)))
         {
@@ -250,46 +109,6 @@ void __ClearEventList(PDETOUR_THREAD_STATUS_t pStatus)
     {
         return ;
     }
-
-    if(pStatus->m_pFreeList)
-    {
-        if(pStatus->m_ListCSInited)
-        {
-            /*now we should test if the free list is full ,if it is some free list is not in the free list,so we should wait for it*/
-            tries = 0;
-            while(1)
-            {
-                fullfreelist = 0;
-                EnterCriticalSection(&(pStatus->m_ListCS));
-                if(pStatus->m_pFreeList->size() == pStatus->m_Bufnumm)
-                {
-                    fullfreelist = 1;
-                }
-                LeaveCriticalSection(&(pStatus->m_ListCS));
-
-                if(fullfreelist > 0)
-                {
-                    /*ok ,we have collect all free list ,so we can clear them*/
-                    break;
-                }
-
-                /*now ,so we should wait for a while*/
-                if(tries > 5)
-                {
-                    ERROR_INFO("Could not Get Free List At times (%d)\n",tries);
-                    abort();
-                }
-
-                tries ++;
-                SchedOut();
-                ERROR_INFO("Wait Free List At Time(%d)\n",tries);
-            }
-        }
-
-        pStatus->m_pFreeList->clear();
-        delete pStatus->m_pFreeList;
-    }
-    pStatus->m_pFreeList = NULL;
 
     if(pStatus->m_pEventListArray)
     {
