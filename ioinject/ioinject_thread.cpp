@@ -17,11 +17,8 @@ typedef struct
 } DETOUR_THREAD_STATUS_t,*PDETOUR_THREAD_STATUS_t;
 
 CFuncList st_EventHandlerFuncList;
-
-
 static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
 static HANDLE st_hDetourDinputSema=NULL;
-static PDETOUR_THREAD_STATUS_t st_pDinputStatus=NULL;
 
 
 int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
