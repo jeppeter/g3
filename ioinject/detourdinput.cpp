@@ -183,7 +183,7 @@ BOOL DetourDirectInputInit(void)
         ERROR_INFO("Could not Create Semaphore Error(%d)\n",ret);
         goto fail;
     }
-    ret = RegisterDestroyWindowFunc(DestroyWindowNotify,NULL);
+    ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -210,7 +210,7 @@ BOOL DetourDirectInputInit(void)
 
 fail:
 #ifdef EMULATION_MODE
-    UnRegisterDestroyWindowFunc(DestroyWindowNotify);
+    UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
     if(st_hDetourDinputSema)
     {
         CloseHandle(st_hDetourDinputSema);

@@ -2898,7 +2898,7 @@ int DetourDinputMouseBtnDown(UINT btn)
     return ret;
 }
 
-static int DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
+static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
 {
     HANDLE hwnd = (HANDLE) pInput;
     int ret = 0;
