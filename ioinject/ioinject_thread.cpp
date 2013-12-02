@@ -20,6 +20,8 @@ typedef struct
     std::vector<EVENT_LIST_t*>* m_pFreeList;
 } DETOUR_THREAD_STATUS_t,*PDETOUR_THREAD_STATUS_t;
 
+CFuncList st_EventHandlerFuncList;
+
 
 static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
 static HANDLE st_hDetourDinputSema=NULL;
@@ -158,6 +160,8 @@ static void IoFreeEventList(EVENT_LIST_t* pEventList)
 
 int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 {
+	/*now we should handle this function*/
+	EVENT_LIST_t pEventList=NULL;
 }
 
 
@@ -904,5 +908,15 @@ fail:
     return -ret;
 
 
+}
+
+int RegisterEventListHandler(FuncCall_t pFunc,LPVOID pParam)
+{
+    return st_EventHandlerFuncList.AddFuncList(pFunc,pParam);
+}
+
+int UnRegisterEventListHandler(FuncCall_t pFunc)
+{
+    return st_EventHandlerFuncList.RemoveFuncList(pFunc);
 }
 
