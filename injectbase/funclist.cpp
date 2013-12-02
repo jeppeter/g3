@@ -1,21 +1,28 @@
 
 #include "funclist.h"
+#include "sched.h"
+#include "output_debug.h"
+#include <injectcommon.h>
+#include <assert.h>
 
 
 #define  FUNC_LIST_VEC_ASSERT() \
 do\
 {\
-	assert(this->m_FuncVecs.size() == this->m_ParamVecs.size());\
-	assert(this->m_ParamVecs.size() == this->m_FuncUseVecs.size());\
+	assert(this->m_FuncVecs->size() == this->m_ParamVecs->size());\
+	assert(this->m_ParamVecs->size() == this->m_FuncUseVecs->size());\
 }while(0)
 
 
 CFuncList::CFuncList()
 {
     InitializeCriticalSection(&m_FuncListCS);
-    assert(m_FuncVecs.size() == 0);
-    assert(m_ParamVecs.size() == 0);
-    assert(m_FuncVecs.size() == 0);
+	m_pFuncVecs = new std::vector<FuncCall_t>();
+	m_pFuncUseVecs = new std::vector<int>();
+	m_pParamVecs = new std::vector<LPVOID>();
+    assert(m_pFuncVecs->size() == 0);
+    assert(m_pParamVecs->size() == 0);
+    assert(m_pFuncUseVecs->size() == 0);
 }
 
 int CFuncList::__RemoveFunc(FuncCall_t pFunc)
@@ -25,9 +32,9 @@ int CFuncList::__RemoveFunc(FuncCall_t pFunc)
     UINT i;
     EnterCriticalSection(&(this->m_FuncListCS));
     FUNC_LIST_VEC_ASSERT();
-    for(i=0; i<this->m_FuncVecs.size() ; i++)
+    for(i=0; i<this->m_pFuncVecs->size() ; i++)
     {
-        if(pFunc == NULL || pFunc == this->m_FuncVecs[i])
+        if(pFunc == NULL || pFunc == this->m_pFuncVecs->at(i))
         {
             findidx = i;
             break;
@@ -36,16 +43,16 @@ int CFuncList::__RemoveFunc(FuncCall_t pFunc)
 
     if(findidx >= 0)
     {
-        if(this->m_FuncUseVecs[findidx] > 0)
+        if(this->m_pFuncUseVecs->at(findidx) > 0)
         {
             ret = 0;
         }
         else
         {
             ret = 1;
-            this->m_FuncUseVecs.erase(this->m_FuncUseVecs.begin() + findidx);
-            this->m_FuncVecs.erase(this->m_FuncVecs.begin() + findidx);
-            this->m_ParamVecs.erase(this->m_ParamVecs.begin() + findidx);
+            this->m_pFuncUseVecs->erase(this->m_pFuncUseVecs->begin() + findidx);
+            this->m_pFuncVecs->erase(this->m_pFuncVecs->begin() + findidx);
+            this->m_pParamVecs->erase(this->m_pParamVecs->begin() + findidx);
         }
     }
     LeaveCriticalSection(&(this->m_FuncListCS));
@@ -71,8 +78,14 @@ CFuncList::~CFuncList()
     }
     while(ret >= 0);
 
-    assert(this->m_FuncUseVecs.size() == 0);
+    assert(this->m_pFuncUseVecs->size() == 0);
     FUNC_LIST_VEC_ASSERT();
+	delete this->m_pFuncUseVecs;
+	this->m_pFuncUseVecs = NULL;
+	delete this->m_pFuncVecs;
+	this->m_pFuncVecs = NULL;
+	delete this->m_pParamVecs ;
+	this->m_pParamVecs = NULL;
     DeleteCriticalSection(&(this->m_FuncListCS));
 }
 
@@ -84,9 +97,9 @@ int CFuncList::AddFuncList(FuncCall_t pFunc,PVOID pParam)
 
     EnterCriticalSection(&(this->m_FuncListCS));
     FUNC_LIST_VEC_ASSERT();
-    for(i=0; i<this->m_FuncVecs.size(); i++)
+    for(i=0; i<this->m_pFuncVecs->size(); i++)
     {
-        if(this->m_FuncVecs[i] == pFunc)
+        if(this->m_pFuncVecs->at(i) == pFunc)
         {
             findidx = i;
             break;
@@ -100,9 +113,9 @@ int CFuncList::AddFuncList(FuncCall_t pFunc,PVOID pParam)
     else
     {
         ret = 1;
-        this->m_FuncVecs.push_back(pFunc);
-        this->m_ParamVecs.push_back(pParam);
-        this->m_FuncUseVecs.push_back(0);
+        this->m_pFuncVecs->push_back(pFunc);
+        this->m_pParamVecs->push_back(pParam);
+        this->m_pFuncUseVecs->push_back(0);
     }
     LeaveCriticalSection(&(this->m_FuncListCS));
     return ret;
@@ -129,12 +142,15 @@ int CFuncList::RemoveFuncList(FuncCall_t pFunc)
 FuncCall_t CFuncList::__GetFuncCall(int idx,LPVOID& pParam)
 {
     FuncCall_t pFunc = NULL;
+	int tmpint;
 
     EnterCriticalSection(&(this->m_FuncListCS));
-    if(this->m_FuncVecs.size() > idx)
+    if(this->m_pFuncVecs->size() > (UINT)idx)
     {
-        pFunc = this->m_FuncVecs[idx];
-        this->m_FuncUseVecs[idx] ++;
+        pFunc = this->m_pFuncVecs->at(idx);
+		tmpint = this->m_pFuncUseVecs->at(idx);
+		tmpint ++;
+        this->m_pFuncUseVecs->at(idx) = tmpint;
     }
     LeaveCriticalSection(&(this->m_FuncListCS));
     return pFunc;
@@ -145,9 +161,9 @@ int CFuncList::__PutFuncCall(FuncCall_t pFunc)
     int idx=-1;
     UINT i;
     EnterCriticalSection(&(this->m_FuncListCS));
-    for(i=0; i<this->m_FuncVecs.size(); i++)
+    for(i=0; i<this->m_pFuncVecs->size(); i++)
     {
-        if(this->m_FuncVecs[i] == pFunc)
+        if(this->m_pFuncVecs->at(i) == pFunc)
         {
             idx = i+1;
             break;
