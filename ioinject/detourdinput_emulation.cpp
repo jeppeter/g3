@@ -546,9 +546,10 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
 
 }
 
-int DetourDinput8SetKeyMouseState(LPDEVICEEVENT pDevEvent)
+int DetourDinput8SetKeyMouseState(LPVOID pParam,LPVOID pInput)
 {
     int ret;
+	LPDEVICEEVENT pDevEvent=(LPDEVICEEVENT)pInput;
     if(pDevEvent->devtype != DEVICE_TYPE_KEYBOARD &&
             pDevEvent->devtype != DEVICE_TYPE_MOUSE)
     {
@@ -627,6 +628,8 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return ret;
 }
+
+
 
 
 /***************************************************
