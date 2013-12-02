@@ -476,13 +476,13 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
     {
         if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
-        	st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x80;
-			__SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,1);
+            st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x80;
+            __SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,1);
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
-        	st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x0;
-			__SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,0);
+            st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x0;
+            __SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,0);
         }
         else
         {
@@ -498,13 +498,13 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
     {
         if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
-        	st_Dinput8MouseState.rgbButtons[MOUSE_RIGHT_BTN - 1] = 0x80;
-			__SetDetourDinputMouseBtnNoLock(MOUSE_RIGHT_BTN,1);
+            st_Dinput8MouseState.rgbButtons[MOUSE_RIGHT_BTN - 1] = 0x80;
+            __SetDetourDinputMouseBtnNoLock(MOUSE_RIGHT_BTN,1);
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
-        	st_Dinput8MouseState.rgbButtons[MOUSE_RIGHT_BTN - 1] = 0x0;
-			__SetDetourDinputMouseBtnNoLock(MOUSE_RIGHT_BTN,0);
+            st_Dinput8MouseState.rgbButtons[MOUSE_RIGHT_BTN - 1] = 0x0;
+            __SetDetourDinputMouseBtnNoLock(MOUSE_RIGHT_BTN,0);
         }
         else
         {
@@ -520,13 +520,13 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
     {
         if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
-        	st_Dinput8MouseState.rgbButtons[MOUSE_MIDDLE_BTN - 1] = 0x80;
-			__SetDetourDinputMouseBtnNoLock(MOUSE_MIDDLE_BTN,1);
+            st_Dinput8MouseState.rgbButtons[MOUSE_MIDDLE_BTN - 1] = 0x80;
+            __SetDetourDinputMouseBtnNoLock(MOUSE_MIDDLE_BTN,1);
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
-        	st_Dinput8MouseState.rgbButtons[MOUSE_MIDDLE_BTN - 1] = 0x0;
-			__SetDetourDinputMouseBtnNoLock(MOUSE_MIDDLE_BTN,0);
+            st_Dinput8MouseState.rgbButtons[MOUSE_MIDDLE_BTN - 1] = 0x0;
+            __SetDetourDinputMouseBtnNoLock(MOUSE_MIDDLE_BTN,0);
         }
         else
         {
@@ -549,7 +549,7 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
 int DetourDinput8SetKeyMouseState(LPVOID pParam,LPVOID pInput)
 {
     int ret;
-	LPDEVICEEVENT pDevEvent=(LPDEVICEEVENT)pInput;
+    LPDEVICEEVENT pDevEvent=(LPDEVICEEVENT)pInput;
     if(pDevEvent->devtype != DEVICE_TYPE_KEYBOARD &&
             pDevEvent->devtype != DEVICE_TYPE_MOUSE)
     {
@@ -632,13 +632,49 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
 
 int DetourDinput8GetMousePointAbsolution(POINT *pPoint)
 {
-	int ret=0;
+    int ret=0;
 
-	EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-	pPoint->x = st_MousePoint.x;
-	pPoint->y = st_MousePoint.y;
-	LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-	return ret;
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    pPoint->x = st_MousePoint.x;
+    pPoint->y = st_MousePoint.y;
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+    return ret;
+}
+
+int __CopyDiMouseState(PVOID pData, UINT cbSize)
+{
+    int ret=0;
+    if(cbSize < sizeof(st_Dinput8MouseState))
+    {
+        ret=  ERROR_INSUFFICIENT_BUFFER;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    CopyMemory(pData,&st_Dinput8MouseState,sizeof(st_Dinput8MouseState));
+    /*to clear the relative moving*/
+    st_Dinput8MouseState.lX = 0;
+    st_Dinput8MouseState.lY = 0;
+    st_Dinput8MouseState.lZ = 0;
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+    return sizeof(st_Dinput8MouseState);
+}
+
+int __CopyDiKeyState(PVOID pData,UINT cbSize)
+{
+    int ret=0;
+    if(cbSize < sizeof(st_Dinput8KeyState))
+    {
+        ret=  ERROR_INSUFFICIENT_BUFFER;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    CopyMemory(pData,st_Dinput8KeyState,sizeof(st_Dinput8KeyState));
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+    return sizeof(st_Dinput8KeyState);
 }
 
 
@@ -808,272 +844,7 @@ private:
         }
         return ret;
     }
-    EVENT_LIST_t* __GetEventList()
-    {
-        EVENT_LIST_t *pEventList=NULL;
-        EnterCriticalSection(&(this->m_StateCS));
-        if(this->m_EventList.size() > 0)
-        {
-            pEventList = this->m_EventList[0];
-            this->m_EventList.erase(this->m_EventList.begin());
-        }
-        LeaveCriticalSection(&(this->m_StateCS));
-        return pEventList;
-    }
 
-    int __InsertEventList(EVENT_LIST_t* pEventList,int insertback)
-    {
-        int ret = 0;
-        EnterCriticalSection(&(this->m_StateCS));
-        if(insertback)
-        {
-            this->m_EventList.push_back(pEventList);
-        }
-        else
-        {
-            this->m_EventList.insert(this->m_EventList.begin(),pEventList);
-        }
-        ret = 1;
-        LeaveCriticalSection(&(this->m_StateCS));
-        return ret;
-    }
-
-    int __UpdateMouseEventStateNoLock(EVENT_LIST_t* pEventList)
-    {
-        DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
-        LPDEVICEEVENT pDevEvent = NULL;
-        int ret;
-
-        /*now to make the event list handle*/
-        if(pEventList->size < sizeof(*pDevEvent))
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            ERROR_INFO("eventsize %d < sizeof(%d)\n",pEventList->size,sizeof(*pEventList));
-            SetLastError(ret);
-            return -ret;
-        }
-
-        pDevEvent = (LPDEVICEEVENT)(pEventList->m_BaseAddr + pEventList->m_Offset);
-        __try
-        {
-            assert(pDevEvent->devtype == DEVICE_TYPE_MOUSE);
-            switch(pDevEvent->event.mouse.event)
-            {
-            case MOUSE_EVNET_MOVING:
-                pMouseState->lX += pDevEvent->event.mouse.x;
-                pMouseState->lY += pDevEvent->event.mouse.y;
-                break;
-            case MOUSE_EVENT_KEYDOWN:
-                switch(pDevEvent->event.mouse.code)
-                {
-                case MOUSE_CODE_LEFTBUTTON:
-                    SET_BIT(pMouseState->rgbButtons[LEFTBUTTON_IDX]);
-                    break;
-                case MOUSE_CODE_RIGHTBUTTON:
-                    SET_BIT(pMouseState->rgbButtons[RIGHTBUTTON_IDX]);
-                    break;
-                case MOUSE_CODE_MIDDLEBUTTON:
-                    SET_BIT(pMouseState->rgbButtons[MIDBUTTON_IDX]);
-                    break;
-                default:
-                    ret = ERROR_INVALID_PARAMETER;
-                    ERROR_INFO("Mouse KeyDown code %d\n",pDevEvent->event.mouse.code);
-                    goto fail;
-                }
-                break;
-            case MOUSE_EVENT_KEYUP:
-                switch(pDevEvent->event.mouse.code)
-                {
-                case MOUSE_CODE_LEFTBUTTON:
-                    CLEAR_BIT(pMouseState->rgbButtons[LEFTBUTTON_IDX]);
-                    break;
-                case MOUSE_CODE_RIGHTBUTTON:
-                    CLEAR_BIT(pMouseState->rgbButtons[RIGHTBUTTON_IDX]);
-                    break;
-                case MOUSE_CODE_MIDDLEBUTTON:
-                    CLEAR_BIT(pMouseState->rgbButtons[MIDBUTTON_IDX]);
-                    break;
-                default:
-                    ret = ERROR_INVALID_PARAMETER;
-                    ERROR_INFO("Mouse KeyUp code %d\n",pDevEvent->event.mouse.code);
-                    goto fail;
-                }
-                break;
-            case MOUSE_EVENT_SLIDE:
-                pMouseState->lZ += pDevEvent->event.mouse.x;
-                break;
-            default:
-                ret = ERROR_INVALID_PARAMETER;
-                ERROR_INFO("Mouse error event(%d)\n",pDevEvent->event.mouse.event);
-                goto fail;
-            }
-        }
-
-        __except(EXCEPTION_EXECUTE_HANDLER)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-
-        SetLastError(0);
-        return 0;
-
-
-fail:
-        assert(ret > 0);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    int __UpdateKeyboardEventStateNoLock(EVENT_LIST_t* pEventList)
-    {
-        unsigned char* pKeyboardState = this->m_StateBuf;
-        LPDEVICEEVENT pDevEvent= NULL;
-        int idx;
-        int ret;
-
-        /*now we  should test for the size*/
-        if(pEventList->size < sizeof(*pDevEvent))
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            SetLastError(ret);
-            return -ret;
-        }
-
-        pDevEvent = (LPDEVICEEVENT)(pEventList->m_BaseAddr + pEventList->m_Offset);
-
-        __try
-        {
-            if(pDevEvent->event.keyboard.code > KEYBOARD_CODE_NULL)
-            {
-                ret = ERROR_INVALID_PARAMETER;
-                ERROR_INFO("keyboard code (%d)\n",pDevEvent->event.keyboard.code);
-                goto fail;
-            }
-
-            idx = st_CodeMapDik[pDevEvent->event.keyboard.code];
-            assert(idx <= DIK_NULL);
-            switch(pDevEvent->event.keyboard.event)
-            {
-            case KEYBOARD_EVENT_DOWN:
-                SET_BIT(pKeyboardState[idx]);
-                break;
-            case KEYBOARD_EVENT_UP:
-                CLEAR_BIT(pKeyboardState[idx]);
-                break;
-            default:
-                ret = ERROR_INVALID_PARAMETER;
-                ERROR_INFO("<0x%p> keyboard event (%d)\n",this->m_ptr,pDevEvent->event.keyboard.event);
-                goto fail;
-            }
-
-        }
-
-        __except(EXCEPTION_EXECUTE_HANDLER)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-
-        SetLastError(0);
-        return 0;
-
-
-fail:
-        assert(ret > 0);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    int __UpdateMouseAfter()
-    {
-        DIMOUSESTATE *pMouseState=(DIMOUSESTATE*)this->m_StateBuf;
-
-        EnterCriticalSection(&(this->m_StateCS));
-        pMouseState->lX = 0;
-        pMouseState->lY = 0;
-        pMouseState->lZ = 0;
-        LeaveCriticalSection(&(this->m_StateCS));
-        return 0;
-    }
-
-
-
-    int __UpdateEventStateNoLock(EVENT_LIST_t* pEventList)
-    {
-        int ret = 0;
-
-        if(this->__IsMouseDevice())
-        {
-            /*now if the device is mouse ,so we should make sure it is*/
-            return this->__UpdateMouseEventStateNoLock(pEventList);
-        }
-        else if(this->__IsKeyboardDevice())
-        {
-            return this->__UpdateKeyboardEventStateNoLock(pEventList);
-        }
-
-        return ret;
-    }
-
-    HRESULT __UpdateEventState(DWORD cbData,PVOID pData)
-    {
-        int ret;
-        int totalret=0;
-        HRESULT hr=DI_OK;
-        std::vector<EVENT_LIST_t*> HandledEventList;
-        EVENT_LIST_t* pEventList=NULL;
-
-        EnterCriticalSection(&(this->m_StateCS));
-        while(this->m_EventList.size() > 0)
-        {
-            assert(pEventList == NULL);
-            pEventList = this->m_EventList[0];
-            this->m_EventList.erase(this->m_EventList.begin());
-            ret = this->__UpdateEventStateNoLock(pEventList);
-            if(ret < 0)
-            {
-                totalret = LAST_ERROR_CODE();
-                hr = E_PENDING;
-                ERROR_INFO("could not update <0x%p> eventlist error(%d)\n",pEventList,totalret);
-            }
-            HandledEventList.push_back(pEventList);
-            pEventList = NULL;
-        }
-
-        /*now we should update it*/
-        if(cbData < this->m_StateSize)
-        {
-            totalret = ERROR_INSUFFICIENT_BUFFER;
-            hr = DIERR_INVALIDPARAM;
-            ERROR_INFO("<0x%p> cbData %d size(%d)\n",this->m_ptr,cbData,this->m_StateSize);
-        }
-        else if(this->m_StateSize > 0)
-        {
-            CopyMemory(pData,this->m_StateBuf,this->m_StateSize);
-        }
-        else
-        {
-            /*we pretend it is ok*/
-            ZeroMemory(pData,cbData);
-        }
-        LeaveCriticalSection(&(this->m_StateCS));
-
-        /*now we should free event*/
-        while(HandledEventList.size() > 0)
-        {
-            assert(pEventList == NULL);
-            pEventList = HandledEventList[0];
-            HandledEventList.erase(HandledEventList.begin());
-            IoFreeEventList(pEventList);
-            pEventList = NULL;
-        }
-
-        assert(HandledEventList.size() == 0);
-
-        SetLastError(totalret);
-        return hr;
-    }
 
 public:
     CDirectInputDevice8AHook(IDirectInputDevice8A* ptr,REFIID riid) : m_ptr(ptr)
@@ -1105,31 +876,8 @@ public:
     }
 
 
-    int PutEventList(EVENT_LIST_t* pEventList)
-    {
-        return this->__InsertEventList(pEventList,1);
-    }
 
 
-    void FreeEventList()
-    {
-        EVENT_LIST_t* pEventList=NULL;
-
-        while(1)
-        {
-            pEventList = this->__GetEventList();
-            if(pEventList == NULL)
-            {
-                break;
-            }
-            IoFreeEventList(pEventList);
-        }
-        /*to make the buffer not set*/
-        EnterCriticalSection(&(this->m_StateCS));
-        ZeroMemory(&(m_StateBuf),sizeof(m_StateBuf));
-        LeaveCriticalSection(&(this->m_StateCS));
-        return ;
-    }
 public:
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
     {
@@ -1222,16 +970,47 @@ public:
     COM_METHOD(HRESULT,GetDeviceState)(THIS_ DWORD cbData,LPVOID lpvData)
     {
         HRESULT hr;
+        int ret;
         DIRECT_INPUT_DEVICE_8A_IN();
-        if(this->__IsMouseDevice() || this->__IsKeyboardDevice())
+        if(this->__IsMouseDevice())
         {
-            hr = this->__UpdateEventState(cbData,lpvData);
-            if(hr == DI_OK)
+            if(lpvData == NULL)
             {
-                if(this->__IsMouseDevice())
+                ret = ERROR_INVALID_PARAMETER;
+                hr = E_INVALIDARG;
+                SetLastError(ret);
+            }
+            else
+            {
+                ret=  __CopyDiMouseState(lpvData,cbData);
+                if(ret < 0)
                 {
-                    /*if mouse device will doing ,so we should do this handle*/
-                    this->__UpdateMouseAfter();
+                    hr = E_FAIL;
+                }
+                else
+                {
+                    hr = DI_OK;
+                }
+            }
+        }
+        else if(this->__IsKeyboardDevice())
+        {
+            if(lpvData == NULL)
+            {
+                ret = ERROR_INVALID_PARAMETER;
+                hr = E_INVALIDARG;
+                SetLastError(ret);
+            }
+            else
+            {
+                ret=  __CopyDiKeyState(lpvData,cbData);
+                if(ret < 0)
+                {
+                    hr = E_FAIL;
+                }
+                else
+                {
+                    hr = DI_OK;
                 }
             }
         }
