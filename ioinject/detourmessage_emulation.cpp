@@ -131,18 +131,13 @@ int __PrepareMouseButtonMessage(LPMSG lpMsg,UINT message)
         lpMsg->wParam |= MK_SHIFT;
     }
 
-    /*now we should change it for the point*/
-
-    DetourDinputClientMousePoint(&pt);
     /*now to change the client*/
     lpMsg->lParam = 0;
-    lpMsg->lParam |= (pt.x & 0xffff);
-    lpMsg->lParam |= ((pt.y & 0xffff) << 16);
 
     /*now we should set the time and point*/
     lpMsg->time = GetTickCount();
-    lpMsg->pt.x = pt.x;
-    lpMsg->pt.y = pt.y;
+    lpMsg->pt.x = 0;
+    lpMsg->pt.y = 0;
 
     return 0;
 
@@ -211,9 +206,8 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
 
     lpMsg->time = GetTimeTick();
 
-    DetourDinputClientMousePoint(&pt);
-    lpMsg->pt.x = pt.x;
-    lpMsg->pt.y = pt.y;
+    lpMsg->pt.x = 0;
+    lpMsg->pt.y = 0;
     return 0;
 
 }
@@ -295,8 +289,7 @@ int __InsertMouseMessageDevEvent(LPDEVICEEVENT pDevEvent)
         return -ret;
     }
 
-    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE &&
-      )
+    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
     {
         if((pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING ||
                 pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING))
@@ -413,8 +406,9 @@ fail:
 }
 
 /*return 0 for not insert ,1 for insert ,negative for error*/
-int InsertMessageDevEvent(LPDEVICEEVENT pDevEvent)
+int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
 {
+    LPDEVICEEVENT pDevEvent = (LPDEVICEEVENT)pInput;
     int ret;
     /*now to test for the dev event*/
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
@@ -459,6 +453,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
 {
     LPMSG lGetMsg=NULL;
     int ret = 0,res;
+    POINT pt;
 
     lGetMsg = __GetEmulationMessageQueue();
     if(lGetMsg == NULL)
@@ -496,8 +491,26 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         res = InsertEmulationMessageQueue(lGetMsg,0);
         assert(res >= 0);
         ret = 0;
+        goto out;
     }
 
+    /*now we should get the mouse value*/
+    if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST && ret > 0)
+    {
+        /*we put the mouse pointer here */
+        lpMsg->lParam = 0;
+        ret = DetourDinputScreenMousePoint(hWnd,pt);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("hWnd(0x%08x) Could not GetScreen mouse point Error(%d)\n",hWnd,ret);
+            goto fail;
+        }
+        lpMsg->lParam |= (0xffff & pt.x);
+        lpMsg->lParam |= ((0xffff & pt.y) << 16);
+        lpMsg->pt.x = pt.x;
+        lpMsg->pt.y = pt.y;
+    }
 out:
     if(lGetMsg)
     {
@@ -707,8 +720,16 @@ try_again:
 
 int __MessageDetour(void)
 {
+    int ret;
     InitializeCriticalSection(&st_MessageEmulationCS);
     InitializeCriticalSection(&st_KeyStateEmulationCS);
+    ret = RegisterEventListHandler(InsertMessageDevEvent,NULL);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Register EventHandler Error(%d)\n",ret);
+        return -ret;
+    }
     DEBUG_BUFFER_FMT(GetMessageANext,10,"Before GetMessageANext(0x%p)",GetMessageANext);
     DEBUG_BUFFER_FMT(PeekMessageANext,10,"Before PeekMessageANext(0x%p)",PeekMessageANext);
     DEBUG_BUFFER_FMT(GetMessageWNext,10,"Before GetMessageWNext(0x%p)",GetMessageWNext);
