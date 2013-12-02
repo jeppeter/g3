@@ -378,6 +378,9 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
+    /*now to input key state*/
+    SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
+
     pKeyInput = NULL;
     InputMsg.hwnd = NULL ;
     InputMsg.message = WM_INPUT;
@@ -396,8 +399,6 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     }
 
 
-    /*now to input key state*/
-    SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
 
     return 0;
 fail:
@@ -615,9 +616,9 @@ fail:
 }
 
 
-int RawInputEmulationInsertEventList(LPDEVICEEVENT pDevEvent)
+static int RawInputEmulationInsertEventList(LPVOID pParam,LPVOID pInput)
 {
-
+    LPDEVICEEVENT pDevEvent = (LPDEVICEEVENT)pInput;
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
         return __RawInputInsertKeyboardEvent(pDevEvent);
@@ -675,7 +676,7 @@ HANDLE __RegisterKeyboardHandle()
         }
         wcsncpy_s(pKeyName,256,L"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
 
-        pAllocInfo->cbSize = 8 + sizeof(pAllocInfo->keyboard);
+        pAllocInfo->cbSize = sizeof(pAllocInfo->header) + sizeof(pAllocInfo->keyboard);
         pAllocInfo->dwType = RIM_TYPEKEYBOARD;
         pAllocInfo->keyboard.dwType = 7;
         pAllocInfo->keyboard.dwSubType = 0;
@@ -706,8 +707,8 @@ HANDLE __RegisterKeyboardHandle()
             free(pAllocInfo);
             pAllocInfo = NULL;
             free(pKeyName);
-            pKeyName = NULL
-                       free(pKeyUnicode);
+            pKeyName = NULL;
+            free(pKeyUnicode);
             pKeyUnicode = NULL;
         }
     }
@@ -757,7 +758,7 @@ HANDLE __RegisterMouseHandle()
         }
         wcsncpy_s(pMouseName,256,L"\\\\?\\Mouse_Emulate",_TRUNCATE);
 
-        pAllocInfo->cbSize = 8 + sizeof(pAllocInfo->keyboard);
+        pAllocInfo->cbSize = sizeof(pAllocInfo->header) + sizeof(pAllocInfo->keyboard);
         pAllocInfo->dwType = RIM_TYPEMOUSE;
         pAllocInfo->mouse.dwId = 256;
         pAllocInfo->mouse.dwNumberOfButtons = 3;
@@ -797,7 +798,7 @@ HANDLE __RegisterMouseHandle()
 
 int __CopyKeyboardDeviceList(PRAWINPUTDEVICELIST pRawList)
 {
-    int ret;
+    int ret=0;
     EnterCriticalSection(&st_EmulationRawinputCS);
 
     if(st_KeyRawInputHandle)
@@ -1486,6 +1487,9 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             /*remove this input handle*/
             st_KeyRawInputVecs.erase(st_KeyRawInputVecs.begin());
             CopyMemory(pData,pRawInput,(sizeof(pRawInput->header)+sizeof(pRawInput->keyboard)));
+            /*free memory ,and not let it memory leak*/
+            free(pRawInput);
+            pRawInput = NULL;
             return (sizeof(pRawInput->header)+sizeof(pRawInput->keyboard));
         }
         else if(hRawInput == (HRAWINPUT) st_MouseRawInputHandle)
@@ -1513,11 +1517,15 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             pRawInput = st_MouseRawInputVecs[0];
             st_MouseRawInputVecs.erase(st_MouseRawInputVecs.begin());
             CopyMemory(pData,pRawInput,(sizeof(pRawInput->header)+sizeof(pRawInput->mouse)));
+            /*free memory ,and not let it memory leak*/
+            free(pRawInput);
+            pRawInput = NULL;
             return (sizeof(pRawInput->header)+sizeof(pRawInput->mouse));
         }
         else
         {
             ret = ERROR_DEV_NOT_EXIST;
+            ERROR_INFO("hRawInput<0x%08x> not exist\n",hRawInput);
             SetLastError(ret);
             return (UINT) -1;
         }
@@ -1555,8 +1563,16 @@ UINT WINAPI GetRawInputDataCallBack(
 
 int __RawInputDetour(void)
 {
+    int ret;
     InitializeCriticalSection(&st_EmulationRawinputCS);
     InitializeCriticalSection(&st_KeyStateEmulationCS);
+    ret = RegisterEventListHandler(RawInputEmulationInsertEventList,NULL);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Register Rawinput Emulation Error(%d)\n",ret);
+        return ret;
+    }
     DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"Before RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
     DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"Before GetRawInputDataNext(0x%p)",GetRawInputDataNext);
     DEBUG_BUFFER_FMT(GetRawInputDeviceInfoANext,10,"Before GetRawInputDeviceInfoANext(0x%p)",GetRawInputDeviceInfoANext);
