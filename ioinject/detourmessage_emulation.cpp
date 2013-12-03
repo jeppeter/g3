@@ -134,7 +134,7 @@ int __PrepareMouseButtonMessage(LPMSG lpMsg,UINT message)
         lpMsg->wParam |= MK_SHIFT;
     }
 
-    /*now to change the client*/
+    /*now to change the client we change this in the time when get this message*/
     lpMsg->lParam = 0;
 
     /*now we should set the time and point*/
@@ -502,7 +502,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     {
         /*we put the mouse pointer here */
         lpMsg->lParam = 0;
-        ret = DetourDinputScreenMousePoint(hWnd,pt);
+        ret = DetourDinputScreenMousePoint(hWnd,&pt);
         if(ret < 0)
         {
             ret = LAST_ERROR_CODE();

@@ -16,7 +16,7 @@ static DIMOUSESTATE  st_Dinput8MouseState;
 
 static std::vector<HWND> st_hWndVecs;
 static std::vector<RECT> st_hWndRectVecs;
-static unsigned int st_KeyDownTimes[256];
+static unsigned int st_KeyDownTimes[256] = {0};
 /********************************************
 .left 0
 .top 0
