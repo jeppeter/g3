@@ -1686,7 +1686,7 @@ int __RawInputDetour(void)
     int ret;
     InitializeCriticalSection(&st_EmulationRawinputCS);
     InitializeCriticalSection(&st_KeyStateEmulationCS);
-    ret = RegisterEventListHandler(RawInputEmulationInsertEventList,NULL);
+    ret = RegisterEventListHandler(RawInputEmulationInsertEventList,NULL,RAWINPUT_EMULATION_PRIOR);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();

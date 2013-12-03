@@ -168,14 +168,14 @@ BOOL DetourDirectInputInit(void)
 
 #ifdef  DETOUR_DINPUT_EMULATION
     InitializeCriticalSection(&st_Dinput8DeviceCS);
-    ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL);
+    ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL,);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
         ERROR_INFO("could not register destroy window Notify Error(%d)\n",ret);
         goto fail;
     }
-    ret = RegisterEventListHandler(DetourDinput8SetKeyMouseState,NULL);
+    ret = RegisterEventListHandler(DetourDinput8SetKeyMouseState,NULL,DINPUT_EMULATION_PRIOR);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();

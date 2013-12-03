@@ -5,6 +5,8 @@
 #include <vector>
 typedef int (*FuncCall_t)(PVOID pParam,PVOID pInput);
 
+#define  MAX_FUNCLIST_PRIOR      0xffff
+
 
 #ifdef INJECTBASE_EXPORTS
 #ifndef INJECTBASE_CPP_API
@@ -21,7 +23,7 @@ class INJECTBASE_CPP_API CFuncList
 public:
 	CFuncList();
 	~CFuncList();
-	int AddFuncList(FuncCall_t pFunc,LPVOID pParam);
+	int AddFuncList(FuncCall_t pFunc,LPVOID pParam,int prior=MAX_FUNCLIST_PRIOR);
 	int RemoveFuncList(FuncCall_t pFunc);
 	int CallList(LPVOID pParam);
 
@@ -34,6 +36,7 @@ private:
 	std::vector<FuncCall_t>* m_pFuncVecs;
 	std::vector<LPVOID>* m_pParamVecs;
 	std::vector<int>* m_pFuncUseVecs;	
+	std::vector<int>* m_pFuncPriorVecs;
 } ;
 
 #endif /*__FUNC_LIST_H__*/

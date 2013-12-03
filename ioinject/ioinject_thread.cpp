@@ -618,9 +618,9 @@ fail:
 
 }
 
-int RegisterEventListHandler(FuncCall_t pFunc,LPVOID pParam)
+int RegisterEventListHandler(FuncCall_t pFunc,LPVOID pParam,int prior)
 {
-    return st_EventHandlerFuncList.AddFuncList(pFunc,pParam);
+    return st_EventHandlerFuncList.AddFuncList(pFunc,pParam,prior);
 }
 
 int UnRegisterEventListHandler(FuncCall_t pFunc)

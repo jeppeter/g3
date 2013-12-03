@@ -9,8 +9,9 @@
 #define  FUNC_LIST_VEC_ASSERT() \
 do\
 {\
-	assert(this->m_FuncVecs->size() == this->m_ParamVecs->size());\
-	assert(this->m_ParamVecs->size() == this->m_FuncUseVecs->size());\
+	assert(this->m_pFuncVecs->size() == this->m_pParamVecs->size());\
+	assert(this->m_pParamVecs->size() == this->m_pFuncUseVecs->size());\
+	assert(this->m_pFuncUseVecs->size() == this->m_pFuncPriorVecs->size());\
 }while(0)
 
 
@@ -20,9 +21,11 @@ CFuncList::CFuncList()
     m_pFuncVecs = new std::vector<FuncCall_t>();
     m_pFuncUseVecs = new std::vector<int>();
     m_pParamVecs = new std::vector<LPVOID>();
+    m_pFuncPriorVecs = new std::vector<int>();
     assert(m_pFuncVecs->size() == 0);
     assert(m_pParamVecs->size() == 0);
     assert(m_pFuncUseVecs->size() == 0);
+    assert(m_pFuncPriorVecs->size() == 0);
 }
 
 int CFuncList::__RemoveFunc(FuncCall_t pFunc)
@@ -53,6 +56,7 @@ int CFuncList::__RemoveFunc(FuncCall_t pFunc)
             this->m_pFuncUseVecs->erase(this->m_pFuncUseVecs->begin() + findidx);
             this->m_pFuncVecs->erase(this->m_pFuncVecs->begin() + findidx);
             this->m_pParamVecs->erase(this->m_pParamVecs->begin() + findidx);
+            this->m_pFuncPriorVecs->erase(this->m_pFuncPriorVecs->begin() + findidx);
         }
     }
     LeaveCriticalSection(&(this->m_FuncListCS));
@@ -86,14 +90,24 @@ CFuncList::~CFuncList()
     this->m_pFuncVecs = NULL;
     delete this->m_pParamVecs ;
     this->m_pParamVecs = NULL;
+    delete this->m_pFuncPriorVecs ;
+    this->m_pFuncPriorVecs = NULL;
     DeleteCriticalSection(&(this->m_FuncListCS));
 }
 
-int CFuncList::AddFuncList(FuncCall_t pFunc,PVOID pParam)
+int CFuncList::AddFuncList(FuncCall_t pFunc,PVOID pParam,int prior)
 {
     int ret = 1;
-    int findidx = -1;
+    int findidx = -1,insertidx=-1;
     UINT i;
+
+    if(prior > MAX_FUNCLIST_PRIOR)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("prior(0x%08x:%d) Invalid\n",prior,prior);
+        SetLastError(ret);
+        return -ret;
+    }
 
     EnterCriticalSection(&(this->m_FuncListCS));
     FUNC_LIST_VEC_ASSERT();
@@ -104,6 +118,7 @@ int CFuncList::AddFuncList(FuncCall_t pFunc,PVOID pParam)
             findidx = i;
             break;
         }
+
     }
 
     if(findidx >=0)
@@ -112,10 +127,41 @@ int CFuncList::AddFuncList(FuncCall_t pFunc,PVOID pParam)
     }
     else
     {
-        ret = 1;
-        this->m_pFuncVecs->push_back(pFunc);
-        this->m_pParamVecs->push_back(pParam);
-        this->m_pFuncUseVecs->push_back(0);
+        /*now we check for the prior*/
+		ret = 1;
+        if(prior == MAX_FUNCLIST_PRIOR)
+        {
+            this->m_pFuncVecs->push_back(pFunc);
+            this->m_pParamVecs->push_back(pParam);
+            this->m_pFuncUseVecs->push_back(0);
+            this->m_pFuncPriorVecs->push_back(prior);
+        }
+        else
+        {
+            for(i=0; i<this->m_pFuncPriorVecs->size(); i++)
+            {
+                if(this->m_pFuncPriorVecs->at(i) > prior)
+                {
+                    insertidx = i;
+                    break;
+                }
+            }
+
+            if(insertidx >= 0)
+            {
+                this->m_pFuncPriorVecs->insert(this->m_pFuncPriorVecs->begin() + insertidx,prior);
+                this->m_pFuncUseVecs->insert(this->m_pFuncUseVecs->begin() + insertidx,0);
+                this->m_pParamVecs->insert(this->m_pParamVecs->begin() + insertidx,pParam);
+                this->m_pFuncVecs->insert(this->m_pFuncVecs->begin() + insertidx ,pFunc);
+            }
+            else
+            {
+                this->m_pFuncVecs->push_back(pFunc);
+                this->m_pParamVecs->push_back(pParam);
+                this->m_pFuncUseVecs->push_back(0);
+                this->m_pFuncPriorVecs->push_back(prior);
+            }
+        }
     }
     LeaveCriticalSection(&(this->m_FuncListCS));
     return ret;
@@ -189,9 +235,8 @@ int CFuncList::CallList(LPVOID pParam)
     LPVOID pCallParam=NULL;
     int totalret=0;
     int ret;
-    int idx;
+    int idx=0;
 
-    idx = 0;
     while(1)
     {
         pFunc = this->__GetFuncCall(idx,pCallParam);
