@@ -817,9 +817,9 @@ static int DetourDestroyWindow()
     return 0;
 }
 
-int RegisterDestroyWindowFunc(FuncCall_t pFunc,LPVOID pParam)
+int RegisterDestroyWindowFunc(FuncCall_t pFunc,LPVOID pParam,int prior)
 {
-    return st_DestroyFuncList.AddFuncList(pFunc,pParam);
+    return st_DestroyFuncList.AddFuncList(pFunc,pParam,prior);
 }
 
 int UnRegisterDestroyWindowFunc(FuncCall_t pFunc)
