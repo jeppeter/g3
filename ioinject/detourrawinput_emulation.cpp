@@ -986,17 +986,17 @@ BOOL __GetDeviceNameANoLock(HANDLE hDevice,void* pData, UINT* pcbSize)
     if(hDevice == (HANDLE)st_KeyRawInputHandle)
     {
         st_KeyLastInfo = DEVICE_GET_NAMEA;
-        if(*pcbSize <= strlen(st_KeyRawInputName) || pData == NULL)
+        if(*pcbSize <= strlen((const char*)st_KeyRawInputName) || pData == NULL)
         {
             ret = ERROR_INSUFFICIENT_BUFFER;
-            *pcbSize = strlen(st_KeyRawInputName) + 1;
+            *pcbSize = strlen((const char*)st_KeyRawInputName) + 1;
         }
         else
         {
             ret = 0;
             bret = TRUE;
-            *pcbSize = strlen(st_KeyRawInputName) + 1;
-            strncpy_s(pData,*pcbSize,st_KeyRawInputName,_TRUNCATE);
+            *pcbSize = strlen((const char*)st_KeyRawInputName) + 1;
+            strncpy_s((char*)pData,*pcbSize,(const char*)st_KeyRawInputName,_TRUNCATE);
         }
     }
     else if(hDevice == (HANDLE)st_MouseRawInputHandle)

@@ -1,5 +1,7 @@
 
 #include "ioinject_thread.h"
+#include <injectbase.h>
+#include <assert.h>
 
 typedef struct
 {
@@ -24,7 +26,7 @@ static HANDLE st_hIoInjectControlSema=NULL;
 int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 {
     /*now we should handle this function*/
-    EVENT_LIST_t pEventList=NULL;
+    EVENT_LIST_t* pEventList=NULL;
     int totalret=0;
 
     assert(idx < pStatus->m_Bufnumm);
@@ -42,8 +44,6 @@ DWORD WINAPI DetourIoInjectThreadThreadImpl(LPVOID pParam)
     HANDLE *pWaitHandles=NULL;
     unsigned int waitnum=0;
     DWORD dret,idx;
-    int ret;
-    int tries;
 
     assert(pStatus->m_Bufnumm > 0);
     /*for add into num exit handle to wait*/
@@ -178,8 +178,6 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
         return;
     }
     pStatus = *ppStatus;
-    /*make sure this is stopped ,so we can do things safe*/
-    pStatus->m_Started = 0;
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
 
@@ -190,8 +188,6 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
     /*now to unmap memory*/
     __UnMapMemBase(pStatus);
 
-    /*not make not started*/
-    pStatus->m_Started = 0;
     free(pStatus);
     *ppStatus = NULL;
 
@@ -323,23 +319,6 @@ int __AllocateEventList(PDETOUR_THREAD_STATUS_t pStatus)
         pStatus->m_pEventListArray[i].size = pStatus->m_BufSectSize;
     }
 
-    /*new vector*/
-    pStatus->m_pFreeList = new std::vector<EVENT_LIST_t*>();
-    if(pStatus->m_pFreeList == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        goto fail;
-    }
-
-    /*now put all the event list into the free list*/
-    for(i=0; i<pStatus->m_Bufnumm; i++)
-    {
-        pStatus->m_pFreeList->push_back(&(pStatus->m_pEventListArray[i]));
-    }
-
-    /*initialize the critical section*/
-    InitializeCriticalSection(&(pStatus->m_ListCS));
-    pStatus->m_ListCSInited = 1;
 
     SetLastError(0);
     return 0;
@@ -455,7 +434,6 @@ int __DetourIoInjectThreadStart(PIO_CAP_CONTROL_t pControl)
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        pStatus->m_Started = 0;
         goto fail;
     }
 
@@ -476,7 +454,6 @@ int __DetourIoInjectThreadAddDevice(PIO_CAP_CONTROL_t pControl)
     int ret=ERROR_NOT_FOUND;
     uint32_t devtype;
     uint32_t devid;
-    uint32_t i;
     uint32_t count =0;
 
     devtype = pControl->devtype;
@@ -510,7 +487,6 @@ int __DetourIoInjectThreadRemoveDevice(PIO_CAP_CONTROL_t pControl)
     int ret=ERROR_NOT_FOUND;
     uint32_t devtype;
     uint32_t devid;
-    uint32_t i;
     uint32_t count =0;
 
     devtype = pControl->devtype;
