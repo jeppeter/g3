@@ -23,6 +23,8 @@ int DetourDinputPressKeyDownTimes(UINT scancode);
 int DetourDinputMouseBtnDown(UINT btn);
 int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint);
 int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect);
+int DetourDinput8GetMousePointAbsolution(POINT *pPoint);
+
 
 
 #ifdef __cplusplus
