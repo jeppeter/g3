@@ -574,6 +574,13 @@ BOOL WINAPI GetMessageACallBack(
     BOOL bret;
     int ret;
 
+    if(lpMsg == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return FALSE;
+    }
+
     __SetWindowRect(hWnd);
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
@@ -612,6 +619,13 @@ BOOL WINAPI PeekMessageACallBack(
 {
     BOOL bret;
     int ret;
+
+    if(lpMsg == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return FALSE;
+    }
 
     __SetWindowRect(hWnd);
 
@@ -653,6 +667,13 @@ BOOL WINAPI GetMessageWCallBack(
     BOOL bret;
     int ret;
 
+    if(lpMsg == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return FALSE;
+    }
+
     __SetWindowRect(hWnd);
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
@@ -685,6 +706,13 @@ BOOL WINAPI PeekMessageWCallBack(
 {
     BOOL bret;
     int ret;
+
+    if(lpMsg == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return FALSE;
+    }
 
     __SetWindowRect(hWnd);
 try_again:

@@ -478,6 +478,7 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         assert(0!=0);
     }
 
+	return 0;
 }
 
 int DetourDinput8SetKeyMouseState(LPVOID pParam,LPVOID pInput)
@@ -963,7 +964,7 @@ public:
             if(lpvData == NULL)
             {
                 ret = ERROR_INVALID_PARAMETER;
-                hr = E_INVALIDARG;
+                hr = DIERR_INVALIDPARAM;
                 SetLastError(ret);
             }
             else
@@ -971,7 +972,7 @@ public:
                 ret=  __CopyDiMouseState(lpvData,cbData);
                 if(ret < 0)
                 {
-                    hr = E_FAIL;
+                    hr = DIERR_INVALIDPARAM;
                 }
                 else
                 {
@@ -984,7 +985,7 @@ public:
             if(lpvData == NULL)
             {
                 ret = ERROR_INVALID_PARAMETER;
-                hr = E_INVALIDARG;
+                hr = DIERR_INVALIDPARAM;
                 SetLastError(ret);
             }
             else
@@ -992,7 +993,7 @@ public:
                 ret=  __CopyDiKeyState(lpvData,cbData);
                 if(ret < 0)
                 {
-                    hr = E_FAIL;
+                    hr = DIERR_INVALIDPARAM;
                 }
                 else
                 {
@@ -1240,6 +1241,11 @@ CDirectInputDevice8AHook* RegisterDirectInputDevice8AHook(IDirectInputDevice8A* 
             st_Mouse8AHookVecs.push_back(pHookA);
             ptr->AddRef();
         }
+        if(st_Mouse8AVes.size() > 1)
+        {
+            DEBUG_INFO("Mouse8AVes size (%d)\n",st_Mouse8AVes.size());
+        }
+
     }
     else if(IS_IID_KEYBOARD(riid))
     {
@@ -1262,6 +1268,10 @@ CDirectInputDevice8AHook* RegisterDirectInputDevice8AHook(IDirectInputDevice8A* 
             st_Key8AVecs.push_back(ptr);
             st_Key8AHookVecs.push_back(pHookA);
             ptr->AddRef();
+        }
+        if(st_Key8AVecs.size() > 1)
+        {
+            DEBUG_INFO("Key8AVecs size (%d)\n",st_Key8AVecs.size());
         }
     }
     else
@@ -1514,7 +1524,7 @@ public:
             if(lpvData == NULL)
             {
                 ret = ERROR_INVALID_PARAMETER;
-                hr = E_INVALIDARG;
+                hr = DIERR_INVALIDPARAM;
                 SetLastError(ret);
             }
             else
@@ -1522,7 +1532,7 @@ public:
                 ret=  __CopyDiMouseState(lpvData,cbData);
                 if(ret < 0)
                 {
-                    hr = E_FAIL;
+                    hr = DIERR_INVALIDPARAM;
                 }
                 else
                 {
@@ -1535,7 +1545,7 @@ public:
             if(lpvData == NULL)
             {
                 ret = ERROR_INVALID_PARAMETER;
-                hr = E_INVALIDARG;
+                hr = DIERR_INVALIDPARAM;
                 SetLastError(ret);
             }
             else
@@ -1543,7 +1553,7 @@ public:
                 ret=  __CopyDiKeyState(lpvData,cbData);
                 if(ret < 0)
                 {
-                    hr = E_FAIL;
+                    hr = DIERR_INVALIDPARAM;
                 }
                 else
                 {
@@ -1864,6 +1874,10 @@ CDirectInputDevice8WHook* RegisterDirectInputDevice8WHook(IDirectInputDevice8W* 
             /*to make it not freed by accident*/
             ptr->AddRef();
         }
+        if(st_Key8WVecs.size() > 1)
+        {
+            DEBUG_INFO("Key8WVecs size (%d)\n",st_Key8WVecs.size());
+        }
     }
     else if(IS_IID_MOUSE(riid))
     {
@@ -1888,6 +1902,10 @@ CDirectInputDevice8WHook* RegisterDirectInputDevice8WHook(IDirectInputDevice8W* 
             st_Mouse8WHookVecs.push_back(pHookW);
             /*to make it not freed by accident*/
             ptr->AddRef();
+        }
+        if(st_Mouse8WVecs.size() > 1)
+        {
+            DEBUG_INFO("Mouse8WVecs size (%d)\n",st_Mouse8WVecs.size());
         }
     }
     else
