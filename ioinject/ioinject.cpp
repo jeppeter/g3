@@ -71,14 +71,7 @@ int IoInjectControl(PIO_CAP_CONTROL_t pControl)
     int ret;
     int lasterr=0;
     int totalret=0;
-    ret = DetourDirectInputControl(pControl);
-    if(ret < 0)
-    {
-        totalret = -ret;
-        lasterr = LAST_ERROR_CODE();
-    }
-
-    ret = DetourRawInputControl(pControl);
+    ret = DetourIoInjectThreadControl(pControl);
     if(ret < 0)
     {
         totalret = -ret;

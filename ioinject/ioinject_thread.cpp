@@ -30,17 +30,13 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     assert(idx < pStatus->m_Bufnumm);
     pEventList = &(pStatus->m_pEventListArray[idx]);
     totalret = st_EventHandlerFuncList.CallList(pEventList);
-    if(totalret < 0)
-    {
-        ERROR_INFO("CallEventList[%d](0x%p) Error (%d)\n",idx,pEventList,totalret);
-    }
     SetEvent(pEventList->m_hFillEvt);
     return totalret;
 }
 
 
 
-DWORD WINAPI DetourDirectInputThreadImpl(LPVOID pParam)
+DWORD WINAPI DetourIoInjectThreadThreadImpl(LPVOID pParam)
 {
     PDETOUR_THREAD_STATUS_t pStatus = (PDETOUR_THREAD_STATUS_t)pParam;
     HANDLE *pWaitHandles=NULL;
@@ -203,7 +199,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 }
 
 
-int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
+int __DetourIoInjectThreadStop(PIO_CAP_CONTROL_t pControl)
 {
     __FreeIoInjectThreadStatus(&st_pDetourStatus);
     SetLastError(0);
@@ -391,7 +387,7 @@ fail:
 }
 
 
-int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
+int __DetourIoInjectThreadStart(PIO_CAP_CONTROL_t pControl)
 {
     int ret;
     PDETOUR_THREAD_STATUS_t pStatus=NULL;
@@ -455,7 +451,7 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-    ret = StartThreadControl(&(pStatus->m_ThreadControl),DetourDirectInputThreadImpl,pStatus,1);
+    ret = StartThreadControl(&(pStatus->m_ThreadControl),DetourIoInjectThreadThreadImpl,pStatus,1);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -475,7 +471,7 @@ fail:
     return -ret;
 }
 
-int __DetourDirectInputAddDevice(PIO_CAP_CONTROL_t pControl)
+int __DetourIoInjectThreadAddDevice(PIO_CAP_CONTROL_t pControl)
 {
     int ret=ERROR_NOT_FOUND;
     uint32_t devtype;
@@ -509,7 +505,7 @@ fail:
     return -ret;
 }
 
-int __DetourDirectInputRemoveDevice(PIO_CAP_CONTROL_t pControl)
+int __DetourIoInjectThreadRemoveDevice(PIO_CAP_CONTROL_t pControl)
 {
     int ret=ERROR_NOT_FOUND;
     uint32_t devtype;
@@ -542,7 +538,7 @@ fail:
     return -ret;
 }
 
-int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
+int DetourIoInjectThreadControl(PIO_CAP_CONTROL_t pControl)
 {
     int ret;
     DWORD dret;
@@ -566,7 +562,7 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
     switch(pControl->opcode)
     {
     case IO_INJECT_STOP:
-        ret = __DetourDirectInputStop(pControl);
+        ret = __DetourIoInjectThreadStop(pControl);
         if(ret < 0)
         {
             ret = LAST_ERROR_CODE();
@@ -575,7 +571,7 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
         }
         break;
     case IO_INJECT_START:
-        ret = __DetourDirectInputStart(pControl);
+        ret = __DetourIoInjectThreadStart(pControl);
         if(ret < 0)
         {
             ret = LAST_ERROR_CODE();
@@ -584,7 +580,7 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
         }
         break;
     case IO_INJECT_ADD_DEVICE:
-        ret = __DetourDirectInputAddDevice(pControl);
+        ret = __DetourIoInjectThreadAddDevice(pControl);
         if(ret < 0)
         {
             ret = LAST_ERROR_CODE();
@@ -594,7 +590,7 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
         }
         break;
     case IO_INJECT_REMOVE_DEVICE:
-        ret = __DetourDirectInputRemoveDevice(pControl);
+        ret = __DetourIoInjectThreadRemoveDevice(pControl);
         if(ret < 0)
         {
             ret = LAST_ERROR_CODE();

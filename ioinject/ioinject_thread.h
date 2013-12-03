@@ -16,6 +16,7 @@ extern "C" {
 
     int RegisterEventListHandler(FuncCall_t pFunc,LPVOID pParam);
     int UnRegisterEventListHandler(FuncCall_t pFunc);
+	int DetourIoInjectThreadControl(PIO_CAP_CONTROL_t pControl);
 
 #ifdef __cplusplus
 };
