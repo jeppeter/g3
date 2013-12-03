@@ -619,6 +619,7 @@ fail:
 static int RawInputEmulationInsertEventList(LPVOID pParam,LPVOID pInput)
 {
     LPDEVICEEVENT pDevEvent = (LPDEVICEEVENT)pInput;
+	int ret;
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
         return __RawInputInsertKeyboardEvent(pDevEvent);
@@ -691,7 +692,7 @@ HANDLE __RegisterKeyboardHandle()
 
     if(pKeyboardInfo == NULL)
     {
-        pAllocInfo = calloc(sizeof(*pAllocInfo),1);
+        pAllocInfo = (RID_DEVICE_INFO*)calloc(sizeof(*pAllocInfo),1);
         if(pAllocInfo == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -699,7 +700,7 @@ HANDLE __RegisterKeyboardHandle()
             return NULL;
         }
 
-        pKeyName = calloc(1,256);
+        pKeyName = (uint8_t*)calloc(1,256);
         if(pKeyName == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -707,8 +708,8 @@ HANDLE __RegisterKeyboardHandle()
             SetLastError(ret);
             return NULL;
         }
-        strncpy_s(pKeyName,256,"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
-        pKeyUnicode = calloc(2,256);
+        strncpy_s((char*)pKeyName,256,"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
+        pKeyUnicode = (wchar_t*)calloc(2,256);
         if(pKeyUnicode == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -717,7 +718,7 @@ HANDLE __RegisterKeyboardHandle()
             SetLastError(ret);
             return NULL;
         }
-        wcsncpy_s(pKeyName,256,L"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
+        wcsncpy_s(pKeyUnicode,256,L"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
 
         pAllocInfo->cbSize = sizeof(pAllocInfo->header) + sizeof(pAllocInfo->keyboard);
         pAllocInfo->dwType = RIM_TYPEKEYBOARD;
