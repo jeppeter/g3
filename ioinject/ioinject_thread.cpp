@@ -18,7 +18,7 @@ typedef struct
 
 CFuncList st_EventHandlerFuncList;
 static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
-static HANDLE st_hDetourDinputSema=NULL;
+static HANDLE st_hIoInjectControlSema=NULL;
 
 
 int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
@@ -174,7 +174,7 @@ void __UnMapMemBase(PDETOUR_THREAD_STATUS_t pStatus)
     return ;
 }
 
-void __FreeDetourDinputStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
+void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 {
     PDETOUR_THREAD_STATUS_t pStatus ;
     if(ppStatus == NULL || *ppStatus == NULL)
@@ -205,7 +205,7 @@ void __FreeDetourDinputStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 
 int __DetourDirectInputStop(PIO_CAP_CONTROL_t pControl)
 {
-    __FreeDetourDinputStatus(&st_pDinputStatus);
+    __FreeIoInjectThreadStatus(&st_pDetourStatus);
     SetLastError(0);
     return 0;
 }
@@ -409,7 +409,7 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
         return -ret;
     }
 
-    if(st_pDinputStatus)
+    if(st_pDetourStatus)
     {
         ret = ERROR_ALREADY_EXISTS;
         ERROR_INFO("Already Exist Start\n");
@@ -463,14 +463,14 @@ int __DetourDirectInputStart(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-    st_pDinputStatus = pStatus;
+    st_pDetourStatus = pStatus;
 
     SetLastError(0);
     return 0;
 
 fail:
     assert(ret > 0);
-    __FreeDetourDinputStatus(&pStatus);
+    __FreeIoInjectThreadStatus(&pStatus);
     SetLastError(ret);
     return -ret;
 }
@@ -547,14 +547,14 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
     int ret;
     DWORD dret;
 
-    if(st_hDetourDinputSema == NULL)
+    if(st_hIoInjectControlSema == NULL)
     {
         ret = ERROR_SEM_NOT_FOUND;
         SetLastError(ret);
         return -ret;
     }
 
-    dret = WaitForSingleObjectEx(st_hDetourDinputSema,5000,TRUE);
+    dret = WaitForSingleObjectEx(st_hIoInjectControlSema,5000,TRUE);
     if(dret != WAIT_OBJECT_0)
     {
         ret = LAST_ERROR_CODE();
@@ -610,12 +610,12 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl)
     }
 
 
-    ReleaseSemaphore(st_hDetourDinputSema,1,NULL);
+    ReleaseSemaphore(st_hIoInjectControlSema,1,NULL);
     SetLastError(0);
     return 0;
 
 fail:
-    ReleaseSemaphore(st_hDetourDinputSema,1,NULL);
+    ReleaseSemaphore(st_hIoInjectControlSema,1,NULL);
     SetLastError(ret);
     return -ret;
 
@@ -632,37 +632,38 @@ int UnRegisterEventListHandler(FuncCall_t pFunc)
     return st_EventHandlerFuncList.RemoveFuncList(pFunc);
 }
 
-void __IoInjectThreadFini(HMODULE hModule)
+void IoInjectThreadFini(HMODULE hModule)
 {
-    if(st_hDetourDinputSema)
+    if(st_hIoInjectControlSema)
     {
-        CloseHandle(st_hDetourDinputSema);
+        CloseHandle(st_hIoInjectControlSema);
     }
-    st_hDetourDinputSema = NULL;
+    st_hIoInjectControlSema = NULL;
+    return ;
 }
 
-int __IoInjectThreadInit(HMODULE hModule)
+int IoInjectThreadInit(HMODULE hModule)
 {
-	int ret;
-    st_hDetourDinputSema = CreateSemaphore(NULL,1,10,NULL);
-    if(st_hDetourDinputSema == NULL)
+    int ret;
+    st_hIoInjectControlSema = CreateSemaphore(NULL,1,10,NULL);
+    if(st_hIoInjectControlSema == NULL)
     {
         ret = LAST_ERROR_CODE();
         ERROR_INFO("Could not Create Semaphore Error(%d)\n",ret);
         goto fail;
     }
 
-	SetLastError(0);
-	return 0;
+    SetLastError(0);
+    return 0;
 fail:
-	assert(ret > 0);
-    if(st_hDetourDinputSema)
+    assert(ret > 0);
+    if(st_hIoInjectControlSema)
     {
-        CloseHandle(st_hDetourDinputSema);
+        CloseHandle(st_hIoInjectControlSema);
     }
-    st_hDetourDinputSema = NULL;
-	
-	SetLastError(ret);
-	return -ret;
+    st_hIoInjectControlSema = NULL;
+
+    SetLastError(ret);
+    return -ret;
 }
 

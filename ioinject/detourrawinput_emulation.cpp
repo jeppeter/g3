@@ -286,7 +286,7 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput)
     if(st_KeyRawInputHandle)
     {
         pInput->header.hDevice = st_KeyRawInputHandle;
-        pInput->header.wParam = st_KeyRawInputHandle;
+        pInput->header.wParam = RIM_INPUT;
         lret = st_KeyRawInputHandle;
         if(st_KeyRawInputVecs.size() >= RAW_INPUT_MAX_INPUT_SIZE)
         {
@@ -311,7 +311,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     int ret;
     int scank;
     int vk;
-    LONG wparam;
+    LONG lparam;
     MSG InputMsg= {0};
 
     if(pDevEvent->event.keyboard.code >= 256)
@@ -329,7 +329,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     }
 
     pKeyInput->dwType = RIM_TYPEKEYBOARD;
-    pKeyInput->dwSize = 16 + sizeof(pKeyInput->keyboard);
+    pKeyInput->dwSize = sizeof(pKeyInput->header) + sizeof(pKeyInput->keyboard);
 
     scank = st_CodeMapDik[pDevEvent->event.keyboard.code];
     if(scank == DIK_NULL)
@@ -366,26 +366,27 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         ERROR_INFO("<0x%p> event (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.event);
         goto fail;
     }
+	/*if we are not successful in the insertkeyboardinput ,we can record the keydown or keyup event*/
+    SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
 
     pKeyInput->Reserved = 0;
     pKeyInput->VKey = vk;
     pKeyInput->ExtraInformation = 0;
 
-    wparam = __InsertKeyboardInput(pKeyInput);
-    if(wparam == 0)
+    lparam = __InsertKeyboardInput(pKeyInput);
+    if(lparam == 0)
     {
         ret = ERROR_DEV_NOT_EXIST;
         goto fail;
     }
 
     /*now to input key state*/
-    SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
 
     pKeyInput = NULL;
     InputMsg.hwnd = NULL ;
     InputMsg.message = WM_INPUT;
-    InputMsg.wParam = wparam;
-    InputMsg.lParam = 0;
+    InputMsg.wParam = RIM_INPUT;
+    InputMsg.lParam = lparam;
     InputMsg.time = GetTickCount();
     InputMsg.pt.x = 0;
     InputMsg.pt.y = 0;
@@ -394,12 +395,9 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("Insert Message WM_INPUT wparam 0x%08x Error(%d)\n",wparam,ret);
         goto fail;
     }
-
-
-
+	
     return 0;
 fail:
     assert(ret > 0);
@@ -422,7 +420,7 @@ LONG __InsertMouseInput(RAWINPUT * pInput)
     {
         lret = (LONG) st_MouseRawInputHandle;
         pInput->hDevice = (HANDLE) st_MouseRawInputHandle;
-        pInput->wParam = (WPARAM) st_MouseRawInputHandle;
+        pInput->wParam = RIM_INPUT;
         if(st_MouseRawInputVecs.size() >= RAW_INPUT_MAX_INPUT_SIZE)
         {
             pRemove = st_MouseRawInputVecs[0];
@@ -444,7 +442,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
 {
     RAWINPUT* pMouseInput=NULL;
     int ret;
-    LONG wparam;
+    LONG lparam;
     MSG InputMsg= {0};
     POINT pt;
 
@@ -577,8 +575,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         }
     }
 
-    wparam = __InsertMouseInput(pMouseInput);
-    if(wparam == 0)
+    lparam = __InsertMouseInput(pMouseInput);
+    if(lparam == 0)
     {
         ret = ERROR_DEV_NOT_EXIST;
         goto fail;
@@ -587,8 +585,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
 
     InputMsg.hwnd = NULL ;
     InputMsg.message = WM_INPUT;
-    InputMsg.wParam = wparam;
-    InputMsg.lParam = 0;
+    InputMsg.wParam = RIM_INPUT;
+    InputMsg.lParam = lparam;
     InputMsg.time = GetTickCount();
     InputMsg.pt.x = 0;
     InputMsg.pt.y = 0;
@@ -599,8 +597,6 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         ret = LAST_ERROR_CODE();
         goto fail;
     }
-
-
 
     return 0;
 fail:
@@ -632,6 +628,49 @@ static int RawInputEmulationInsertEventList(LPVOID pParam,LPVOID pInput)
     SetLastError(ret);
     return -ret;
 
+}
+
+void __UnRegisterKeyboardHandle()
+{
+    RID_DEVICE_INFO *pKeyboardInfo=NULL;
+    uint8_t *pKeyName=NULL;
+    wchar_t *pKeyUnicode=NULL;
+    std::vector<RAWINPUT*> removekeyrawinput;
+    RAWINPUT *pRemoveInput=NULL;
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    pKeyboardInfo = st_KeyRawInputHandle;
+    pKeyName = st_KeyRawInputName;
+    pKeyUnicode = st_KeyRawInputNameWide;
+    st_KeyRawInputHandle = NULL;
+    st_KeyRawInputName = NULL;
+    st_KeyRawInputNameWide = NULL;
+    removekeyrawinput = st_KeyRawInputVecs;
+    st_KeyRawInputVecs.clear();
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
+    while(removekeyrawinput.size() > 0)
+    {
+        pRemoveInput = removekeyrawinput[0];
+        removekeyrawinput.erase(removekeyrawinput.begin());
+        free(pRemoveInput);
+        pRemoveInput = NULL;
+    }
+    if(pKeyboardInfo)
+    {
+        free(pKeyboardInfo);
+    }
+    pKeyboardInfo = NULL;
+    if(pKeyName)
+    {
+        free(pKeyName);
+    }
+    pKeyName = NULL;
+    if(pKeyUnicode)
+    {
+        free(pKeyUnicode);
+    }
+    pKeyUnicode = NULL;
+    return ;
 }
 
 HANDLE __RegisterKeyboardHandle()
@@ -716,19 +755,63 @@ HANDLE __RegisterKeyboardHandle()
     return pKeyboardInfo;
 }
 
+
+void __UnRegisterMouseHandle()
+{
+    RID_DEVICE_INFO *pMouseInfo=NULL;
+    uint8_t *pMouseName=NULL;
+    wchar_t *pMouseUnicode=NULL;
+    std::vector<RAWINPUT*> removemouserawinput;
+    RAWINPUT *pRemoveInput=NULL;
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    pMouseInfo = st_MouseRawInputHandle;
+    pMouseName = st_MouseRawInputName;
+    pMouseUnicode = st_MouseRawInputNameWide;
+    st_MouseRawInputHandle = NULL;
+    st_MouseRawInputName = NULL;
+    st_MouseRawInputNameWide = NULL;
+    removemouserawinput = st_MouseRawInputVecs;
+    st_MouseRawInputVecs.clear();
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
+    while(removemouserawinput.size() > 0)
+    {
+        pRemoveInput = removemouserawinput[0];
+        removemouserawinput.erase(removemouserawinput.begin());
+        free(pRemoveInput);
+        pRemoveInput = NULL;
+    }
+    if(pMouseInfo)
+    {
+        free(pMouseInfo);
+    }
+    pMouseInfo = NULL;
+    if(pMouseName)
+    {
+        free(pMouseName);
+    }
+    pMouseName = NULL;
+    if(pMouseUnicode)
+    {
+        free(pMouseUnicode);
+    }
+    pMouseUnicode = NULL;
+    return ;
+}
+
 HANDLE __RegisterMouseHandle()
 {
-    RID_DEVICE_INFO *pMouseboardInfo=NULL,*pAllocInfo=NULL;
+    RID_DEVICE_INFO *pMouseInfo=NULL,*pAllocInfo=NULL;
     uint8_t *pMouseName=NULL;
     wchar_t *pMouseUnicode=NULL;
     int inserted = 0,ret;
 
 
     EnterCriticalSection(&st_EmulationRawinputCS);
-    pMouseboardInfo = st_MouseRawInputHandle;
+    pMouseInfo = st_MouseRawInputHandle;
     LeaveCriticalSection(&st_EmulationRawinputCS);
 
-    if(pMouseboardInfo == NULL)
+    if(pMouseInfo == NULL)
     {
         pAllocInfo = calloc(sizeof(*pAllocInfo),1);
         if(pAllocInfo == NULL)
@@ -770,20 +853,20 @@ HANDLE __RegisterMouseHandle()
         {
             inserted = 1;
             st_MouseRawInputHandle = pAllocInfo;
-            pMouseboardInfo = pAllocInfo;
+            pMouseInfo = pAllocInfo;
             st_MouseRawInputName = pMouseName;
             st_MouseRawInputNameWide = pMouseUnicode;
         }
         else
         {
-            pMouseboardInfo = st_KeyRawInputHandle;
+            pMouseInfo = st_KeyRawInputHandle;
             inserted = 0;
         }
         LeaveCriticalSection(&st_EmulationRawinputCS);
 
         if(inserted == 0)
         {
-            DETOURRAWINPUT_DEBUG_INFO("To Free Keyboard DEV INFO 0x%p\n",pMouseboardInfo);
+            DETOURRAWINPUT_DEBUG_INFO("To Free Keyboard DEV INFO 0x%p\n",pMouseInfo);
             free(pAllocInfo);
             pAllocInfo = NULL;
             free(pMouseName);
@@ -793,7 +876,7 @@ HANDLE __RegisterMouseHandle()
         }
     }
 
-    return pMouseboardInfo;
+    return pMouseInfo;
 }
 
 int __CopyKeyboardDeviceList(PRAWINPUTDEVICELIST pRawList)
@@ -981,7 +1064,22 @@ BOOL __GetDeviceNameWNoLock(HANDLE hDevice,void * pData,UINT * pcbSize)
     return bret;
 }
 
+int __GetRawInputDeviceNum()
+{
+    int retnum=0;
 
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    if(st_KeyRawInputHandle)
+    {
+        retnum ++;
+    }
+    if(st_MouseRawInputHandle)
+    {
+        retnum ++;
+    }
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+    return retnum;
+}
 
 
 BOOL __GetDeviceNameW(HANDLE hDevice,void* pData, UINT* pcbSize)
@@ -1137,21 +1235,7 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
     int ret;
     UINT i;
     RID_DEVICE_INFO *pMouse=NULL,*pKeyBoard=NULL;
-    pMouse = __RegisterMouseHandle();
-    if(pMouse == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        SetLastError(ret);
-        return FALSE;
-    }
 
-    pKeyBoard = __RegisterKeyboardHandle();
-    if(pKeyBoard== NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        SetLastError(ret);
-        return FALSE;
-    }
 
 
     /*now first check for device is supported*/
@@ -1172,6 +1256,38 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
             SetLastError(ret);
             return FALSE;
         }
+
+        if(pDevice->usUsage == 2)
+        {
+            pMouse = __RegisterMouseHandle();
+            if(pMouse == NULL)
+            {
+                ret = LAST_ERROR_CODE();
+                if(pKeyBoard)
+                {
+                    __UnRegisterKeyboardHandle();
+                }
+                pKeyBoard = NULL;
+                SetLastError(ret);
+                return FALSE;
+            }
+        }
+
+        if(pDevice->usUsage == 0x6)
+        {
+            pKeyBoard = __RegisterKeyboardHandle();
+            if(pKeyBoard== NULL)
+            {
+                ret = LAST_ERROR_CODE();
+                if(pMouse)
+                {
+                    __UnRegisterMouseHandle();
+                }
+                pMouse = NULL;
+                SetLastError(ret);
+                return FALSE;
+            }
+        }
     }
 
     /*now all is ok  ,so we do not need any more*/
@@ -1187,6 +1303,8 @@ UINT WINAPI GetRawInputDeviceListCallBack(
 {
     UINT uret;
     int ret;
+    int retnum=0;
+    int num=0;
 
     /*now check for the input */
     if(puiNumDevices == NULL || cbSize != sizeof(*pRawInputDeviceList))
@@ -1196,6 +1314,8 @@ UINT WINAPI GetRawInputDeviceListCallBack(
         return (UINT) -1;
     }
 
+    num = *puiNumDevices;
+
     if(*puiNumDevices < 2 || pRawInputDeviceList == NULL)
     {
         ret = ERROR_INVALID_PARAMETER;
@@ -1204,27 +1324,37 @@ UINT WINAPI GetRawInputDeviceListCallBack(
         return (UINT) -1;
     }
 
-    *puiNumDevices = 2;
+    retnum = __GetRawInputDeviceNum();
+    *puiNumDevices = retnum;
+    if(retnum == 0)
+    {
+        return 0;
+    }
+
+    num = 0;
     /*now we should copy the memory*/
-    ret = __CopyKeyboardDeviceList(&(pRawInputDeviceList[0]));
-    if(ret < 0)
+    ret = __CopyKeyboardDeviceList(&(pRawInputDeviceList[num]));
+    if(ret >= 0)
     {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Copy Keyboard DeviceList Error(%d)\n",ret);
+        num ++;
+    }
+
+    if(num >= retnum)
+    {
+        ret = ERROR_INSUFFICIENT_BUFFER;
+        *puiNumDevices = num + 1;
         SetLastError(ret);
         return (UINT) -1;
     }
 
-    ret = __CopyMouseDeviceList(&(pRawInputDeviceList[1]));
-    if(ret < 0)
+    ret = __CopyMouseDeviceList(&(pRawInputDeviceList[num]));
+    if(ret >=  0)
     {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Copy Mouse DeviceList Error(%d)\n",ret);
-        SetLastError(ret);
-        return (UINT) -1;
+        num ++;
     }
+    *puiNumDevices = num;
 
-    return 2;
+    return num;
 }
 
 UINT WINAPI GetRawInputDeviceInfoACallBack(
@@ -1237,15 +1367,15 @@ UINT WINAPI GetRawInputDeviceInfoACallBack(
     BOOL bret;
     int ret;
 
+    if(pcbSize == NULL || hDevice == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return (UINT) -1;
+    }
     /*now first to copy the data*/
     if(uiCommand == RIDI_DEVICENAME)
     {
-        if(pcbSize == NULL)
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            SetLastError(ret);
-            return (UINT) -1;
-        }
         bret= __GetDeviceNameA(hDevice,pData,pcbSize);
         if(!bret)
         {
@@ -1257,12 +1387,6 @@ UINT WINAPI GetRawInputDeviceInfoACallBack(
     }
     else if(uiCommand == RIDI_DEVICEINFO)
     {
-        if(pcbSize == NULL)
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            SetLastError(ret);
-            return (UINT) -1;
-        }
         if(*pcbSize != sizeof(RID_DEVICE_INFO))
         {
             ret = ERROR_INVALID_PARAMETER;
@@ -1281,12 +1405,6 @@ UINT WINAPI GetRawInputDeviceInfoACallBack(
     }
     else if(uiCommand == RIDI_PREPARSEDDATA)
     {
-        if(pcbSize == NULL)
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            SetLastError(ret);
-            return (UINT) -1;
-        }
         ret = __GetDeviceInfoLast(hDevice,pData,pcbSize);
         return (UINT)ret;
     }
@@ -1308,15 +1426,16 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
     BOOL bret;
     int ret;
 
+    if(pcbSize == NULL || hDevice == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return (UINT) -1;
+    }
+
     /*now first to copy the data*/
     if(uiCommand == RIDI_DEVICENAME)
     {
-        if(pcbSize == NULL)
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            SetLastError(ret);
-            return (UINT) -1;
-        }
         bret= __GetDeviceNameW(hDevice,pData,pcbSize);
         if(!bret)
         {
@@ -1328,15 +1447,10 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
     }
     else if(uiCommand == RIDI_DEVICEINFO)
     {
-        if(pcbSize == NULL)
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            SetLastError(ret);
-            return (UINT) -1;
-        }
         if(*pcbSize != sizeof(RID_DEVICE_INFO))
         {
             ret = ERROR_INVALID_PARAMETER;
+            *pcbSize = sizeof(RID_DEVICE_INFO);
             SetLastError(ret);
             return (UINT) -1;
         }
@@ -1352,12 +1466,6 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
     }
     else if(uiCommand == RIDI_PREPARSEDDATA)
     {
-        if(pcbSize == NULL)
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            SetLastError(ret);
-            return (UINT) -1;
-        }
         ret = __GetDeviceInfoLast(hDevice,pData,pcbSize);
         return (UINT)ret;
     }
@@ -1419,6 +1527,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
         if(cbSizeHeader != sizeof(pRawInput->header))
         {
             ret = ERROR_INVALID_PARAMETER;
+            *pcbSize = sizeof(pRawInput->header);
             SetLastError(ret);
             return (UINT) -1;
         }
@@ -1429,10 +1538,12 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             {
                 ret = ERROR_NO_DATA;
                 ERROR_INFO("No keyboard data for <0x%p>\n",st_KeyRawInputHandle);
+                *pcbSize = sizeof(pRawInput->header);
                 SetLastError(ret);
                 return (UINT) -1;
             }
             pRawInput = st_KeyRawInputVecs[0];
+            *pcbSize = sizeof(pRawInput->header);
             /*not to remove the vectors ,for next read*/
             CopyMemory(pData,&(pRawInput->header),sizeof(pRawInput->header));
             return sizeof(pRawInput->header);
@@ -1443,10 +1554,12 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             {
                 ret = ERROR_NO_DATA;
                 ERROR_INFO("No Mouse data for <0x%p>\n",st_MouseRawInputHandle);
+                *pcbSize = sizeof(pRawInput->header);
                 SetLastError(ret);
                 return (UINT) -1;
             }
             pRawInput = st_MouseRawInputVecs[0];
+            *pcbSize = sizeof(pRawInput->header);
             /*not to remove the vectors ,for next read*/
             CopyMemory(pData,&(pRawInput->header),sizeof(pRawInput->header));
             return sizeof(pRawInput->header);
@@ -1454,6 +1567,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
         else
         {
             ret = ERROR_DEV_NOT_EXIST;
+            *pcbSize = sizeof(pRawInput->header);
             SetLastError(ret);
             return (UINT) -1;
         }
@@ -1470,9 +1584,10 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
                 SetLastError(ret);
                 return (UINT) -1;
             }
-            if(cbSizeHeader != sizeof(pRawInput->header))
+            if(cbSizeHeader != (sizeof(pRawInput->header)))
             {
                 ret = ERROR_INVALID_PARAMETER;
+                *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->keyboard));
                 SetLastError(ret);
                 return (UINT) -1;
             }
@@ -1480,6 +1595,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             {
                 ret = ERROR_NO_DATA;
                 ERROR_INFO("No keyboard data for <0x%p>\n",st_KeyRawInputHandle);
+                *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->keyboard));
                 SetLastError(ret);
                 return (UINT) -1;
             }
@@ -1487,6 +1603,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             /*remove this input handle*/
             st_KeyRawInputVecs.erase(st_KeyRawInputVecs.begin());
             CopyMemory(pData,pRawInput,(sizeof(pRawInput->header)+sizeof(pRawInput->keyboard)));
+            *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->keyboard));
             /*free memory ,and not let it memory leak*/
             free(pRawInput);
             pRawInput = NULL;
@@ -1501,9 +1618,10 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
                 SetLastError(ret);
                 return (UINT) -1;
             }
-            if(cbSizeHeader != sizeof(pRawInput->header))
+            if(cbSizeHeader != (sizeof(pRawInput->header)))
             {
                 ret = ERROR_INVALID_PARAMETER;
+                *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->mouse));
                 SetLastError(ret);
                 return (UINT) -1;
             }
@@ -1511,12 +1629,14 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             {
                 ret = ERROR_NO_DATA;
                 ERROR_INFO("No Mouse data for <0x%p>\n",st_MouseRawInputHandle);
+                *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->mouse));
                 SetLastError(ret);
                 return (UINT) -1;
             }
             pRawInput = st_MouseRawInputVecs[0];
             st_MouseRawInputVecs.erase(st_MouseRawInputVecs.begin());
             CopyMemory(pData,pRawInput,(sizeof(pRawInput->header)+sizeof(pRawInput->mouse)));
+            *pcbSize = (sizeof(pRawInput->header)+sizeof(pRawInput->mouse));
             /*free memory ,and not let it memory leak*/
             free(pRawInput);
             pRawInput = NULL;
@@ -1547,7 +1667,7 @@ UINT WINAPI GetRawInputDataCallBack(
     UINT uret;
     int ret;
 
-    if(pcbSize == NULL)
+    if(pcbSize == NULL || hRawInput == NULL)
     {
         ret = ERROR_INVALID_PARAMETER;
         SetLastError(ret);
