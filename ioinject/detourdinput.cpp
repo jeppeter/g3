@@ -168,7 +168,7 @@ BOOL DetourDirectInputInit(void)
 
 #ifdef  DETOUR_DINPUT_EMULATION
     InitializeCriticalSection(&st_Dinput8DeviceCS);
-    ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL,);
+    ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL,30);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();

@@ -47,7 +47,9 @@ typedef SHORT(WINAPI *GetAsyncKeyStateFunc_t)(
 #error "only accept either DETOUR_RAWINPUT_DEBUG or DETOUR_RAWINPUT_EMULATION defined"
 #endif
 
-#if  not (defined(DETOUR_RAWINPUT_DEBUG) || defined(DETOUR_RAWINPUT_EMULATION))
+#if   defined(DETOUR_RAWINPUT_DEBUG) 
+#elif defined(DETOUR_RAWINPUT_EMULATION)
+#else
 #error "must define one of DETOUR_RAWINPUT_DEBUG or DETOUR_RAWINPUT_EMULATION"
 #endif
 

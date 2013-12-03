@@ -6,6 +6,7 @@ this file is the file to
 #define __IO_INJECT_THREAD_H__
 
 #include <funclist.h>
+#include <iocapcommon.h>
 
 #ifdef __cplusplus
 extern "C" {

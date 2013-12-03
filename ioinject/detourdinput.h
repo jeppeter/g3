@@ -11,15 +11,25 @@
 #define  MOUSE_MIN_BTN          1
 #define  MOUSE_MAX_BTN         3
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 BOOL DetourDirectInputInit(void);
 void DetourDirectInputFini(void);
 
 int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl);
 
-int RawInputPressKeyDownTimes(UINT scancode);
-int RawInputClientMousePoint(POINT* pPoint);
-int RawInputMouseBtnDown(UINT btn);
-int RawInputSetWindowsRect(HWND hWnd,RECT *pRect);
+int DetourDinputPressKeyDownTimes(UINT scancode);
+int DetourDinputMouseBtnDown(UINT btn);
+int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint);
+int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect);
+
+
+#ifdef __cplusplus
+};
+#endif
+
+
 
 #endif /*__DETOUR_DINPUT_H__*/
 

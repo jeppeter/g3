@@ -1,6 +1,8 @@
 
 
 #include <vector>
+#define   DIRECTINPUT_VERSION  0x0800
+#include <dinput.h>
 
 #define  DEVICE_GET_INFO   0x1
 #define  DEVICE_GET_NAMEA  0x2
@@ -106,7 +108,6 @@ static int st_CodeMapDik[256] =
 
 int SetKeyState(UINT vsk,int keydown)
 {
-    int ret;
     UINT vk;
     vk = MapVirtualKey(vsk,MAPVK_VSC_TO_VK_EX);
     if(vk == 0)
@@ -287,7 +288,7 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput)
     {
         pInput->header.hDevice = st_KeyRawInputHandle;
         pInput->header.wParam = RIM_INPUT;
-        lret = st_KeyRawInputHandle;
+        lret =(LONG) st_KeyRawInputHandle;
         if(st_KeyRawInputVecs.size() >= RAW_INPUT_MAX_INPUT_SIZE)
         {
             pRemove = st_KeyRawInputVecs[0];
@@ -321,15 +322,15 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
-    pKeyInput = calloc(sizeof(*pKeyInput),1);
+    pKeyInput = (RAWINPUT*)calloc(sizeof(*pKeyInput),1);
     if(pKeyInput == NULL)
     {
         ret = LAST_ERROR_CODE();
         goto fail;
     }
 
-    pKeyInput->dwType = RIM_TYPEKEYBOARD;
-    pKeyInput->dwSize = sizeof(pKeyInput->header) + sizeof(pKeyInput->keyboard);
+    pKeyInput->header.dwType = RIM_TYPEKEYBOARD;
+    pKeyInput->header.dwSize = sizeof(pKeyInput->header) + sizeof(pKeyInput->data.keyboard);
 
     scank = st_CodeMapDik[pDevEvent->event.keyboard.code];
     if(scank == DIK_NULL)
