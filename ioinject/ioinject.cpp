@@ -7,6 +7,7 @@
 #include "detourmessage.h"
 #include "ioinject.h"
 #include <injectbase.h>
+#include "ioinject_thread.h"
 
 static int st_IoInjectInited=0;
 

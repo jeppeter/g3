@@ -531,7 +531,7 @@ int DetourDinputMouseBtnDown(UINT btn)
 
 int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
 {
-    int ret;
+    int ret=0;
     int findidx=-1;
     UINT i;
     RECT rRect = *pRect;
@@ -556,6 +556,7 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
         /*now we push it*/
         st_hWndVecs.push_back(hWnd);
         st_hWndRectVecs.push_back(rRect);
+		ret = 1;
     }
     __ReCalculateMaxWindowRectNoLock();
     __ReCalculateMousePointNoLock(0);

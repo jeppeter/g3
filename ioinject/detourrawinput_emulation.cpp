@@ -6,6 +6,7 @@
 #include "detourmessage.h"
 #include <assert.h>
 #include "detourdinput.h"
+#include "ioinject_thread.h"
 
 #define  DEVICE_GET_INFO   0x1
 #define  DEVICE_GET_NAMEA  0x2
