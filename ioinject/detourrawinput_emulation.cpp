@@ -720,7 +720,7 @@ HANDLE __RegisterKeyboardHandle()
         }
         wcsncpy_s(pKeyUnicode,256,L"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
 
-        pAllocInfo->cbSize = sizeof(pAllocInfo->header) + sizeof(pAllocInfo->keyboard);
+        pAllocInfo->cbSize = sizeof(pAllocInfo->cbSize) + sizeof(pAllocInfo->dwType) + sizeof(pAllocInfo->keyboard);
         pAllocInfo->dwType = RIM_TYPEKEYBOARD;
         pAllocInfo->keyboard.dwType = 7;
         pAllocInfo->keyboard.dwSubType = 0;
@@ -818,7 +818,7 @@ HANDLE __RegisterMouseHandle()
 
     if(pMouseInfo == NULL)
     {
-        pAllocInfo = calloc(sizeof(*pAllocInfo),1);
+        pAllocInfo = (RID_DEVICE_INFO*)calloc(sizeof(*pAllocInfo),1);
         if(pAllocInfo == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -826,7 +826,7 @@ HANDLE __RegisterMouseHandle()
             return NULL;
         }
 
-        pMouseName = calloc(1,256);
+        pMouseName = (uint8_t*)calloc(1,256);
         if(pMouseName == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -834,8 +834,8 @@ HANDLE __RegisterMouseHandle()
             SetLastError(ret);
             return NULL;
         }
-        strncpy_s(pMouseName,256,"\\\\?\\Mouse_Emulate",_TRUNCATE);
-        pMouseUnicode = calloc(2,256);
+        strncpy_s((char*)pMouseName,256,"\\\\?\\Mouse_Emulate",_TRUNCATE);
+        pMouseUnicode = (wchar_t*)calloc(2,256);
         if(pMouseUnicode == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -844,9 +844,9 @@ HANDLE __RegisterMouseHandle()
             SetLastError(ret);
             return NULL;
         }
-        wcsncpy_s(pMouseName,256,L"\\\\?\\Mouse_Emulate",_TRUNCATE);
+        wcsncpy_s(pMouseUnicode,256,L"\\\\?\\Mouse_Emulate",_TRUNCATE);
 
-        pAllocInfo->cbSize = sizeof(pAllocInfo->header) + sizeof(pAllocInfo->keyboard);
+        pAllocInfo->cbSize = sizeof(pAllocInfo->cbSize) + sizeof(pAllocInfo->dwType) + sizeof(pAllocInfo->keyboard);
         pAllocInfo->dwType = RIM_TYPEMOUSE;
         pAllocInfo->mouse.dwId = 256;
         pAllocInfo->mouse.dwNumberOfButtons = 3;
@@ -948,13 +948,12 @@ BOOL __GetDeviceInfoNoLock(HANDLE hDevice,RID_DEVICE_INFO* pInfo)
 {
     BOOL bret=FALSE;
     int ret=ERROR_DEV_NOT_EXIST;
-    RID_DEVICE_INFO *pGetInfo;
     if(hDevice == (HANDLE)st_KeyRawInputHandle)
     {
         ret = 0 ;
         bret = TRUE;
         st_KeyLastInfo = DEVICE_GET_INFO;
-        pInfo->cbSize = sizeof(pInfo->header) + sizeof(pInfo->keyboard);
+        pInfo->cbSize = sizeof(pInfo->cbSize) + sizeof(pInfo->dwType) + sizeof(pInfo->keyboard);
         pInfo->dwType = RIM_TYPEKEYBOARD;
         CopyMemory(&(pInfo->keyboard),&(st_KeyRawInputHandle->keyboard),sizeof(pInfo->keyboard));
     }
@@ -963,7 +962,7 @@ BOOL __GetDeviceInfoNoLock(HANDLE hDevice,RID_DEVICE_INFO* pInfo)
         ret = 0;
         bret = TRUE;
         st_MouseLastInfo = DEVICE_GET_INFO;
-        pInfo->cbSize = sizeof(pInfo->header) + sizeof(pInfo->mouse);
+        pInfo->cbSize = sizeof(pInfo->cbSize) + sizeof(pInfo->dwType) + sizeof(pInfo->mouse);
         pInfo->dwType = RIM_TYPEMOUSE;
         CopyMemory(&(pInfo->mouse),&(st_MouseRawInputHandle->mouse),sizeof(pInfo->mouse));
     }
