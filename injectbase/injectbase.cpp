@@ -669,7 +669,7 @@ int InjectBaseModuleInit(HMODULE hModule)
 
 void SetUnHandlerExceptionDetour()
 {
-    SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
+    //SetUnhandledExceptionFilter(DetourApplicationCrashHandler);
 }
 
 void InjectBaseModuleFini(HMODULE hModule)

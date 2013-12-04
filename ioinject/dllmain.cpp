@@ -17,18 +17,18 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
-		DEBUG_INFO("hModule %d Pid %d\n",hModule,GetCurrentProcessId());
+		DEBUG_INFO("IoInject hModule 0x%x Pid %d\n",hModule,GetCurrentProcessId());
 		InitIoInject(hModule);
+		DEBUG_INFO("IoInject Init Clean\n");
 		break;
 	case DLL_THREAD_ATTACH:
-		DEBUG_INFO("hModule %d Pid %d\n",hModule,GetCurrentProcessId());
 		break;
 	case DLL_THREAD_DETACH:
-		DEBUG_INFO("hModule %d Pid %d\n",hModule,GetCurrentProcessId());
 		break;
 	case DLL_PROCESS_DETACH:
-		DEBUG_INFO("hModule %d Pid %d\n",hModule,GetCurrentProcessId());
+		DEBUG_INFO("IoInject hModule 0x%x Pid %d\n",hModule,GetCurrentProcessId());
 		FiniIoInject(hModule);
+		DEBUG_INFO("IoInject Fini Clean\n");
 		break;
 	}
 	return TRUE;

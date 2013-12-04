@@ -178,17 +178,23 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
         return;
     }
     pStatus = *ppStatus;
+	DEBUG_INFO("\n");
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
+	DEBUG_INFO("\n");
 
     /*now to delete all the free event*/
     __ClearEventList(pStatus);
+	DEBUG_INFO("\n");
     __FreeDetourEvents(pStatus);
+	DEBUG_INFO("\n");
 
     /*now to unmap memory*/
     __UnMapMemBase(pStatus);
+	DEBUG_INFO("\n");
 
     free(pStatus);
+	DEBUG_INFO("\n");
     *ppStatus = NULL;
 
     return ;
