@@ -607,7 +607,7 @@ int __SetWindowRect(HWND hWnd)
             hGetWnd = msg.hwnd;
         }
     }
-	
+
     if(hGetWnd == NULL)
     {
         return 0;
@@ -653,9 +653,9 @@ BOOL WINAPI GetMessageACallBack(
         return FALSE;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     __SetWindowRect(hWnd);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -664,6 +664,7 @@ try_again:
     }
 
 
+    ZeroMemory(lpMsg,sizeof(*lpMsg));
     bret = GetMessageANext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
     if(bret)
     {
@@ -701,9 +702,9 @@ BOOL WINAPI PeekMessageACallBack(
         return FALSE;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     __SetWindowRect(hWnd);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
@@ -712,6 +713,7 @@ try_again:
         return TRUE;
     }
 
+    ZeroMemory(lpMsg,sizeof(*lpMsg));
     bret = PeekMessageANext(lpMsg,hWnd,wMsgFilterMin,
                             wMsgFilterMax,wRemoveMsg);
     if(bret)
@@ -750,9 +752,9 @@ BOOL WINAPI GetMessageWCallBack(
         return FALSE;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     __SetWindowRect(hWnd);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -760,6 +762,7 @@ try_again:
         return TRUE;
     }
 
+    ZeroMemory(lpMsg,sizeof(*lpMsg));
     bret = GetMessageWNext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
     if(bret)
     {
@@ -794,19 +797,25 @@ BOOL WINAPI PeekMessageWCallBack(
 
     __SetWindowRect(hWnd);
 try_again:
-	DEBUG_INFO("\n");
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)
     {
-		DEBUG_INFO("\n");
+        DEBUG_INFO("GetMessage\n");
         return TRUE;
     }
-	DEBUG_INFO("\n");
 
+    ZeroMemory(lpMsg,sizeof(*lpMsg));
     bret = PeekMessageWNext(lpMsg,hWnd,wMsgFilterMin,
                             wMsgFilterMax,wRemoveMsg);
     if(bret)
     {
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)||
                 (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
         {
@@ -824,6 +833,11 @@ try_again:
         {
             bret = FALSE;
         }
+    }
+    else
+    {
+    	ZeroMemory(lpMsg,sizeof(*lpMsg));
+        ERROR_INFO("PeekMessageW return FALSE\n");
     }
     return bret;
 }

@@ -30,7 +30,9 @@ typedef BOOL (WINAPI *PeekMessageFunc_t)(
 #endif
 
 #ifdef DETOUR_MESSAGE_EMULATION
+#pragma message("@message emulation@")
 #elif DETOUR_MESSAGE_DEBUG
+#pragma message("@message debug@")
 #else
 #error "must define one of DETOUR_MESSAGE_DEBUG and DETOUR_MESSAGE_EMULATION"
 #endif

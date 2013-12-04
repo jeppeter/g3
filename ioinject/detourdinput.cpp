@@ -23,7 +23,9 @@
 #endif
 
 #if defined(DETOUR_DINPUT_DEBUG)
+#pragma message("@dinput debug@")
 #elif defined(DETOUR_DINPUT_EMULATION)
+#pragma message("@dinput emulation@")
 #else
 #error "must specify DETOUR_DINPUT_EMULATION or DETOUR_DINPUT_DEBUG"
 #endif

@@ -454,8 +454,8 @@ ULONG UnRegisterDirectInputDevice8WHook(IDirectInputDevice8W* ptr)
 }
 
 
-#define  DIRECT_INPUT_DEVICE_8W_IN()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
-#define  DIRECT_INPUT_DEVICE_8W_OUT()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8W_IN()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p->0x%p in\n",__FUNCTION__,this,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8W_OUT()  do{DINPUT_DEBUG_INFO("Device8W::%s 0x%p->0x%p out\n",__FUNCTION__,this,this->m_ptr);}while(0)
 
 
 class CDirectInputDevice8WHook : public IDirectInputDevice8W
