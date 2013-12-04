@@ -1519,7 +1519,7 @@ public:
     {
         HRESULT hr;
         int ret;
-        DIRECT_INPUT_DEVICE_8A_IN();
+        DIRECT_INPUT_DEVICE_8W_IN();
         if(this->__IsMouseDevice())
         {
             if(lpvData == NULL)

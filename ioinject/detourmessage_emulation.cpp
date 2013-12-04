@@ -597,20 +597,36 @@ int __SetWindowRect(HWND hWnd)
     RECT rRect;
     BOOL bret;
     int ret;
-    bret = GetWindowRect(hWnd,&rRect);
+    HWND hGetWnd=hWnd;
+    if(hGetWnd == NULL)
+    {
+        MSG msg;
+        bret = PeekMessageANext(&msg,hGetWnd,0,0,PM_NOREMOVE);
+        if(bret && msg.hwnd)
+        {
+            hGetWnd = msg.hwnd;
+        }
+    }
+	
+    if(hGetWnd == NULL)
+    {
+        return 0;
+    }
+    SetLastError(0);
+    bret = GetClientRect(hGetWnd,&rRect);
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("GetWindowRect(0x%08x) Error(%d)\n",hWnd,ret);
+        ERROR_INFO("GetClientRect(0x%08x) Error(%d)\n",hGetWnd,ret);
         return 0;
     }
 
-    ret = DetourDinputSetWindowsRect(hWnd,&rRect);
+    ret = DetourDinputSetWindowsRect(hGetWnd,&rRect);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
         ERROR_INFO("DetourDinputSetWindowRect(0x%08x) left-top(%d-%d) right-bottom(%d-%d) Error(%d)\n",
-                   hWnd,rRect.left,
+                   hGetWnd,rRect.left,
                    rRect.top,
                    rRect.right,
                    rRect.bottom,

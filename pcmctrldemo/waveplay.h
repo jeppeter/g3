@@ -39,7 +39,7 @@ private:
 
 	WAVEFORMATEX m_Waveformat;
 
-	CRITICAL_SECTION	m_Lock;
+	CRITICAL_SECTION m_Lock;
 	int			m_BufferQueue;
 };
 
