@@ -1491,4 +1491,22 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
     return 0;
 }
 
+int DetourDinput8GetMousePointAbsolution(POINT *pPoint)
+{
+	pPoint->x = 0;
+	pPoint->y = 0;
+	return 0;
+}
 
+
+int DetourDinputPressKeyDownTimes(UINT scancode)
+{
+	return 0;
+}
+
+int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint)
+{
+	pPoint->x = 1;
+	pPoint->y = 1;
+	return 0;
+}

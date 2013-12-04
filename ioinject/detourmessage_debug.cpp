@@ -201,3 +201,8 @@ int __MessageDetour(void)
     return 0;
 }
 
+
+int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
+{
+	return 0;
+}

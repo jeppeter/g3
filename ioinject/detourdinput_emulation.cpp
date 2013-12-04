@@ -1450,7 +1450,7 @@ public:
         DIRECT_INPUT_DEVICE_8W_IN();
         uret = m_ptr->Release();
         DIRECT_INPUT_DEVICE_8W_OUT();
-        DINPUT_DEBUG_INFO("uret = %d\n",uret);
+        DINPUT_DEBUG_INFO("<0x%p->0x%p>uret = %d\n",this,this->m_ptr,uret);
         if(uret == 1)
         {
             uret = UnRegisterDirectInputDevice8WHook(this->m_ptr);
@@ -1522,8 +1522,10 @@ public:
         HRESULT hr;
         int ret;
         DIRECT_INPUT_DEVICE_8W_IN();
+		DEBUG_INFO("\n");
         if(this->__IsMouseDevice())
         {
+        	DEBUG_INFO("\n");
             if(lpvData == NULL)
             {
                 ret = ERROR_INVALID_PARAMETER;
@@ -1568,6 +1570,7 @@ public:
         {
             hr = this->m_ptr->GetDeviceState(cbData,lpvData);
         }
+		DEBUG_INFO("\n");
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
