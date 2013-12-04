@@ -1090,7 +1090,7 @@ BOOL CheckDialogString(HWND hwndDlg)
     bufsize = strtoul(g_pBufSizeStr, NULL, 16);
     waittime = strtoul(g_pBufNumStr, NULL, 10);
 #endif
-	DEBUG_INFO("wait time %d (%S)\n",waittime,g_pWaitTimeStr);
+    DEBUG_INFO("wait time %d (%S)\n",waittime,g_pWaitTimeStr);
 
     if(bufnum == 0 || bufsize < 32)
     {
@@ -1231,6 +1231,89 @@ fail:
 
 }
 
+TCHAR* FileDialogSelect(HWND hWnd,TCHAR *pFilter)
+{
+    OPENFILENAME ofn;
+    std::auto_ptr<TCHAR> pBuffer2(new TCHAR[80*MAX_PATH]);
+    TCHAR *pBuffer = pBuffer2.get();
+    BOOL bret;
+    int ret;
+    UINT nLen;
+    TCHAR *pReturn=NULL;
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.Flags = OFN_EXPLORER ;
+    ofn.lStructSize = sizeof(ofn);
+    ofn.lpstrFile = pBuffer;
+    ofn.nMaxFile = 80*MAX_PATH*sizeof(TCHAR);
+    ofn.lpstrFile[0] = '\0';
+    ofn.lpstrFilter = pFilter;
+
+    bret = GetOpenFileName(&ofn);
+    if(bret)
+    {
+        nLen = lstrlen(pBuffer);
+        pReturn = (TCHAR*)calloc(sizeof(*pReturn),nLen + 1);
+        if(pReturn == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            SetLastError(ret);
+            return NULL;
+        }
+        lstrcpyn(pReturn,pBuffer,nLen + 1);
+    }
+
+    return pReturn;
+}
+
+
+BOOL SelectFileAndSetEdit(HWND hwnd,TCHAR* pFilter,UINT id)
+{
+    TCHAR* pFileName=NULL;
+    HWND hEdt=NULL;
+    BOOL bret=FALSE;
+    int ret=0;
+
+    pFileName = FileDialogSelect(hwnd,pFilter);
+    if(pFileName == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    hEdt = ::GetDlgItem(hwnd,id);
+    if(hEdt== NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get (0x%08x) DlgItem(%d) Error(%d)\n",hwnd,id,ret);
+        goto fail;
+    }
+    bret = ::SetWindowText(hEdt,pFileName);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Set Window (0x%08x) Error(%d)\n",hEdt,ret);
+        goto fail;
+    }
+    if(pFileName)
+    {
+        free(pFileName);
+    }
+    pFileName = NULL;
+
+    SetLastError(0);
+    return TRUE;
+fail:
+    assert(ret > 0);
+    if(pFileName)
+    {
+        free(pFileName);
+    }
+    pFileName = NULL;
+    SetLastError(ret);
+    return FALSE;
+
+}
+
+
 BOOL CALLBACK ShowDialogProc(HWND hwndDlg,
                              UINT message,
                              WPARAM wParam,
@@ -1260,6 +1343,10 @@ BOOL CALLBACK ShowDialogProc(HWND hwndDlg,
         case IDCANCEL:
             EndDialog(hwndDlg,wParam);
             return TRUE;
+        case ID_BTN_EXE_SEL:
+            break;
+        case ID_BTN_DLL_SEL:
+            break;
         }
         break;
 

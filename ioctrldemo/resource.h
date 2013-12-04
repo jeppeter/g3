@@ -2,6 +2,9 @@
 // Microsoft Visual C++ 生成的包含文件。
 // 供 ioctrldemo.rc 使用
 //
+#define ID_BTN_EXE_SEL                  3
+#define ID_DLL_SEL                      4
+#define ID_BTN_DLL_SEL                  4
 #define IDI_ICON1                       101
 #define IDR_MAIN_MENU                   102
 #define IDD_START_DIALOG                103
@@ -24,7 +27,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        104
 #define _APS_NEXT_COMMAND_VALUE         40004
-#define _APS_NEXT_CONTROL_VALUE         1012
+#define _APS_NEXT_CONTROL_VALUE         1015
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
