@@ -911,7 +911,7 @@ BOOL StartExeProcess(HWND hwnd)
     }
 
 
-
+#if 0
     g_pIoController = new CIOController();
 #ifdef _UNICODE
     bufnum = wcstoul(g_pBufNumStr, NULL, 10);
@@ -951,7 +951,7 @@ BOOL StartExeProcess(HWND hwnd)
     }
 
     DEBUG_INFO("Add Mouse %d KeyBoard %d\n",mouseid,keyboardid);
-
+#endif
 
 #ifdef _UNICODE
     UnicodeToAnsi(NULL,&pExeAnsi,&exesize);

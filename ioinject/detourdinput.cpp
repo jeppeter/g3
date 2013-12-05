@@ -13,10 +13,10 @@
 #include <injectbase.h>
 
 #define  DETOUR_DINPUT_DEBUG       1
-//#undef   DETOUR_DINPUT_DEBUG
+#undef   DETOUR_DINPUT_DEBUG
 
 #define  DETOUR_DINPUT_EMULATION   1
-#undef   DETOUR_DINPUT_EMULATION
+//#undef   DETOUR_DINPUT_EMULATION
 
 #if defined(DETOUR_DINPUT_DEBUG) && defined(DETOUR_DINPUT_EMULATION)
 #error "could not define DETOUR_DINPUT_DEBUG and DETOUR_DINPUT_EMULATION both"
