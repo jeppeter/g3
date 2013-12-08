@@ -15,6 +15,7 @@ static PeekMessageFunc_t PeekMessageWNext=PeekMessageW;
 
 static CRITICAL_SECTION st_MessageEmulationCS;
 static std::vector<MSG*> st_MessageEmulationQueue;
+static int st_MessageQuit=0;
 static UINT st_MaxMessageEmulationQueue=20;
 
 
@@ -96,12 +97,20 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
         EnterCriticalSection(&st_MessageEmulationCS);
         if(back)
         {
-            if(st_MessageEmulationQueue.size() > st_MaxMessageEmulationQueue)
+
+            if(st_MessageQuit==0)
             {
-                lpRemove = st_MessageEmulationQueue[0];
-                st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
+                if(st_MessageEmulationQueue.size() > st_MaxMessageEmulationQueue)
+                {
+                    lpRemove = st_MessageEmulationQueue[0];
+                    st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
+                }
+                st_MessageEmulationQueue.push_back(lpMsg);
             }
-            st_MessageEmulationQueue.push_back(lpMsg);
+            else
+            {
+                ret = 0;
+            }
         }
         else
         {
@@ -495,6 +504,20 @@ LPMSG __GetEmulationMessageQueue()
             lGetMsg = st_MessageEmulationQueue[0];
             st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
         }
+        else if(st_MessageQuit)
+        {
+            lGetMsg =(LPMSG) calloc(sizeof(*lGetMsg),1);
+            if(lGetMsg)
+            {
+                lGetMsg->hwnd = NULL;
+                lGetMsg->message = WM_QUIT;
+                lGetMsg->lParam = 0;
+                lGetMsg->wParam = 0;
+                lGetMsg->time = GetTickCount();
+                lGetMsg->pt.x = 0;
+                lGetMsg->pt.y = 0;
+            }
+        }
         LeaveCriticalSection(&st_MessageEmulationCS);
     }
     else
@@ -504,6 +527,20 @@ LPMSG __GetEmulationMessageQueue()
 
     return lGetMsg;
 
+}
+
+int __SetMessageQuit()
+{
+    int ret = -1;
+    if(st_MessageEmualtionInited)
+    {
+        EnterCriticalSection(&st_MessageEmulationCS);
+        ret = 0;
+        st_MessageQuit = 1;
+        LeaveCriticalSection(&st_MessageEmulationCS);
+    }
+
+    return ret;
 }
 
 
@@ -533,7 +570,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         }
         ret = 1;
     }
-    else if(lGetMsg->message >= wMsgFilterMin && lGetMsg->message <= wMsgFilterMax)
+    else if((lGetMsg->message >= wMsgFilterMin && lGetMsg->message <= wMsgFilterMax ) || lGetMsg->message == WM_QUIT)
     {
         CopyMemory(lpMsg,lGetMsg,sizeof(*lGetMsg));
         if(!(remove & PM_REMOVE))
@@ -674,11 +711,10 @@ try_again:
             /*we discard this message*/
             goto try_again;
         }
-
-        if(lpMsg->message == WM_QUIT)
-        {
-            bret = FALSE;
-        }
+    }
+    if(lpMsg->message == WM_QUIT)
+    {
+        __SetMessageQuit();
     }
     return bret;
 }
@@ -731,6 +767,12 @@ try_again:
             goto try_again;
         }
     }
+
+    if(lpMsg->message == WM_QUIT)
+    {
+        __SetMessageQuit();
+    }
+
     return bret;
 }
 
@@ -772,6 +814,14 @@ try_again:
             /*we discard this message ,so get the next one*/
             goto try_again;
         }
+        else if(lpMsg->message == WM_QUIT)
+        {
+            __SetMessageQuit();
+        }
+    }
+    else if(lpMsg->message == WM_QUIT)
+    {
+        __SetMessageQuit();
     }
     return bret;
 }
@@ -829,15 +879,11 @@ try_again:
             goto try_again;
         }
 
-        if(lpMsg->message == WM_QUIT)
-        {
-            bret = FALSE;
-        }
+
     }
-    else
+    if(lpMsg->message == WM_QUIT)
     {
-    	ZeroMemory(lpMsg,sizeof(*lpMsg));
-        ERROR_INFO("PeekMessageW return FALSE\n");
+        __SetMessageQuit();
     }
     return bret;
 }
