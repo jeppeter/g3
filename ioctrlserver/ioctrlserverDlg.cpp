@@ -147,6 +147,21 @@ void CioctrlserverDlg::OnSelExe()
 
 void CioctrlserverDlg::OnStart()
 {
+#ifdef _UNICODE
+    wchar_t *pDllWide=NULL,*pExeWide=NULL,*pParamWide=NULL;
+    int dllwidesize=0,exewidesize=0,paramwidesize=0;
+    char *pDllAnsi=NULL,*pExeAnsi=NULL,*pParamAnsi=NULL;
+    int dllansisize=0,exeansisize=0,paramansisize=0;
+#else
+    char *pDllAnsi=NULL,*pExeAnsi=NULL,*pParamAnsi=NULL;
+    int dllansisize=0,exeansisize=0,paramansisize=0;
+#endif
+
+
+
+fail:
+#ifdef _UNICODE
+#endif
 }
 
 
@@ -157,19 +172,19 @@ void CioctrlserverDlg::__StopControl()
         delete this->m_pIoController;
     }
     this->m_pIoController = NULL;
-	return ;
+    return ;
 }
 void CioctrlserverDlg::OnClose()
 {
-	this->__StopControl();
-	CDialogEx::OnClose();
+    this->__StopControl();
+    CDialogEx::OnClose();
     return ;
 }
 
 void CioctrlserverDlg::OnCancel()
 {
-	this->__StopControl();
-	CDialogEx::OnCancel();
-	return;
+    this->__StopControl();
+    CDialogEx::OnCancel();
+    return;
 }
 

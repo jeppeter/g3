@@ -28,6 +28,13 @@ private:
 // Implementation
 protected:
 	HICON m_hIcon;
+	CString m_strDll;
+	CString m_strExe;
+	CString m_strParam;
+	int m_BufNum;
+	int m_BufSectSize;
+	int m_TimeWait;
+	int m_ListenPort;
 
 	// Generated message map functions
 	virtual BOOL OnInitDialog();
