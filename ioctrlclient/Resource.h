@@ -12,7 +12,6 @@
 #define IDC_IOCTRLCLIENT                109
 #define IDR_MAINFRAME                   128
 #define IDD_DLG_CONNECT                 129
-#define IDOK                            1000
 #define IDC_EDT_HOST                    1001
 #define IDC_EDT_HOST2                   1002
 #define IDC_EDT_PORT                    1002

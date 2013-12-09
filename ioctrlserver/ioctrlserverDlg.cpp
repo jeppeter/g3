@@ -30,6 +30,8 @@ void CioctrlserverDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CioctrlserverDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+    ON_COMMAND(IDC_BTN_EXE,OnSelExe)
+    ON_COMMAND(IDC_BTN_DLL,OnSelDll)
 END_MESSAGE_MAP()
 
 
@@ -37,6 +39,8 @@ END_MESSAGE_MAP()
 
 BOOL CioctrlserverDlg::OnInitDialog()
 {
+	CEdit* pEdt=NULL;
+	CString fmtstr;
 	CDialogEx::OnInitDialog();
 
 	// Set the icon for this dialog.  The framework does this automatically
@@ -45,6 +49,15 @@ BOOL CioctrlserverDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
+	pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_BUFNUM);
+	fmtstr.Format(TEXT("10"));
+	pEdt->SetWindowText(fmtstr);
+	pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_BUFSIZE);
+	fmtstr.Format(TEXT("400"));
+	pEdt->SetWindowText(fmtstr);
+	pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_WAITTIME);
+	fmtstr.Format(TEXT("1"));
+	pEdt->SetWindowText(fmtstr);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -83,5 +96,35 @@ void CioctrlserverDlg::OnPaint()
 HCURSOR CioctrlserverDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
+}
+
+void CioctrlserverDlg::OnSelDll()
+{
+    CFileDialog fdlg(TRUE,NULL,NULL,OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_READONLY,
+                     TEXT("dynamic link library files (*.dll)|*.dll||"),NULL);
+    CString fname;
+    CEdit* pEdt=NULL;
+    if(fdlg.DoModal() == IDOK)
+    {
+        fname = fdlg.GetPathName();
+        pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_DLL);
+        pEdt->SetWindowText(fname);
+    }
+	return ;
+}
+
+void CioctrlserverDlg::OnSelExe()
+{
+    CFileDialog fdlg(TRUE,NULL,NULL,OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_READONLY,
+                     TEXT("execute files (*.exe)|*.exe||"),NULL);
+    CString fname;
+    CEdit* pEdt=NULL;
+    if(fdlg.DoModal() == IDOK)
+    {
+        fname = fdlg.GetPathName();
+        pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_EXE);
+        pEdt->SetWindowText(fname);
+    }
+	return ;
 }
 
