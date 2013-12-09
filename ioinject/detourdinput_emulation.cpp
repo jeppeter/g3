@@ -368,7 +368,7 @@ int Dinput8SetWindowRectState(HWND hwnd)
 
     if(refreshed > 0)
     {
-    	/*we have refreshed window ,so recalculate the window*/
+        /*we have refreshed window ,so recalculate the window*/
         __ReCalculateMaxWindowRectNoLock();
         __ReCalculateMousePointNoLock(0);
     }
@@ -569,6 +569,7 @@ int DetourDinput8SetKeyMouseState(LPVOID pParam,LPVOID pInput)
             pDevEvent->devtype != DEVICE_TYPE_MOUSE)
     {
         ret = ERROR_NOT_SUPPORTED;
+        ERROR_INFO("<0x%p> Not Supported devtype(%d)\n",pDevEvent,pDevEvent->devtype);
         SetLastError(ret);
         return -ret;
     }
@@ -611,7 +612,7 @@ int DetourDinputMouseBtnDown(UINT btn)
 
 int DetourDinputSetWindowsRect(HWND hWnd)
 {
-	return Dinput8SetWindowRectState(hWnd);
+    return Dinput8SetWindowRectState(hWnd);
 }
 
 

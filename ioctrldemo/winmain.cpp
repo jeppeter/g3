@@ -911,7 +911,7 @@ BOOL StartExeProcess(HWND hwnd)
     }
 
 
-#if 0
+#if 1
     g_pIoController = new CIOController();
 #ifdef _UNICODE
     bufnum = wcstoul(g_pBufNumStr, NULL, 10);

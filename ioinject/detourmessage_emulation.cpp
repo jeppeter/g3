@@ -489,6 +489,7 @@ int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
     }
 
     ret = ERROR_NOT_SUPPORTED;
+	ERROR_INFO("<0x%p>Not Supported devtype(%d)\n",pDevEvent,pDevEvent->devtype);
     SetLastError(ret);
     return -ret;
 }
