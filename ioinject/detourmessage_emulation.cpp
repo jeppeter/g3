@@ -95,7 +95,7 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
     {
         uint32_t curtick = GetTickCount();
         ret = 0;
-		DEBUG_INFO("%s Insert 0x%p\n",back ? "Back" : "Front",lpMsg);
+        DEBUG_INFO("%s Insert 0x%p\n",back ? "Back" : "Front",lpMsg);
         EnterCriticalSection(&st_MessageEmulationCS);
         if(back)
         {
@@ -127,7 +127,7 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
                                         lpRemove->wParam,lpRemove->wParam,
                                         lpRemove->lParam,lpRemove->lParam);
             free(lpRemove);
-			EMULATIONMESSAGE_DEBUG_INFO("remove over\n");
+            EMULATIONMESSAGE_DEBUG_INFO("remove over\n");
         }
         lpRemove = NULL;
         return ret;
@@ -143,7 +143,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
     LPMSG lcpMsg=NULL;
     if(st_MessageEmualtionInited)
     {
-        lcpMsg = (LPMSG)malloc(sizeof(*lcpMsg));
+        lcpMsg = (LPMSG)calloc(sizeof(*lcpMsg),1);
         if(lcpMsg == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -157,7 +157,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
             ret = LAST_ERROR_CODE();
             free(lcpMsg);
             return -ret;
-        }		
+        }
         lcpMsg = NULL;
 
         SetLastError(0);
@@ -320,7 +320,7 @@ int __InsertKeyboardMessageDevEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
-    ret= __InsertMessageQueue(&Msg,1);
+    ret= InsertEmulationMessageQueue(&Msg,1);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -462,7 +462,7 @@ int __InsertMouseMessageDevEvent(LPDEVICEEVENT pDevEvent)
         Msg.wParam |= (wdelta);
     }
 
-    ret = __InsertMessageQueue(&Msg,1);
+    ret = InsertEmulationMessageQueue(&Msg,1);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -492,7 +492,7 @@ int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
     }
 
     ret = ERROR_NOT_SUPPORTED;
-	ERROR_INFO("<0x%p>Not Supported devtype(%d)\n",pDevEvent,pDevEvent->devtype);
+    ERROR_INFO("<0x%p>Not Supported devtype(%d)\n",pDevEvent,pDevEvent->devtype);
     SetLastError(ret);
     return -ret;
 }
@@ -624,8 +624,11 @@ fail:
     assert(ret > 0);
     if(lGetMsg)
     {
-        res = InsertEmulationMessageQueue(lGetMsg,0);
-        assert(res >= 0);
+        if(lGetMsg->message != WM_QUIT)
+        {
+            res = InsertEmulationMessageQueue(lGetMsg,0);
+            assert(res >= 0);
+        }
         free(lGetMsg);
     }
     lGetMsg = NULL;
