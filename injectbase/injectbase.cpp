@@ -805,6 +805,59 @@ BOOL WINAPI DestroyWindowCallBack(HWND hwnd)
     return bret;
 }
 
+CFuncList st_CreateWindowFuncList;
+typedef HWND (WINAPI *CreateWindowAFunc_t)(LPCSTR lpClassName,
+        LPCSTR lpWindowName,
+        DWORD dwStyle,
+        int x,
+        int y,
+        int nWidth,
+        int nHeight,
+        HWND hWndParent,
+        HMENU hMenu,
+        HINSTANCE hInstance,
+        LPVOID lpParam);
+typedef HWND (WINAPI *CreateWindowWFunc_t)(LPCWSTR lpClassName,
+        LPCWSTR lpWindowName,
+        DWORD dwStyle,
+        int x,
+        int y,
+        int nWidth,
+        int nHeight,
+        HWND hWndParent,
+        HMENU hMenu,
+        HINSTANCE hInstance,
+        LPVOID lpParam);
+
+typedef HWND (WINAPI *CreateWindowExAFunc_t)(DWORD dwExStyle,
+        LPCSTR lpClassName,
+        LPCSTR lpWindowName,
+        DWORD dwStyle,
+        int x,
+        int y,
+        int nWidth,
+        int nHeight,
+        HWND hWndParent,
+        HMENU hMenu,
+        HINSTANCE hInstance,
+        LPVOID lpParam);
+
+typedef HWND (WINAPI *CreateWindowExWFunc_t)(DWORD dwExStyle,
+        LPCSTR lpClassName,
+        LPCSTR lpWindowName,
+        DWORD dwStyle,
+        int x,
+        int y,
+        int nWidth,
+        int nHeight,
+        HWND hWndParent,
+        HMENU hMenu,
+        HINSTANCE hInstance,
+        LPVOID lpParam);
+
+static CreateWindowAFunc_t CreateWindowANext=CreateWindowA;
+static CreateWindowWFunc_t CreateWindowWNext=CreateWindowW;
+
 
 static int DetourDestroyWindow()
 {
