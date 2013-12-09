@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <iocapctrl.h>
 
 
 // CioctrlserverDlg dialog
@@ -11,7 +12,6 @@ class CioctrlserverDlg : public CDialogEx
 // Construction
 public:
 	CioctrlserverDlg(CWnd* pParent = NULL);	// standard constructor
-
 // Dialog Data
 	enum { IDD = IDD_IOCTRLSERVER_DIALOG };
 
@@ -19,6 +19,12 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
 
+
+private:
+	void __StopControl();
+
+private:
+	CIOController           *m_pIoController;
 // Implementation
 protected:
 	HICON m_hIcon;
@@ -29,5 +35,8 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	afx_msg void OnSelExe();
 	afx_msg void OnSelDll();
+	afx_msg void OnStart();
+	afx_msg void OnClose();
+	afx_msg void OnCancel();
 	DECLARE_MESSAGE_MAP()
 };
