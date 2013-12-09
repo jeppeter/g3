@@ -632,6 +632,7 @@ LONG WINAPI DetourApplicationCrashHandler(EXCEPTION_POINTERS *pException)
 
 
 static int DetourDestroyWindow();
+static int DetourCreateWindow();
 
 int InjectBaseModuleInit(HMODULE hModule)
 {
@@ -646,6 +647,12 @@ int InjectBaseModuleInit(HMODULE hModule)
     }
 
     ret = DetourDestroyWindow();
+    if(ret < 0)
+    {
+        return 0;
+    }
+
+    ret = DetourCreateWindow();
     if(ret < 0)
     {
         return 0;
@@ -806,29 +813,6 @@ BOOL WINAPI DestroyWindowCallBack(HWND hwnd)
 }
 
 CFuncList st_CreateWindowFuncList;
-typedef HWND (WINAPI *CreateWindowAFunc_t)(LPCSTR lpClassName,
-        LPCSTR lpWindowName,
-        DWORD dwStyle,
-        int x,
-        int y,
-        int nWidth,
-        int nHeight,
-        HWND hWndParent,
-        HMENU hMenu,
-        HINSTANCE hInstance,
-        LPVOID lpParam);
-typedef HWND (WINAPI *CreateWindowWFunc_t)(LPCWSTR lpClassName,
-        LPCWSTR lpWindowName,
-        DWORD dwStyle,
-        int x,
-        int y,
-        int nWidth,
-        int nHeight,
-        HWND hWndParent,
-        HMENU hMenu,
-        HINSTANCE hInstance,
-        LPVOID lpParam);
-
 typedef HWND (WINAPI *CreateWindowExAFunc_t)(DWORD dwExStyle,
         LPCSTR lpClassName,
         LPCSTR lpWindowName,
@@ -843,8 +827,8 @@ typedef HWND (WINAPI *CreateWindowExAFunc_t)(DWORD dwExStyle,
         LPVOID lpParam);
 
 typedef HWND (WINAPI *CreateWindowExWFunc_t)(DWORD dwExStyle,
-        LPCSTR lpClassName,
-        LPCSTR lpWindowName,
+        LPCWSTR lpClassName,
+        LPCWSTR lpWindowName,
         DWORD dwStyle,
         int x,
         int y,
@@ -855,8 +839,85 @@ typedef HWND (WINAPI *CreateWindowExWFunc_t)(DWORD dwExStyle,
         HINSTANCE hInstance,
         LPVOID lpParam);
 
-static CreateWindowAFunc_t CreateWindowANext=CreateWindowA;
-static CreateWindowWFunc_t CreateWindowWNext=CreateWindowW;
+static CreateWindowExAFunc_t CreateWindowExANext=CreateWindowExA;
+static CreateWindowExWFunc_t CreateWindowExWNext=CreateWindowExW;
+
+
+HWND WINAPI CreateWindowExACallBack(
+    DWORD dwExStyle,
+    LPCSTR lpClassName,
+    LPCSTR lpWindowName,
+    DWORD dwStyle,
+    int x,
+    int y,
+    int nWidth,
+    int nHeight,
+    HWND hWndParent,
+    HMENU hMenu,
+    HINSTANCE hInstance,
+    LPVOID lpParam
+)
+{
+    HWND hWnd = NULL;
+
+    hWnd = CreateWindowExANext(dwExStyle,
+                               lpClassName,
+                               lpWindowName,
+                               dwStyle,
+                               x,
+                               y,
+                               nWidth,
+                               nHeight,
+                               hWndParent,
+                               hMenu,
+                               hInstance,
+                               lpParam
+                              );
+    if(hWnd != NULL)
+    {
+        st_CreateWindowFuncList.CallList(hWnd);
+    }
+    return hWnd;
+}
+
+HWND WINAPI CreateWindowExWCallBack(
+    DWORD dwExStyle,
+    LPCWSTR lpClassName,
+    LPCWSTR lpWindowName,
+    DWORD dwStyle,
+    int x,
+    int y,
+    int nWidth,
+    int nHeight,
+    HWND hWndParent,
+    HMENU hMenu,
+    HINSTANCE hInstance,
+    LPVOID lpParam
+)
+{
+    HWND hWnd = NULL;
+
+    hWnd = CreateWindowExWNext(dwExStyle,
+                               lpClassName,
+                               lpWindowName,
+                               dwStyle,
+                               x,
+                               y,
+                               nWidth,
+                               nHeight,
+                               hWndParent,
+                               hMenu,
+                               hInstance,
+                               lpParam
+                              );
+    if(hWnd != NULL)
+    {
+        st_CreateWindowFuncList.CallList(hWnd);
+    }
+    return hWnd;
+}
+
+
 
 
 static int DetourDestroyWindow()
@@ -868,6 +929,30 @@ static int DetourDestroyWindow()
     DEBUG_BUFFER_FMT(DestroyWindowNext,10,"After DestroyWindowNext (0x%p)",DestroyWindowNext);
     DetourTransactionCommit();
     return 0;
+}
+
+static int DetourCreateWindow()
+{
+    DEBUG_BUFFER_FMT(CreateWindowExANext,10,"Before CreateWindowExANext (0x%p)",CreateWindowExANext);
+    DEBUG_BUFFER_FMT(CreateWindowExWNext,10,"Before CreateWindowExWNext (0x%p)",CreateWindowExWNext);
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DetourAttach((PVOID*)&CreateWindowExANext,CreateWindowExACallBack);
+    DetourAttach((PVOID*)&CreateWindowExWNext,CreateWindowExWCallBack);
+    DetourTransactionCommit();
+    DEBUG_BUFFER_FMT(CreateWindowExANext,10,"After CreateWindowExANext (0x%p)",CreateWindowExANext);
+    DEBUG_BUFFER_FMT(CreateWindowExWNext,10,"After CreateWindowExWNext (0x%p)",CreateWindowExWNext);
+    return 0;
+}
+
+int RegisterCreateWindowFunc(FuncCall_t pFunc,LPVOID pParam,int prior)
+{
+    return st_CreateWindowFuncList.AddFuncList(pFunc,pParam,prior);
+}
+
+int UnRegisterCreateWindowFunc(FuncCall_t pFunc)
+{
+    return st_CreateWindowFuncList.RemoveFuncList(pFunc);
 }
 
 int RegisterDestroyWindowFunc(FuncCall_t pFunc,LPVOID pParam,int prior)
