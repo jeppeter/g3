@@ -170,6 +170,8 @@ void CioctrlserverDlg::OnStart()
 {
     char *pDllAnsi=NULL,*pExeAnsi=NULL,*pParamAnsi=NULL;
     int dllansisize=0,exeansisize=0,paramansisize=0;
+    char *pCommandAnsi=NULL;
+    int commandsize=0;
     CString errstr;
     int ret;
 
@@ -199,6 +201,22 @@ void CioctrlserverDlg::OnStart()
         ret = LAST_ERROR_CODE();
         goto fail;
     }
+    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)this->m_strDll),&pDllAnsi,&dllansisize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    if(this->m_strParam.GetLength() > 0)
+    {
+        ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)this->m_strParam),&pParamAnsi,&paramansisize);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+    }
 #else
     pExeAnsi = (LPCSTR)this->m_strExe;
     pDllAnsi = (LPCSTR)this->m_strDll;
@@ -208,11 +226,38 @@ void CioctrlserverDlg::OnStart()
     }
 #endif
 
+    commandsize = strlen(pExeAnsi) + 1;
+    if(pParamAnsi)
+    {
+        commandsize += 2;
+        commandsize += strlen(pParamAnsi) + 1;
+    }
 
+    pCommandAnsi = calloc(1,commandsize);
+    if(pCommandAnsi == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    strncpy_s(pCommandAnsi,commandsize,pExeAnsi,_TRUNCATE);
+    if(pParamAnsi)
+    {
+        strncat_s(pCommandAnsi,commandsize," ");
+        strncat_s(pCommandAnsi,commandsize,pParamAnsi);
+    }
+
+	
 
 
     return ;
 fail:
+    if(pCommandAnsi)
+    {
+        free(pCommandAnsi);
+    }
+    pCommandAnsi = NULL;
+    commandsize = 0;
 #ifdef _UNICODE
     UnicodeToAnsi(NULL,&pDllAnsi,&dllansisize);
     UnicodeToAnsi(NULL,&pExeAnsi,&exeansisize);
