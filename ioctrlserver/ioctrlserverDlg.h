@@ -45,5 +45,6 @@ protected:
 	afx_msg void OnStart();
 	afx_msg void OnClose();
 	afx_msg void OnCancel();
+	afx_msg LRESULT OnSocket(WPARAM WParam, LPARAM lParam)  ;
 	DECLARE_MESSAGE_MAP()
 };

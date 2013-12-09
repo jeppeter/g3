@@ -46,6 +46,7 @@ BEGIN_MESSAGE_MAP(CioctrlserverDlg, CDialogEx)
     ON_COMMAND(IDC_BTN_DLL,OnSelDll)
     ON_COMMAND(IDC_BTN_START,OnStart)
     ON_COMMAND(IDCANCEL,OnCancel)
+    ON_MESSAGE(WM_SOCKET,OnSocket)
 END_MESSAGE_MAP()
 
 
@@ -186,5 +187,9 @@ void CioctrlserverDlg::OnCancel()
     this->__StopControl();
     CDialogEx::OnCancel();
     return;
+}
+
+LRESULT CioctrlserverDlg::OnSocket(WPARAM WParam,LPARAM lParam)
+{
 }
 
