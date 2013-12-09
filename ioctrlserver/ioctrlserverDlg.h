@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <winsock2.h>
 #include <iocapctrl.h>
 
 
@@ -12,6 +13,7 @@ class CioctrlserverDlg : public CDialogEx
 // Construction
 public:
 	CioctrlserverDlg(CWnd* pParent = NULL);	// standard constructor
+	virtual ~CioctrlserverDlg();
 // Dialog Data
 	enum { IDD = IDD_IOCTRLSERVER_DIALOG };
 
@@ -22,6 +24,11 @@ public:
 
 private:
 	void __StopControl();
+	int __StartAccSocket(int port);
+	void __CloseReadSock(void);
+	int __HandleAccept(void);
+	void __GetItemText(UINT id,CString& str);
+	
 
 private:
 	CIOController           *m_pIoController;

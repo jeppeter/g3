@@ -8,6 +8,10 @@
 #include "afxdialogex.h"
 #include <output_debug.h>
 #include "resource.h"
+#include <assert.h>
+#include <uniansi.h>
+
+#define  WM_SOCKET   (WM_USER+1)
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -29,10 +33,16 @@ CioctrlserverDlg::CioctrlserverDlg(CWnd* pParent /*=NULL*/)
     : CDialogEx(CioctrlserverDlg::IDD, pParent)
 {
     m_pIoController = NULL;
+    m_Accsock = INVALID_SOCKET;
+    m_Readsock = INVALID_SOCKET;
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
-
+CioctrlserverDlg::~CioctrlserverDlg()
+{
+    this->__StopControl();
+    CDialogEx::~CDialogEx();
+}
 void CioctrlserverDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
@@ -146,23 +156,54 @@ void CioctrlserverDlg::OnSelExe()
     return ;
 }
 
+void CioctrlserverDlg::__GetItemText(UINT id,CString & str)
+{
+    CEdit* pEdt=NULL;
+
+    pEdt = (CEdit*)this->GetDlgItem(id);
+    assert(pEdt);
+    pEdt->GetWindowText(str);
+    return ;
+}
+
 void CioctrlserverDlg::OnStart()
 {
+    char *pDllAnsi=NULL,*pExeAnsi=NULL,*pParamAnsi=NULL;
+    int dllansisize=0,exeansisize=0,paramansisize=0;
+    CString errstr;
+
+    this->__GetItemText(IDC_EDT_EXE,this->m_strExe);
+    this->__GetItemText(IDC_EDT_PARAM,this->m_strParam);
+    this->__GetItemText(IDC_EDT_DLL,this->m_strDll);
+
+    if(this->m_strExe.GetLength() == 0)
+    {
+        errstr.Format(TEXT("Exe Must choose"));
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    if(this->m_strDll.GetLength() == 0)
+    {
+        errstr.Format(TEXT("Dll Must choose"));
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
 #ifdef _UNICODE
-    wchar_t *pDllWide=NULL,*pExeWide=NULL,*pParamWide=NULL;
-    int dllwidesize=0,exewidesize=0,paramwidesize=0;
-    char *pDllAnsi=NULL,*pExeAnsi=NULL,*pParamAnsi=NULL;
-    int dllansisize=0,exeansisize=0,paramansisize=0;
-#else
-    char *pDllAnsi=NULL,*pExeAnsi=NULL,*pParamAnsi=NULL;
-    int dllansisize=0,exeansisize=0,paramansisize=0;
 #endif
 
 
 
+
+    return ;
 fail:
 #ifdef _UNICODE
+    UnicodeToAnsi(NULL,&pDllAnsi,&dllansisize);
+    UnicodeToAnsi(NULL,&pExeAnsi,&exeansisize);
+    UnicodeToAnsi(NULL,&pParamAnsi,&paramansisize);
 #endif
+    this->__StopControl();
+    return ;
 }
 
 
@@ -174,18 +215,37 @@ void CioctrlserverDlg::__StopControl()
     }
     this->m_pIoController = NULL;
 
-    if(this->m_Readsock)
+    if(this->m_Readsock != INVALID_SOCKET)
     {
         closesocket(this->m_Readsock);
     }
-    this->m_Readsock = NULL;
-    if(this->m_Accsock)
+    this->m_Readsock = INVALID_SOCKET;
+    if(this->m_Accsock != INVALID_SOCKET)
     {
         closesocket(this->m_Accsock);
     }
-    this->m_Accsock = NULL;
+    this->m_Accsock = INVALID_SOCKET;
 
     return ;
+}
+
+
+void CioctrlserverDlg::__CloseReadSock(void)
+{
+    if(this->m_Readsock != INVALID_SOCKET)
+    {
+        closesocket(this->m_Readsock);
+    }
+    this->m_Readsock = INVALID_SOCKET;
+    return ;
+}
+
+int CioctrlserverDlg::__StartAccSocket(int port)
+{
+    assert(this->m_Accsock == NULL);
+
+    this->m_Accsock = socket(AF_INET,SOCK_STREAM,0);
+    return 0;
 }
 void CioctrlserverDlg::OnClose()
 {
@@ -203,5 +263,6 @@ void CioctrlserverDlg::OnCancel()
 
 LRESULT CioctrlserverDlg::OnSocket(WPARAM WParam,LPARAM lParam)
 {
+    return 0;
 }
 
