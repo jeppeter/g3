@@ -132,7 +132,6 @@ void DetourDirectInputFini(HMODULE hModule)
 {
     if(st_IOInjectInit)
     {
-
 #ifdef  DETOUR_DINPUT_DEBUG
         DetourDinputDebugFini(hModule);
 #endif

@@ -562,7 +562,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     if(wMsgFilterMin == 0 && wMsgFilterMax == 0)
     {
         CopyMemory(lpMsg,lGetMsg,sizeof(*lGetMsg));
-        if(!(remove & PM_REMOVE))
+        if(!(remove & PM_REMOVE) && lGetMsg->message != WM_QUIT)
         {
             /*not remove ,so we put back*/
             res = InsertEmulationMessageQueue(lGetMsg,0);
@@ -570,10 +570,10 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         }
         ret = 1;
     }
-    else if((lGetMsg->message >= wMsgFilterMin && lGetMsg->message <= wMsgFilterMax ) || lGetMsg->message == WM_QUIT)
+    else if((lGetMsg->message >= wMsgFilterMin && lGetMsg->message <= wMsgFilterMax) || lGetMsg->message == WM_QUIT)
     {
         CopyMemory(lpMsg,lGetMsg,sizeof(*lGetMsg));
-        if(!(remove & PM_REMOVE))
+        if(!(remove & PM_REMOVE) && lGetMsg->message != WM_QUIT)
         {
             /*not remove ,so we put back*/
             res = InsertEmulationMessageQueue(lGetMsg,0);
@@ -631,46 +631,7 @@ fail:
 
 int __SetWindowRect(HWND hWnd)
 {
-    RECT rRect;
-    BOOL bret;
-    int ret;
-    HWND hGetWnd=hWnd;
-    if(hGetWnd == NULL)
-    {
-        MSG msg;
-        bret = PeekMessageANext(&msg,hGetWnd,0,0,PM_NOREMOVE);
-        if(bret && msg.hwnd)
-        {
-            hGetWnd = msg.hwnd;
-        }
-    }
-
-    if(hGetWnd == NULL)
-    {
-        return 0;
-    }
-    SetLastError(0);
-    bret = GetClientRect(hGetWnd,&rRect);
-    if(!bret)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("GetClientRect(0x%08x) Error(%d)\n",hGetWnd,ret);
-        return 0;
-    }
-
-    ret = DetourDinputSetWindowsRect(hGetWnd,&rRect);
-    if(ret < 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("DetourDinputSetWindowRect(0x%08x) left-top(%d-%d) right-bottom(%d-%d) Error(%d)\n",
-                   hGetWnd,rRect.left,
-                   rRect.top,
-                   rRect.right,
-                   rRect.bottom,
-                   ret);
-    }
-
-    return 0;
+    return DetourDinputSetWindowsRect(hWnd);
 }
 
 BOOL WINAPI GetMessageACallBack(
@@ -690,9 +651,7 @@ BOOL WINAPI GetMessageACallBack(
         return FALSE;
     }
 
-    DEBUG_INFO("\n");
     __SetWindowRect(hWnd);
-    DEBUG_INFO("\n");
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -737,10 +696,7 @@ BOOL WINAPI PeekMessageACallBack(
         SetLastError(ret);
         return FALSE;
     }
-
-    DEBUG_INFO("\n");
     __SetWindowRect(hWnd);
-    DEBUG_INFO("\n");
 
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
@@ -794,9 +750,7 @@ BOOL WINAPI GetMessageWCallBack(
         return FALSE;
     }
 
-    DEBUG_INFO("\n");
     __SetWindowRect(hWnd);
-    DEBUG_INFO("\n");
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -814,12 +768,8 @@ try_again:
             /*we discard this message ,so get the next one*/
             goto try_again;
         }
-        else if(lpMsg->message == WM_QUIT)
-        {
-            __SetMessageQuit();
-        }
     }
-    else if(lpMsg->message == WM_QUIT)
+    if(lpMsg->message == WM_QUIT)
     {
         __SetMessageQuit();
     }
@@ -850,7 +800,6 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)
     {
-        DEBUG_INFO("GetMessage\n");
         return TRUE;
     }
 

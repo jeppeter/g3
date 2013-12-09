@@ -265,6 +265,22 @@ int __SetDetourDinputMouseBtnNoLock(UINT btn,int down)
     return 0;
 }
 
+static int Dinput8CreateWindowNotify(LPVOID pParam,LPVOID pInput)
+{
+    HWND hwnd = (HWND) pInput;
+    int ret=0;
+    RECT rect= {0,0,0,0};
+
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    st_hWndRectVecs.push_back(rect);
+    st_hWndVecs.push_back(hwnd);
+    __ReCalculateMaxWindowRectNoLock();
+    __ReCalculateMousePointNoLock(0);
+    ret = 1;
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+    return ret;
+}
+
 
 static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
 {
@@ -292,8 +308,72 @@ static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
     {
         ERROR_INFO("hwnd (0x%08x) not register in the windows size\n",hwnd);
     }
+    __ReCalculateMaxWindowRectNoLock();
+    __ReCalculateMousePointNoLock(0);
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return ret;
+}
+
+int Dinput8SetWindowRectState(HWND hwnd)
+{
+    int findidx = -1;
+    UINT i;
+    int refreshed = 0;
+    BOOL bret;
+    RECT rRect;
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+
+    for(i=0; i<st_hWndVecs.size() ; i++)
+    {
+        if(hwnd == st_hWndVecs[i])
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        bret = ::GetClientRect(hwnd,&rRect);
+        if(bret)
+        {
+            if(st_hWndRectVecs[findidx].top != rRect.top  ||
+                    st_hWndRectVecs[findidx].left != rRect.left ||
+                    st_hWndRectVecs[findidx].right != rRect.right ||
+                    st_hWndRectVecs[findidx].bottom != rRect.bottom)
+            {
+                st_hWndRectVecs[findidx] = rRect;
+                refreshed ++;
+            }
+        }
+    }
+    else
+    {
+        for(i=0; i<st_hWndVecs.size(); i++)
+        {
+            bret = ::GetClientRect(st_hWndVecs[i],&rRect);
+            if(bret)
+            {
+                if(st_hWndRectVecs[i].top != rRect.top  ||
+                        st_hWndRectVecs[i].left != rRect.left ||
+                        st_hWndRectVecs[i].right != rRect.right ||
+                        st_hWndRectVecs[i].bottom != rRect.bottom)
+                {
+                    st_hWndRectVecs[i] = rRect;
+                    refreshed ++;
+                }
+            }
+        }
+    }
+
+    if(refreshed > 0)
+    {
+    	/*we have refreshed window ,so recalculate the window*/
+        __ReCalculateMaxWindowRectNoLock();
+        __ReCalculateMousePointNoLock(0);
+    }
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+    return refreshed;
 }
 
 
@@ -529,40 +609,9 @@ int DetourDinputMouseBtnDown(UINT btn)
     return ret;
 }
 
-int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
+int DetourDinputSetWindowsRect(HWND hWnd)
 {
-    int ret=0;
-    int findidx=-1;
-    UINT i;
-    RECT rRect = *pRect;
-    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    DetourDinput_WND_STATE_EQUAL();
-    /*now first to find the window*/
-    for(i=0; i<st_hWndVecs.size(); i++)
-    {
-        if(hWnd == st_hWndVecs[i])
-        {
-            findidx = i;
-            break;
-        }
-    }
-
-    if(findidx >= 0)
-    {
-        st_hWndRectVecs[findidx] = rRect;
-    }
-    else
-    {
-        /*now we push it*/
-        st_hWndVecs.push_back(hWnd);
-        st_hWndRectVecs.push_back(rRect);
-        ret = 1;
-    }
-    __ReCalculateMaxWindowRectNoLock();
-    __ReCalculateMousePointNoLock(0);
-
-    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-    return ret;
+	return Dinput8SetWindowRectState(hWnd);
 }
 
 
@@ -2485,9 +2534,9 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
 
 void DetourDinputEmulationFini(HMODULE hModule)
 {
-	UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
+    UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
 
-	return ;
+    return ;
 }
 
 int DetourDinputEmulationInit(HMODULE hModule)
@@ -2502,6 +2551,13 @@ int DetourDinputEmulationInit(HMODULE hModule)
         ERROR_INFO("could not register destroy window Notify Error(%d)\n",ret);
         goto fail;
     }
+    ret = RegisterCreateWindowFunc(Dinput8CreateWindowNotify,NULL,100);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not register create window Notify Error(%d)\n",ret);
+        goto fail;
+    }
     ret = RegisterEventListHandler(DetourDinput8SetKeyMouseState,NULL,DINPUT_EMULATION_PRIOR);
     if(ret < 0)
     {
@@ -2510,11 +2566,12 @@ int DetourDinputEmulationInit(HMODULE hModule)
         goto fail;
     }
 
-	SetLastError(0);
-	return 0;
+    SetLastError(0);
+    return 0;
 fail:
-	assert(ret > 0);
+    assert(ret > 0);
     UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
+    UnRegisterCreateWindowFunc(Dinput8CreateWindowNotify);
     UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
     SetLastError(ret);
     return FALSE;

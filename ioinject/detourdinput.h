@@ -22,7 +22,7 @@ int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl);
 int DetourDinputPressKeyDownTimes(UINT scancode);
 int DetourDinputMouseBtnDown(UINT btn);
 int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint);
-int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect);
+int DetourDinputSetWindowsRect(HWND hWnd);
 int DetourDinput8GetMousePointAbsolution(POINT *pPoint);
 
 
