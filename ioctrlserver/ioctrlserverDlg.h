@@ -25,6 +25,8 @@ private:
 
 private:
 	CIOController           *m_pIoController;
+	SOCKET m_Accsock;
+	SOCKET m_Readsock;
 // Implementation
 protected:
 	HICON m_hIcon;

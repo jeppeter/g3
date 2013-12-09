@@ -173,6 +173,18 @@ void CioctrlserverDlg::__StopControl()
         delete this->m_pIoController;
     }
     this->m_pIoController = NULL;
+
+    if(this->m_Readsock)
+    {
+        closesocket(this->m_Readsock);
+    }
+    this->m_Readsock = NULL;
+    if(this->m_Accsock)
+    {
+        closesocket(this->m_Accsock);
+    }
+    this->m_Accsock = NULL;
+
     return ;
 }
 void CioctrlserverDlg::OnClose()
