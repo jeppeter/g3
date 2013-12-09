@@ -128,11 +128,18 @@ HRESULT WINAPI DirectInput8CreateCallBack(HINSTANCE hinst, DWORD dwVersion, REFI
     return hr;
 }
 
-void DetourDirectInputFini(void)
+void DetourDirectInputFini(HMODULE hModule)
 {
     if(st_IOInjectInit)
     {
-        /*nothing to done*/
+
+#ifdef  DETOUR_DINPUT_DEBUG
+        DetourDinputDebugFini(hModule);
+#endif
+
+#ifdef 	DETOUR_DINPUT_EMULATION
+        DetourDinputEmulationFini(hModule);
+#endif
     }
 
     st_IOInjectInit = 0;
@@ -152,7 +159,7 @@ BOOL __DetourDirectInput8CallBack(void)
 }
 
 
-BOOL DetourDirectInputInit(void)
+BOOL DetourDirectInputInit(HMODULE hModule)
 {
     BOOL bret;
     int ret;
@@ -162,33 +169,26 @@ BOOL DetourDirectInputInit(void)
         DINPUT_DEBUG_INFO("\n");
         return TRUE;
     }
-#ifdef 	DETOUR_DINPUT_DEBUG
-    /*now first to init all the critical section*/
-    InitializeCriticalSection(&st_DIDevice8ACS);
-    InitializeCriticalSection(&st_DIDevice8WCS);
-#endif
-
-#ifdef  DETOUR_DINPUT_EMULATION
-    InitializeCriticalSection(&st_Dinput8DeviceCS);
-	InitializeCriticalSection(&st_Dinput8KeyMouseStateCS);
-    ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL,30);
-    if(ret < 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not register destroy window Notify Error(%d)\n",ret);
-        goto fail;
-    }
-    ret = RegisterEventListHandler(DetourDinput8SetKeyMouseState,NULL,DINPUT_EMULATION_PRIOR);
-    if(ret < 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not register Eventlist Handler Error(%d)\n",ret);
-        goto fail;
-    }
-
-#endif
     InitializeCriticalSection(&st_DI8ACS);
     InitializeCriticalSection(&st_DI8WCS);
+
+#ifdef DETOUR_DINPUT_DEBUG
+    ret = DetourDinputDebugInit(hModule);
+    if(ret < 0)
+    {
+        DINPUT_DEBUG_INFO("DebugInit Error\n");
+        return TRUE;
+    }
+#endif
+
+#ifdef 	DETOUR_DINPUT_EMULATION
+    ret = DetourDinputEmulationInit(hModule);
+    if(ret < 0)
+    {
+        DINPUT_DEBUG_INFO("EmulationInit Error\n");
+        return TRUE;
+    }
+#endif
 
     /*now to detour */
     bret = __DetourDirectInput8CallBack();
@@ -203,14 +203,15 @@ BOOL DetourDirectInputInit(void)
     DINPUT_DEBUG_INFO("Initialize IoInject succ\n");
     st_IOInjectInit = 1;
     return TRUE;
-
 fail:
+	assert(ret > 0);
+#ifdef DETOUR_DINPUT_DEBUG
+	DetourDinputDebugFini(hModule);
+#endif 
 #ifdef DETOUR_DINPUT_EMULATION
-	UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
-    UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
+	DetourDinputEmulationFini(hModule);
 #endif
-    SetLastError(ret);
-    return FALSE;
-
+	SetLastError(ret);
+	return TRUE;
 }
 

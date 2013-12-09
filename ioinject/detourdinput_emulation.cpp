@@ -478,7 +478,7 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         assert(0!=0);
     }
 
-	return 0;
+    return 0;
 }
 
 int DetourDinput8SetKeyMouseState(LPVOID pParam,LPVOID pInput)
@@ -556,7 +556,7 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
         /*now we push it*/
         st_hWndVecs.push_back(hWnd);
         st_hWndRectVecs.push_back(rRect);
-		ret = 1;
+        ret = 1;
     }
     __ReCalculateMaxWindowRectNoLock();
     __ReCalculateMousePointNoLock(0);
@@ -662,7 +662,7 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
         return -ret;
     }
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     CopyMemory(pData,&st_Dinput8MouseState,sizeof(st_Dinput8MouseState));
     /*to clear the relative moving*/
@@ -670,7 +670,7 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     st_Dinput8MouseState.lY = 0;
     st_Dinput8MouseState.lZ = 0;
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     return sizeof(st_Dinput8MouseState);
 }
 
@@ -1522,10 +1522,10 @@ public:
         HRESULT hr;
         int ret;
         DIRECT_INPUT_DEVICE_8W_IN();
-		DEBUG_INFO("\n");
+        DEBUG_INFO("\n");
         if(this->__IsMouseDevice())
         {
-        	DEBUG_INFO("\n");
+            DEBUG_INFO("\n");
             if(lpvData == NULL)
             {
                 ret = ERROR_INVALID_PARAMETER;
@@ -1570,7 +1570,7 @@ public:
         {
             hr = this->m_ptr->GetDeviceState(cbData,lpvData);
         }
-		DEBUG_INFO("\n");
+        DEBUG_INFO("\n");
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -2483,5 +2483,41 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
 }
 
 
+void DetourDinputEmulationFini(HMODULE hModule)
+{
+	UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
+
+	return ;
+}
+
+int DetourDinputEmulationInit(HMODULE hModule)
+{
+    int ret;
+    InitializeCriticalSection(&st_Dinput8DeviceCS);
+    InitializeCriticalSection(&st_Dinput8KeyMouseStateCS);
+    ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL,30);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not register destroy window Notify Error(%d)\n",ret);
+        goto fail;
+    }
+    ret = RegisterEventListHandler(DetourDinput8SetKeyMouseState,NULL,DINPUT_EMULATION_PRIOR);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not register Eventlist Handler Error(%d)\n",ret);
+        goto fail;
+    }
+
+	SetLastError(0);
+	return 0;
+fail:
+	assert(ret > 0);
+    UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
+    UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
+    SetLastError(ret);
+    return FALSE;
+}
 
 

@@ -1510,3 +1510,16 @@ int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint)
 	pPoint->y = 1;
 	return 0;
 }
+
+void DetourDinputDebugFini(HMODULE hModule)
+{
+	return;
+}
+
+int DetourDinputDebugInit(HMODULE hModule)
+{
+    /*now first to init all the critical section*/
+    InitializeCriticalSection(&st_DIDevice8ACS);
+    InitializeCriticalSection(&st_DIDevice8WCS);
+	return 0;
+}

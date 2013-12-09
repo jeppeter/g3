@@ -14,8 +14,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-BOOL DetourDirectInputInit(void);
-void DetourDirectInputFini(void);
+BOOL DetourDirectInputInit(HMODULE hModule);
+void DetourDirectInputFini(HMODULE hModule);
 
 int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl);
 
