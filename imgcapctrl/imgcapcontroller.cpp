@@ -187,7 +187,7 @@ extern "C" int D3DHook_CaptureImageBuffer(HANDLE hProc,char* strDllName,char * d
     }
     //DEBUG_INFO("\n");
 
-    pCurCaptureBuffer =(imgcap_buffer_t*) calloc(sizeof(*pCurCaptureBuffer),1);
+    pCurCaptureBuffer =(imgcap_buffer_t*) calloc(1,sizeof(*pCurCaptureBuffer));
     if(pCurCaptureBuffer == NULL)
     {
         ret = LAST_ERROR_RETURN();

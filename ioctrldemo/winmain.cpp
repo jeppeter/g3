@@ -871,7 +871,7 @@ BOOL StartExeProcess(HWND hwnd)
     cmdsize += 10;
     cmdsize += strlen(pParamAnsi);
 
-    pCommandAnsi = (char*)calloc(sizeof(*pCommandAnsi),cmdsize);
+    pCommandAnsi = (char*)calloc(cmdsize,sizeof(*pCommandAnsi));
     if(pCommandAnsi == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -1183,7 +1183,7 @@ BOOL InitShowDialog(HWND hwndDlg)
         goto fail;
     }
 
-    SprintfString(selstr,MAX_STRING,TEXT("10"));
+    SprintfString(selstr,MAX_STRING,TEXT("1"));
     bret = SetDialogItemString(hwndDlg,IDC_EDT_WAITTIME,selstr);
     if(!bret)
     {
@@ -1252,7 +1252,7 @@ TCHAR* FileDialogSelect(HWND hWnd,TCHAR *pFilter)
     if(bret)
     {
         nLen = lstrlen(pBuffer);
-        pReturn = (TCHAR*)calloc(sizeof(*pReturn),nLen + 1);
+        pReturn = (TCHAR*)calloc(nLen + 1,sizeof(*pReturn));
         if(pReturn == NULL)
         {
             ret = LAST_ERROR_CODE();

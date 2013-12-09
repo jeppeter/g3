@@ -466,7 +466,7 @@ int InsertModuleFileName(HMODULE hModule)
     {
         lasterr = 0;
 #ifdef _UNICODE
-        pModuleFullNameW = (wchar_t*)calloc(sizeof(*pModuleFullNameW),fullnamesize);
+        pModuleFullNameW = (wchar_t*)calloc(fullnamesize,sizeof(*pModuleFullNameW));
         if(pModuleFullNameW == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -474,7 +474,7 @@ int InsertModuleFileName(HMODULE hModule)
         }
         dret = GetModuleFileNameEx(hProcess,hModule,pModuleFullNameW,fullnamesize);
 #else
-        pModuleFullNameA = calloc(sizeof(*pModuleFullNameA),fullnamesize);
+        pModuleFullNameA = calloc(fullnamesize,sizeof(*pModuleFullNameA));
         if(pModuleFullNameA == NULL)
         {
             ret = LAST_ERROR_CODE();

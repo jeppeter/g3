@@ -55,7 +55,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd,LPARAM lparam)
     {
         assert(pThreadIds->m_NumHwnds == 0);
         pThreadIds->m_SizeHwnds = 4;
-        pThreadIds->m_pHwnds = (HWND*)calloc(sizeof(pThreadIds->m_pHwnds[0]),pThreadIds->m_SizeHwnds);
+        pThreadIds->m_pHwnds = (HWND*)calloc(pThreadIds->m_SizeHwnds,sizeof(pThreadIds->m_pHwnds[0]));
         if(pThreadIds->m_pHwnds == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -66,7 +66,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd,LPARAM lparam)
     {
         assert(pThreadIds->m_pHwnds);
         sizetmphwnds = pThreadIds->m_SizeHwnds << 1;
-        pTmpHwnds = (HWND*)calloc(sizeof(pTmpHwnds[0]),sizetmphwnds);
+        pTmpHwnds = (HWND*)calloc(sizetmphwnds,sizeof(pTmpHwnds[0]));
         if(pTmpHwnds == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -123,7 +123,7 @@ int GetProcWindHandles(HANDLE hProc,HWND **pphWnds,int *pSize)
         goto fail;
     }
 
-    pThreadIds =(PROCESS_THREAD_IDS_t*) calloc(sizeof(*pThreadIds),1);
+    pThreadIds =(PROCESS_THREAD_IDS_t*) calloc(1,sizeof(*pThreadIds));
     if(pThreadIds == NULL)
     {
         ret=  LAST_ERROR_CODE();
@@ -313,7 +313,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
     if(pOwnWnds == NULL)
     {
         ownwndsize = wndnum;
-        pOwnWnds =(HWND*) calloc(sizeof(pOwnWnds[0]),ownwndsize);
+        pOwnWnds =(HWND*) calloc(ownwndsize,sizeof(pOwnWnds[0]));
         if(pOwnWnds == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -324,7 +324,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
     if(pOwnedWnds == NULL)
     {
         ownedwndsize = wndnum;
-        pOwnedWnds =(HWND*) calloc(sizeof(pOwnedWnds[0]),ownedwndsize);
+        pOwnedWnds =(HWND*) calloc(ownedwndsize,sizeof(pOwnedWnds[0]));
         if(pOwnedWnds == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -336,7 +336,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
     if(pRemoveWnds == NULL)
     {
         rmsize = wndnum;
-        pRemoveWnds = (HWND*) calloc(sizeof(pRemoveWnds[0]),rmsize);
+        pRemoveWnds = (HWND*) calloc(rmsize,sizeof(pRemoveWnds[0]));
         if(pRemoveWnds == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -445,7 +445,7 @@ int GetTopWinds(HWND *pWnds,int wndnum,HWND **ppTopWnds,int *pTopSize)
         if(ownwndnum > rettopsize)
         {
             rettopsize = ownwndnum;
-            pRetTopWnds =(HWND*) calloc(sizeof(*pRetTopWnds),rettopsize);
+            pRetTopWnds =(HWND*) calloc(rettopsize,sizeof(*pRetTopWnds));
             if(pRetTopWnds == NULL)
             {
                 ret = LAST_ERROR_CODE();

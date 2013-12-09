@@ -326,7 +326,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
-    pKeyInput = (RAWINPUT*)calloc(sizeof(*pKeyInput),1);
+    pKeyInput = (RAWINPUT*)calloc(1,sizeof(*pKeyInput));
     if(pKeyInput == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -452,7 +452,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     POINT pt;
 
 
-    pMouseInput = (RAWINPUT*)calloc(sizeof(*pMouseInput),1);
+    pMouseInput = (RAWINPUT*)calloc(1,sizeof(*pMouseInput));
     if(pMouseInput == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -693,7 +693,7 @@ HANDLE __RegisterKeyboardHandle()
 
     if(pKeyboardInfo == NULL)
     {
-        pAllocInfo = (RID_DEVICE_INFO*)calloc(sizeof(*pAllocInfo),1);
+        pAllocInfo = (RID_DEVICE_INFO*)calloc(1,sizeof(*pAllocInfo));
         if(pAllocInfo == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -701,7 +701,7 @@ HANDLE __RegisterKeyboardHandle()
             return NULL;
         }
 
-        pKeyName = (uint8_t*)calloc(1,256);
+        pKeyName = (uint8_t*)calloc(256,1);
         if(pKeyName == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -710,7 +710,7 @@ HANDLE __RegisterKeyboardHandle()
             return NULL;
         }
         strncpy_s((char*)pKeyName,256,"\\\\?\\KeyBoard_Emulate",_TRUNCATE);
-        pKeyUnicode = (wchar_t*)calloc(2,256);
+        pKeyUnicode = (wchar_t*)calloc(256,2);
         if(pKeyUnicode == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -819,7 +819,7 @@ HANDLE __RegisterMouseHandle()
 
     if(pMouseInfo == NULL)
     {
-        pAllocInfo = (RID_DEVICE_INFO*)calloc(sizeof(*pAllocInfo),1);
+        pAllocInfo = (RID_DEVICE_INFO*)calloc(1,sizeof(*pAllocInfo));
         if(pAllocInfo == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -827,7 +827,7 @@ HANDLE __RegisterMouseHandle()
             return NULL;
         }
 
-        pMouseName = (uint8_t*)calloc(1,256);
+        pMouseName = (uint8_t*)calloc(256,1);
         if(pMouseName == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -836,7 +836,7 @@ HANDLE __RegisterMouseHandle()
             return NULL;
         }
         strncpy_s((char*)pMouseName,256,"\\\\?\\Mouse_Emulate",_TRUNCATE);
-        pMouseUnicode = (wchar_t*)calloc(2,256);
+        pMouseUnicode = (wchar_t*)calloc(256,2);
         if(pMouseUnicode == NULL)
         {
             ret = LAST_ERROR_CODE();

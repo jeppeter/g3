@@ -547,7 +547,7 @@ PCM_EVTS_t* __AllocatePCMEvts(unsigned int num,int packsize,char* pMapFileName,c
         goto fail;
     }
 
-    pPCMEvt = (PCM_EVTS_t*)calloc(sizeof(*pPCMEvt),1);
+    pPCMEvt = (PCM_EVTS_t*)calloc(1,sizeof(*pPCMEvt));
     if(pPCMEvt == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -582,7 +582,7 @@ PCM_EVTS_t* __AllocatePCMEvts(unsigned int num,int packsize,char* pMapFileName,c
     }
 
     /*now for the event list*/
-    pPCMEvt->m_pWholeList =(EVENT_LIST_t*) calloc(sizeof(pPCMEvt->m_pWholeList[0]),num);
+    pPCMEvt->m_pWholeList =(EVENT_LIST_t*) calloc(num,sizeof(pPCMEvt->m_pWholeList[0]));
     if(pPCMEvt->m_pWholeList== NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -610,7 +610,7 @@ PCM_EVTS_t* __AllocatePCMEvts(unsigned int num,int packsize,char* pMapFileName,c
         DEBUG_INFO("filllist %d\n",pPCMEvt->m_pFillList->size());
     }
 
-    pPCMEvt->m_pFreeEvt =(HANDLE*) calloc(sizeof(pPCMEvt->m_pFreeEvt[0]),num);
+    pPCMEvt->m_pFreeEvt =(HANDLE*) calloc(num,sizeof(pPCMEvt->m_pFreeEvt[0]));
     if(pPCMEvt->m_pFreeEvt == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -926,7 +926,7 @@ DWORD WINAPI __WaitThreadImpl(LPVOID arg)
     unsigned int num;
 
     num = pPCMEvts->m_WholeListNum ;
-    pWaitHandles =(HANDLE*) calloc(sizeof(*pWaitHandles),num + 1);
+    pWaitHandles =(HANDLE*) calloc(num + 1,sizeof(*pWaitHandles));
     if(pWaitHandles == NULL)
     {
         ret = -LAST_ERROR_CODE();

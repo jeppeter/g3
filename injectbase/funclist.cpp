@@ -249,7 +249,7 @@ int CFuncList::CallList(LPVOID pParam)
         if(ret < 0)
         {
             ret = LAST_ERROR_CODE();
-            ERROR_INFO("Call<0x%p> Function Error(%d)\n",pFunc,ret);
+            //ERROR_INFO("Call<0x%p> Function Error(%d)\n",pFunc,ret);
             totalret = ret;
         }
 

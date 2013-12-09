@@ -189,7 +189,7 @@ int GetModuleInsertedProcess(const char * pPartDll,unsigned int **ppPids,int * p
         if(pidretsize <(int) procvecs.size())
         {
 			pidretsize = procvecs.size();
-            pRetPids = (unsigned int*)calloc(sizeof(*pRetPids),pidretsize);
+            pRetPids = (unsigned int*)calloc(pidretsize,sizeof(*pRetPids));
             if(pRetPids == NULL)
             {
                 ret = LAST_ERROR_CODE();

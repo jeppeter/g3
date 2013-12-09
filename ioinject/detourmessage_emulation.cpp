@@ -14,7 +14,7 @@ static GetMessageFunc_t GetMessageWNext= GetMessageW;
 static PeekMessageFunc_t PeekMessageWNext=PeekMessageW;
 
 static CRITICAL_SECTION st_MessageEmulationCS;
-static std::vector<MSG*> st_MessageEmulationQueue;
+static std::vector<LPMSG> st_MessageEmulationQueue;
 static int st_MessageQuit=0;
 static UINT st_MaxMessageEmulationQueue=20;
 
@@ -83,6 +83,7 @@ static int st_CodeMapDik[256] =
     DIK_NULL
 };
 
+
 /*return 1 for double click will insert ,
 0 for not
 negative for error ,not insert into it*/
@@ -94,6 +95,7 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
     {
         uint32_t curtick = GetTickCount();
         ret = 0;
+		DEBUG_INFO("%s Insert 0x%p\n",back ? "Back" : "Front",lpMsg);
         EnterCriticalSection(&st_MessageEmulationCS);
         if(back)
         {
@@ -125,6 +127,7 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
                                         lpRemove->wParam,lpRemove->wParam,
                                         lpRemove->lParam,lpRemove->lParam);
             free(lpRemove);
+			EMULATIONMESSAGE_DEBUG_INFO("remove over\n");
         }
         lpRemove = NULL;
         return ret;
@@ -140,7 +143,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
     LPMSG lcpMsg=NULL;
     if(st_MessageEmualtionInited)
     {
-        lcpMsg = (LPMSG)calloc(sizeof(*lcpMsg),1);
+        lcpMsg = (LPMSG)malloc(sizeof(*lcpMsg));
         if(lcpMsg == NULL)
         {
             ret = LAST_ERROR_CODE();
@@ -154,7 +157,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
             ret = LAST_ERROR_CODE();
             free(lcpMsg);
             return -ret;
-        }
+        }		
         lcpMsg = NULL;
 
         SetLastError(0);
@@ -507,7 +510,7 @@ LPMSG __GetEmulationMessageQueue()
         }
         else if(st_MessageQuit)
         {
-            lGetMsg =(LPMSG) calloc(sizeof(*lGetMsg),1);
+            lGetMsg =(LPMSG) calloc(1,sizeof(*lGetMsg));
             if(lGetMsg)
             {
                 lGetMsg->hwnd = NULL;

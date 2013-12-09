@@ -28,11 +28,20 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     /*now we should handle this function*/
     EVENT_LIST_t* pEventList=NULL;
     int totalret=0;
-
+    int ret;
+    LPDEVICEEVENT pDevEvent=NULL;
+    BOOL bret;
     assert(idx < pStatus->m_Bufnumm);
     pEventList = &(pStatus->m_pEventListArray[idx]);
-    totalret = st_EventHandlerFuncList.CallList(pEventList);
-    SetEvent(pEventList->m_hFillEvt);
+    DEBUG_INFO("[%d]Base 0x%x offset 0x%x\n",idx,pEventList->m_BaseAddr,pEventList->m_Offset);
+    pDevEvent = (LPDEVICEEVENT)((ptr_t)pEventList->m_BaseAddr + (ptr_t)pEventList->m_Offset);
+    totalret = st_EventHandlerFuncList.CallList(pDevEvent);
+    bret = SetEvent(pEventList->m_hFillEvt);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("<0x%p>SetEvent(0x%08x) Error(%d)\n",pEventList,pEventList->m_hFillEvt,ret);
+    }
     return totalret;
 }
 
@@ -48,13 +57,14 @@ DWORD WINAPI DetourIoInjectThreadThreadImpl(LPVOID pParam)
     assert(pStatus->m_Bufnumm > 0);
     /*for add into num exit handle to wait*/
     waitnum = (pStatus->m_Bufnumm + 1);
-    pWaitHandles = (HANDLE*)calloc(sizeof(*pWaitHandles),waitnum);
+    pWaitHandles = (HANDLE*)calloc(waitnum,sizeof(*pWaitHandles));
     if(pWaitHandles == NULL)
     {
         dret = LAST_ERROR_CODE();
         goto out;
     }
 
+    DEBUG_INFO("pStatus base 0x%p\n",pStatus->m_pMemShareBase);
     CopyMemory(pWaitHandles,pStatus->m_pInputEvts,sizeof(*pWaitHandles)*(waitnum - 1));
     pWaitHandles[waitnum - 1] = pStatus->m_ThreadControl.exitevt;
 
@@ -178,23 +188,23 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
         return;
     }
     pStatus = *ppStatus;
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 
     /*now to delete all the free event*/
     __ClearEventList(pStatus);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     __FreeDetourEvents(pStatus);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 
     /*now to unmap memory*/
     __UnMapMemBase(pStatus);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
 
     free(pStatus);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     *ppStatus = NULL;
 
     return ;
@@ -214,7 +224,7 @@ PDETOUR_THREAD_STATUS_t __AllocateDetourStatus()
     PDETOUR_THREAD_STATUS_t pStatus=NULL;
     int ret;
 
-    pStatus =(PDETOUR_THREAD_STATUS_t) calloc(sizeof(*pStatus),1);
+    pStatus =(PDETOUR_THREAD_STATUS_t) calloc(1,sizeof(*pStatus));
     if(pStatus == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -256,6 +266,7 @@ int __MapMemBase(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pMemName,uint32_t bufs
     strncpy_s((char*)pStatus->m_MemShareBaseName,sizeof(pStatus->m_MemShareBaseName),(const char*)pMemName,_TRUNCATE);
 
 
+    DEBUG_INFO("memshare(%s)0x%p bufnum %d bufsectsize %d\n",pStatus->m_MemShareBaseName,pStatus->m_pMemShareBase,pStatus->m_Bufnumm,pStatus->m_BufSectSize);
     SetLastError(0);
     return 0;
 
@@ -273,7 +284,7 @@ int __AllocateFreeEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pFreeEvtBaseNa
     int ret;
     uint32_t i;
     /*now we should allocate size*/
-    pStatus->m_pFreeEvts = (HANDLE*)calloc(sizeof(pStatus->m_pFreeEvts[0]),pStatus->m_Bufnumm);
+    pStatus->m_pFreeEvts = (HANDLE*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pFreeEvts[0]));
     if(pStatus->m_pFreeEvts == NULL)
     {
         ret= LAST_ERROR_CODE();
@@ -308,7 +319,7 @@ int __AllocateEventList(PDETOUR_THREAD_STATUS_t pStatus)
     int ret;
     uint32_t i;
     /*now first to allocate event list array*/
-    pStatus->m_pEventListArray = (EVENT_LIST_t*)calloc(sizeof(pStatus->m_pEventListArray[0]),pStatus->m_Bufnumm);
+    pStatus->m_pEventListArray = (EVENT_LIST_t*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pEventListArray[0]));
     if(pStatus->m_pEventListArray == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -323,6 +334,7 @@ int __AllocateEventList(PDETOUR_THREAD_STATUS_t pStatus)
         pStatus->m_pEventListArray[i].m_Idx = i;
         pStatus->m_pEventListArray[i].m_Offset = (pStatus->m_BufSectSize * i);
         pStatus->m_pEventListArray[i].size = pStatus->m_BufSectSize;
+        DEBUG_INFO("[%d]base 0x%08x offset 0x%08x\n",i,pStatus->m_pEventListArray[i].m_BaseAddr,pStatus->m_pEventListArray[i].m_Offset);
     }
 
 
@@ -341,7 +353,7 @@ int __AllocateInputEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pInputEvtBase
     int ret;
     uint32_t i;
     /*now we should allocate size*/
-    pStatus->m_pInputEvts = (HANDLE*)calloc(sizeof(pStatus->m_pInputEvts[0]),pStatus->m_Bufnumm);
+    pStatus->m_pInputEvts = (HANDLE*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pInputEvts[0]));
     if(pStatus->m_pInputEvts == NULL)
     {
         ret= LAST_ERROR_CODE();

@@ -439,7 +439,7 @@ int CPcmCapController::__CreateEvent()
     assert(this->m_iBufNum > 0);
     assert(this->m_iBufBlockSize >= 0x1000);
 
-    this->m_pFreeEvt =(HANDLE*) calloc(sizeof(this->m_pFreeEvt[0]),this->m_iBufNum);
+    this->m_pFreeEvt =(HANDLE*) calloc(this->m_iBufNum,sizeof(this->m_pFreeEvt[0]));
     if(this->m_pFreeEvt == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -463,7 +463,7 @@ int CPcmCapController::__CreateEvent()
         }
     }
 
-    this->m_pFillEvt =(HANDLE*) calloc(sizeof(this->m_pFillEvt[0]),this->m_iBufNum);
+    this->m_pFillEvt =(HANDLE*) calloc(this->m_iBufNum,sizeof(this->m_pFillEvt[0]));
     if(this->m_pFillEvt == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -664,7 +664,7 @@ DWORD CPcmCapController::__ThreadImpl()
     assert(this->m_iBufNum > 0);
     assert(this->m_tThreadControl.exitevt);
     bufnum = this->m_iBufNum;
-    pWaitHandle = (HANDLE*)calloc(sizeof(*pWaitHandle),bufnum+3);
+    pWaitHandle = (HANDLE*)calloc(bufnum+3,sizeof(*pWaitHandle));
     if(pWaitHandle == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -767,7 +767,7 @@ BOOL CPcmCapController::__SetOperationBoth()
     DWORD retcode;
     assert(this->m_hProc);
     assert(this->m_ProcessId);
-    pControl = (pcmcap_control_t*)calloc(sizeof(*pControl),1);
+    pControl = (pcmcap_control_t*)calloc(1,sizeof(*pControl));
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -820,7 +820,7 @@ BOOL CPcmCapController::__SetOperationCapture()
     BOOL bret;
     DWORD retcode;
     /**/
-    pControl = (pcmcap_control_t*)calloc(sizeof(*pControl),1);
+    pControl = (pcmcap_control_t*)calloc(1,sizeof(*pControl));
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -878,7 +878,7 @@ BOOL CPcmCapController::__SetOperationRender()
         return TRUE;
     }
     /**/
-    pControl = (pcmcap_control_t*)calloc(sizeof(*pControl),1);
+    pControl = (pcmcap_control_t*)calloc(1,sizeof(*pControl));
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();

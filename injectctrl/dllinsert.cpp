@@ -120,7 +120,7 @@ PVOID __GetModuleBaseAddr(unsigned int processid,const char* pDllName)
         ERROR_INFO("Could not Open(%d) error(%d)\n",processid,ret);
         goto fail;
     }
-    pHModules = (HMODULE*)calloc(sizeof(*pHModules),modulesize);
+    pHModules = (HMODULE*)calloc(modulesize,sizeof(*pHModules));
     if(pHModules == NULL)
     {
         ret = LAST_ERROR_RETURN();
@@ -136,7 +136,7 @@ PVOID __GetModuleBaseAddr(unsigned int processid,const char* pDllName)
         free(pHModules);
         pHModules = NULL;
         modulesize = ((moduleret +1)/ sizeof(*pHModules));
-        pHModules = (HMODULE*)calloc(sizeof(*pHModules),modulesize);
+        pHModules = (HMODULE*)calloc(modulesize,sizeof(*pHModules));
         if(pHModules == NULL)
         {
             ret = LAST_ERROR_RETURN();
@@ -154,14 +154,14 @@ PVOID __GetModuleBaseAddr(unsigned int processid,const char* pDllName)
     modulelen = moduleret / sizeof(*pHModules);
 
 #ifdef _UNICODE
-    pNameWide = (wchar_t*)calloc(sizeof(*pNameWide),namesize);
+    pNameWide = (wchar_t*)calloc(namesize,sizeof(*pNameWide));
     if(pNameWide == NULL)
     {
         ret =LAST_ERROR_RETURN();
         goto fail;
     }
 #else  /*_UNICODE*/
-    pNameAnsi = (char*)calloc(sizeof(*pNameAnsi),namesize);
+    pNameAnsi = (char*)calloc(namesize,sizeof(*pNameAnsi));
     if(pNameAnsi == NULL)
     {
         ret = LAST_ERROR_RETURN();
