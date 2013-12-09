@@ -171,6 +171,7 @@ void CioctrlserverDlg::OnStart()
     char *pDllAnsi=NULL,*pExeAnsi=NULL,*pParamAnsi=NULL;
     int dllansisize=0,exeansisize=0,paramansisize=0;
     CString errstr;
+    int ret;
 
     this->__GetItemText(IDC_EDT_EXE,this->m_strExe);
     this->__GetItemText(IDC_EDT_PARAM,this->m_strParam);
@@ -180,6 +181,7 @@ void CioctrlserverDlg::OnStart()
     {
         errstr.Format(TEXT("Exe Must choose"));
         this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        ret = ERROR_INVALID_PARAMETER;
         goto fail;
     }
 
@@ -187,9 +189,23 @@ void CioctrlserverDlg::OnStart()
     {
         errstr.Format(TEXT("Dll Must choose"));
         this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        ret = ERROR_INVALID_PARAMETER;
         goto fail;
     }
 #ifdef _UNICODE
+    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)this->m_strExe),&pExeAnsi,&exeansisize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+#else
+    pExeAnsi = (LPCSTR)this->m_strExe;
+    pDllAnsi = (LPCSTR)this->m_strDll;
+    if(this->m_strParam.GetLength() != 0)
+    {
+        pParamAnsi = (LPCSTR)this->m_strParam;
+    }
 #endif
 
 
@@ -203,6 +219,7 @@ fail:
     UnicodeToAnsi(NULL,&pParamAnsi,&paramansisize);
 #endif
     this->__StopControl();
+    SetLastError(ret);
     return ;
 }
 
