@@ -712,7 +712,6 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
         return -ret;
     }
 
-    DEBUG_INFO("\n");
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     CopyMemory(pData,&st_Dinput8MouseState,sizeof(st_Dinput8MouseState));
     /*to clear the relative moving*/
@@ -720,7 +719,6 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     st_Dinput8MouseState.lY = 0;
     st_Dinput8MouseState.lZ = 0;
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-    DEBUG_INFO("\n");
     return sizeof(st_Dinput8MouseState);
 }
 
@@ -1572,10 +1570,8 @@ public:
         HRESULT hr;
         int ret;
         DIRECT_INPUT_DEVICE_8W_IN();
-        DEBUG_INFO("\n");
         if(this->__IsMouseDevice())
         {
-            DEBUG_INFO("\n");
             if(lpvData == NULL)
             {
                 ret = ERROR_INVALID_PARAMETER;
@@ -1620,7 +1616,6 @@ public:
         {
             hr = this->m_ptr->GetDeviceState(cbData,lpvData);
         }
-        DEBUG_INFO("\n");
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
