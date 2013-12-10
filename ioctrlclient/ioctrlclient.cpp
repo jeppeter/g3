@@ -1158,6 +1158,7 @@ int WriteDeviceEvent(HWND hwnd)
     while(st_DevEvent.size() > 0)
     {
         devevent = st_DevEvent[0];
+		DEBUG_INFO("devevent.devtype %d\n",devevent.devtype);
         pBuf = (char*)&(devevent);
         pBuf += g_writesize;
         ret = send(g_Socket,pBuf,(sizeof(devevent)-g_writesize),0);
