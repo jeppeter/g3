@@ -438,6 +438,7 @@ int CioctrlserverDlg::__StartAccSocket(int port)
 {
     int ret;
     struct sockaddr_in saddr;
+    u_long nonblock;
     assert(this->m_Accsock == INVALID_SOCKET);
 
     this->m_Accsock = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
@@ -458,6 +459,15 @@ int CioctrlserverDlg::__StartAccSocket(int port)
     {
         ret = WSAGetLastError() ? WSAGetLastError() : 1;
         ERROR_INFO("Bind port(%d) Error(%d)\n",port,ret);
+        goto fail;
+    }
+
+    nonblock = 1;
+    ret= ioctlsocket(this->m_Accsock,FIONBIO,&nonblock);
+    if(ret != 0)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Nonblock Set Error(%d)\n",ret);
         goto fail;
     }
 
@@ -528,6 +538,7 @@ DWORD CioctrlserverDlg::__SocketThread()
         goto out;
     }
     waitnum = 2;
+    DEBUG_INFO("Start Thread Control\n");
 
     while(this->m_ThreadControl.running)
     {
@@ -560,6 +571,7 @@ DWORD CioctrlserverDlg::__SocketThread()
             {
                 closesocket(this->m_Readsock);
             }
+            DEBUG_INFO("Accept Socket(%d)\n",rsock);
 
             this->m_Readsock = rsock;
             rsock = INVALID_SOCKET;

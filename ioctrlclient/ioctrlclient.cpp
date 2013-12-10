@@ -491,14 +491,14 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
     hr = DirectInput_Init(g_hWnd,hInst);
     if(hr != S_OK)
     {
-    	ret = LAST_ERROR_CODE();
+        ret = LAST_ERROR_CODE();
 #ifdef _UNICODE
         _snwprintf_s(pErrStr,256,_TRUNCATE,TEXT("Init Directinput Error(%d)"),ret);
 #else
         _snprintf_s(pErrStr,256,_TRUNCATE,"Init Directinput Error(%d)",ret);
 #endif
         ::MessageBox(g_hWnd,pErrStr,TEXT("Error"),MB_OK);
-		goto out;
+        goto out;
     }
 
     ZeroMemory(&msg,sizeof(msg));
@@ -515,9 +515,9 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
         }
         UpdateCodeMessage();
     }
-	ret = 0;
+    ret = 0;
 out:
-	DirectInput_Fini();
+    DirectInput_Fini();
     WSACleanup();
 
     return ret;
@@ -1267,6 +1267,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_SOCKET:
+        if(g_Socket != wParam || g_Socket == INVALID_SOCKET)
+        {
+            ERROR_INFO("Get Socket Message wParam(0x%08x) lParam(0x%08x)\n",wParam,lParam);
+            break;
+        }
         event = WSAGETSELECTEVENT(lParam);
         if(event & FD_CONNECT)
         {
