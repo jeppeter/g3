@@ -335,7 +335,7 @@ void CioctrlserverDlg::OnStart()
     }
     pid = ret;
 
-	Sleep(waittime*1000);
+    Sleep(waittime*1000);
 
     this->m_hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD, FALSE, pid);
     if(this->m_hProc == NULL)
@@ -374,8 +374,8 @@ void CioctrlserverDlg::OnStart()
         goto fail;
     }
 
-	/*all is ok*/
-	SetLastError(0);
+    /*all is ok*/
+    SetLastError(0);
     return ;
 fail:
     if(pCommandAnsi)
@@ -502,6 +502,7 @@ DWORD CioctrlserverDlg::__SocketThread()
     DEVICEEVENT devevent;
     char* pBuf;
     int hasrecv=0;
+    u_long nonblock=1;
     pWaitHandle =(HANDLE*) calloc(waitsize,sizeof(*pWaitHandle));
     if(pWaitHandle == NULL)
     {
@@ -562,6 +563,17 @@ DWORD CioctrlserverDlg::__SocketThread()
 
             this->m_Readsock = rsock;
             rsock = INVALID_SOCKET;
+            nonblock = 1;
+            ret= ioctlsocket(this->m_Readsock, FIONBIO, &nonblock);
+            if(ret != NO_ERROR)
+            {
+                ret = WSAGetLastError() ? WSAGetLastError() : 1;
+                ERROR_INFO("Set Nonblock Error(%d)\n",ret);
+                closesocket(this->m_Readsock);
+                this->m_Readsock = INVALID_SOCKET;
+                waitnum = 2;
+                continue;
+            }
 
             pWaitHandle[2] = WSACreateEvent();
             if(pWaitHandle[2] == WSA_INVALID_EVENT)
