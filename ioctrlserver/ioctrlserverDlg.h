@@ -28,6 +28,8 @@ private:
 	void __CloseReadSock(void);
 	int __HandleAccept(void);
 	void __GetItemText(UINT id,CString& str);
+	DWORD __SocketThread();
+	static DWORD WINAPI HandleSocketThread(LPVOID pParam);
 	
 
 private:
@@ -44,6 +46,7 @@ protected:
 	int m_BufSectSize;
 	int m_TimeWait;
 	int m_ListenPort;
+	thread_control_t m_ThreadControl;
 
 	// Generated message map functions
 	virtual BOOL OnInitDialog();

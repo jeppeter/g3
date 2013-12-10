@@ -32,6 +32,8 @@
 CioctrlserverDlg::CioctrlserverDlg(CWnd* pParent /*=NULL*/)
     : CDialogEx(CioctrlserverDlg::IDD, pParent)
 {
+    ZeroMemory(&m_ThreadControl,sizeof(m_ThreadControl));
+    m_ThreadControl.exited = 1;
     m_pIoController = NULL;
     m_Accsock = INVALID_SOCKET;
     m_Readsock = INVALID_SOCKET;
@@ -247,7 +249,7 @@ void CioctrlserverDlg::OnStart()
         strncat_s(pCommandAnsi,commandsize,pParamAnsi);
     }
 
-	
+
 
 
     return ;
@@ -271,6 +273,7 @@ fail:
 
 void CioctrlserverDlg::__StopControl()
 {
+    StopThreadControl(&(this->m_ThreadControl));
     if(this->m_pIoController)
     {
         delete this->m_pIoController;
@@ -328,3 +331,88 @@ LRESULT CioctrlserverDlg::OnSocket(WPARAM WParam,LPARAM lParam)
     return 0;
 }
 
+
+DWORD CioctrlserverDlg::__SocketThread()
+{
+    HANDLE *pWaitHandle=NULL;
+    int waitnum=0;
+    int waitsize=3;
+    int ret;
+    DWORD dret;
+    SOCKET rsock=INVALID_SOCKET;
+
+    pWaitHandle = calloc(waitsize,sizeof(*pWaitHandle));
+    if(pWaitHandle == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto out;
+    }
+    pWaitHandle[1] = WSA_INVALID_EVENT;
+    pWaitHandle[2] = WSA_INVALID_EVENT;
+
+    pWaitHandle[0] = this->m_ThreadControl.exitevt;
+    pWaitHandle[1] = WSACreateEvent();
+    if(pWaitHandle[1] == WSA_INVALID_EVENT)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Create Accept Event Error(%d)\n",ret);
+        goto out;
+    }
+    ret = WSAEventSelect(this->m_Accsock,pWaitHandle[1],FD_ACCEPT|FD_CLOSE);
+    if(ret == SOCKET_ERROR)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Select Accept Event Error(%d)\n",ret);
+        goto out;
+    }
+    waitnum = 2;
+
+    while(this->m_ThreadControl.running)
+    {
+        dret = WaitForMulitpleObjectEx(waitnum,pWaitHandle,FALSE,INFINITE);
+        if(dret == WAIT_OJBECT_0)
+        {
+            ERROR_INFO("NOTIFY EXIT\n");
+        }
+        else if(dret == WAIT_OBJECT_1)
+        {
+            /*now it is coming ,so we should close the handle*/
+            if(pWaitHandle[2] != WSA_INVALID_EVENT)
+            {
+                /*close the old socket and event*/
+                WSACloseEvent(pWaitHandle[2]);
+            }
+            pWaitHandle
+        }
+    }
+
+
+out:
+
+    if(rsock != INVALID_SOCKET)
+    {
+        closesocket(rsock);
+    }
+    rsock = INVALID_SOCKET;
+
+    if(pWaitHandle)
+    {
+        if(pWaitHandle[1] != WSA_INVALID_EVENT)
+        {
+            WSACloseEvent(pWaitHandle[1]);
+        }
+        pWaitHandle[1] = WSA_INVALID_EVENT;
+        if(pWaitHandle[2] != WSA_INVALID_EVENT)
+        {
+            WSACloseEvent(pWaitHandle[2]);
+        }
+        pWaitHandle[2] = WSA_INVALID_EVENT;
+        free(pWaitHandle);
+    }
+    pWaitHandle = NULL;
+    waitnum = 0;
+    waitsize = 0;
+    SetLastError(ret);
+    this->m_ThreadControl.exited = 1;
+    return ret;
+}
