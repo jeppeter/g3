@@ -648,21 +648,10 @@ DWORD CioctrlserverDlg::__SocketThread()
         	
             pBuf = (char*)&devevent;
             pBuf += hasrecv;
-            ret = recv(this->m_Readsock,pBuf,(sizeof(devevent)-hasrecv),MSG_PEEK);
-            if(ret == 0 || ret == SOCKET_ERROR)
-            {
-                ret = WSAGetLastError() ? WSAGetLastError() : 1;
-                ERROR_INFO("read error (%d)\n",ret);
-                closesocket(this->m_Readsock);
-                this->m_Readsock = INVALID_SOCKET;
-                WSACloseEvent(pWaitHandle[2]);
-                pWaitHandle[2] = WSA_INVALID_EVENT;
-                waitnum = 2;
-                continue;
-            }
             ret = recv(this->m_Readsock,pBuf,(sizeof(devevent)-hasrecv),0);
             if(ret == 0 || ret == SOCKET_ERROR)
             {
+            	ERROR_INFO("read %d\n",ret);
                 ret = WSAGetLastError() ? WSAGetLastError() : 1;
                 ERROR_INFO("read error (%d)\n",ret);
                 closesocket(this->m_Readsock);
