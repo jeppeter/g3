@@ -199,6 +199,7 @@ void CioctrlserverDlg::OnStart()
     int pid=0;
     CString istr;
     unsigned long bufsectsize,bufnum,waittime,listenport;
+    BOOL bret;
 #ifdef _UNICODE
     wchar_t *pEndPtr;
 #else
@@ -323,10 +324,6 @@ void CioctrlserverDlg::OnStart()
         goto fail;
     }
 
-
-
-
-
     /*to stop  the control for the next control*/
     this->__StopControl();
 
@@ -337,15 +334,49 @@ void CioctrlserverDlg::OnStart()
         ret = LAST_ERROR_CODE();
         errstr.Format(TEXT("Load Insert (%s) Dll(%s) (%s) Error(%d)\n"),pCommandAnsi,pDllAnsi,pPartDll,ret);
         this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
-        ERROR_INFO("Load Insert (%s) Dll(%s) (%s) Error(%d)\n",pCommandAnsi,pDllAnsi,pPartDll,ret);
+        goto fail;
+    }
+    pid = ret;
+
+    this->m_hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD, FALSE, pid);
+    if(this->m_hProc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could not open processid(%d) Error(%d)"),pid,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
 
+    this->m_pIoController = new CIOController();
+    bret = this->m_pIoController->Start(this->m_hProc,bufnum,bufsectsize);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could Start(%d:%d) Error(%d)"),bufnum,bufsectsize,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
 
+    ret = this->__StartAccSocket(listenport);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could Listen(%d) Error(%d)"),listenport,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
 
+    ret = StartThreadControl(&(this->m_ThreadControl),CioctrlserverDlg::HandleSocketThread,this,1);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Start Thread Error(%d)"),ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
 
-
-
+	/*all is ok*/
+	SetLastError(0);
     return ;
 fail:
     if(pCommandAnsi)
