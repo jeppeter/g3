@@ -335,6 +335,8 @@ void CioctrlserverDlg::OnStart()
     }
     pid = ret;
 
+	Sleep(waittime*1000);
+
     this->m_hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD, FALSE, pid);
     if(this->m_hProc == NULL)
     {
