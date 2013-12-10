@@ -15,6 +15,7 @@
 #define IDC_EDT_HOST                    1001
 #define IDC_EDT_HOST2                   1002
 #define IDC_EDT_PORT                    1002
+#define IDC_COMBO_ESCAPE                1003
 #define ID_CONTROL_CONNECT              32771
 #define ID_CONTROL_DISCONNECT           32772
 #define ID_CONTROL_EXIT                 32773
