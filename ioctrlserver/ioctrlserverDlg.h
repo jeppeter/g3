@@ -39,10 +39,6 @@ private:
 	CString m_strDll;
 	CString m_strExe;
 	CString m_strParam;
-	int m_BufNum;
-	int m_BufSectSize;
-	int m_TimeWait;
-	int m_ListenPort;
 	HANDLE m_hProc;
 	thread_control_t m_ThreadControl;
 // Implementation

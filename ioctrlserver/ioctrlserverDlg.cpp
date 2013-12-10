@@ -10,6 +10,8 @@
 #include "resource.h"
 #include <assert.h>
 #include <uniansi.h>
+#include <dllinsert.h>
+#include <injectctrl.h>
 
 #define  WM_SOCKET   (WM_USER+1)
 
@@ -200,11 +202,6 @@ void CioctrlserverDlg::OnStart()
     CString istr;
     unsigned long bufsectsize,bufnum,waittime,listenport;
     BOOL bret;
-#ifdef _UNICODE
-    wchar_t *pEndPtr;
-#else
-    char* pEndPtr;
-#endif
 
     this->__GetItemText(IDC_EDT_EXE,this->m_strExe);
     this->__GetItemText(IDC_EDT_PARAM,this->m_strParam);
@@ -264,7 +261,7 @@ void CioctrlserverDlg::OnStart()
         commandsize += strlen(pParamAnsi) + 1;
     }
 
-    pCommandAnsi = calloc(1,commandsize);
+    pCommandAnsi = (char*)calloc(1,commandsize);
     if(pCommandAnsi == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -274,8 +271,8 @@ void CioctrlserverDlg::OnStart()
     strncpy_s(pCommandAnsi,commandsize,pExeAnsi,_TRUNCATE);
     if(pParamAnsi)
     {
-        strncat_s(pCommandAnsi,commandsize," ");
-        strncat_s(pCommandAnsi,commandsize,pParamAnsi);
+        strncat_s(pCommandAnsi,commandsize," ",_TRUNCATE);
+        strncat_s(pCommandAnsi,commandsize,pParamAnsi,_TRUNCATE);
     }
 
     pPartDll = strrchr(pDllAnsi,'\\');
@@ -288,7 +285,7 @@ void CioctrlserverDlg::OnStart()
         pPartDll = pDllAnsi;
     }
     bufnum = this->__ItemAtoi(IDC_EDT_BUFNUM,10);
-    bufsectsize = this->__ItemAtoi(IDC_EDT_BUFSECTSIZE,16);
+    bufsectsize = this->__ItemAtoi(IDC_EDT_BUFSIZE,16);
     waittime = this->__ItemAtoi(IDC_EDT_WAITTIME,10);
     listenport = this->__ItemAtoi(IDC_EDT_PORT,10);
 
@@ -438,8 +435,7 @@ void CioctrlserverDlg::__CloseAccSocket()
 int CioctrlserverDlg::__StartAccSocket(int port)
 {
     int ret;
-    struct sockaddr saddr;
-    int socklen;
+    struct sockaddr_in saddr;
     assert(this->m_Accsock == INVALID_SOCKET);
 
     this->m_Accsock = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
@@ -455,7 +451,7 @@ int CioctrlserverDlg::__StartAccSocket(int port)
     saddr.sin_addr.s_addr = inet_addr("0.0.0.0");
     saddr.sin_port = htons(port);
 
-    ret = bind(this->m_Accsock,&saddr,sizeof(saddr));
+    ret = bind(this->m_Accsock,(struct sockaddr*)&saddr,sizeof(saddr));
     if(ret == SOCKET_ERROR)
     {
         ret = WSAGetLastError() ? WSAGetLastError() : 1;
@@ -504,7 +500,7 @@ DWORD CioctrlserverDlg::__SocketThread()
     DEVICEEVENT devevent;
     char* pBuf;
     int hasrecv=0;
-    pWaitHandle = calloc(waitsize,sizeof(*pWaitHandle));
+    pWaitHandle =(HANDLE*) calloc(waitsize,sizeof(*pWaitHandle));
     if(pWaitHandle == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -532,15 +528,15 @@ DWORD CioctrlserverDlg::__SocketThread()
 
     while(this->m_ThreadControl.running)
     {
-        dret = WaitForMulitpleObjectEx(waitnum,pWaitHandle,FALSE,INFINITE,TRUE);
-        if(dret == WAIT_OJBECT_0)
+        dret = WaitForMultipleObjectsEx(waitnum,pWaitHandle,FALSE,INFINITE,TRUE);
+        if(dret == WAIT_OBJECT_0)
         {
             ERROR_INFO("NOTIFY EXIT\n");
         }
-        else if(dret == WAIT_OBJECT_1)
+        else if(dret ==(WAIT_OBJECT_0+1))
         {
             socklen = sizeof(saddr);
-            rsock = accept(this->m_Accsock,&saddr,&socklen);
+            rsock = accept(this->m_Accsock,(struct sockaddr*)&saddr,&socklen);
             if(rsock == INVALID_SOCKET)
             {
                 ret = WSAGetLastError() ? WSAGetLastError() : 1;
@@ -575,7 +571,7 @@ DWORD CioctrlserverDlg::__SocketThread()
                 waitnum = 2;
                 continue;
             }
-            ret = WSASelectEvent(this->m_Readsock,pWaitHandle[2],FD_READ|FD_CLOSE);
+            ret = WSAEventSelect(this->m_Readsock,pWaitHandle[2],FD_READ|FD_CLOSE);
             if(ret == SOCKET_ERROR)
             {
                 ret = WSAGetLastError() ? WSAGetLastError() : 1;
@@ -590,7 +586,7 @@ DWORD CioctrlserverDlg::__SocketThread()
             /*now all is ok ,so wait for 3 */
             waitnum = 3;
         }
-        else if(dret == WAIT_OBJECT_3)
+        else if(dret == (WAIT_OBJECT_0+2))
         {
             pBuf = (char*)&devevent;
             pBuf += hasrecv;
