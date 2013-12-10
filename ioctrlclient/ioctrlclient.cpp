@@ -19,7 +19,7 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 BOOL UpdateCodeMessage()
 {
-	return TRUE;
+    return TRUE;
 }
 
 
@@ -35,6 +35,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
     MSG msg;
     HACCEL hAccelTable;
 
+    hInst = hInstance;
     // 初始化全局字符串
     LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadString(hInstance, IDC_IOCTRLCLIENT, szWindowClass, MAX_LOADSTRING);
@@ -60,7 +61,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
-		UpdateCodeMessage();
+        UpdateCodeMessage();
     }
 
     return (int) msg.wParam;
@@ -124,6 +125,59 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     return TRUE;
 }
 
+BOOL CALLBACK ConnectDialogProc(HWND hwndDlg,
+                                UINT message,
+                                WPARAM wParam,
+                                LPARAM lParam)
+{
+    BOOL bret=FALSE;
+    switch(message)
+    {
+    case WM_INITDIALOG:
+		bret = TRUE;
+		break;
+	case WM_CLOSE:
+		EndDialog(hwndDlg,0);
+		bret = TRUE;
+		break;
+	case WM_COMMAND:
+		switch(LOWORD(wParam))
+			{
+			case IDCANCEL:
+				EndDialog(hwndDlg,wParam);
+				bret = TRUE;
+				break;
+			case IDOK:
+				EndDialog(hwndDlg,wParam);
+				bret = TRUE;
+				break;
+			}
+		break;
+	default:
+		break;
+    }
+
+    return bret;
+}
+
+
+BOOL CallConnectFunction(HWND hwnd)
+{
+    INT_PTR nRet;
+    nRet = DialogBox(hInst,MAKEINTRESOURCE(IDD_DLG_CONNECT),hwnd,ConnectDialogProc);
+    if(nRet == IDOK)
+    {
+        ::MessageBox(hwnd,TEXT("Connect"),TEXT("Notice"),MB_OK);
+    }
+
+    return TRUE;
+}
+
+void CallStopFunction(HWND hwnd)
+{
+    return ;
+}
+
 //
 //  函数:  WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -150,6 +204,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
         case IDM_EXIT:
             DestroyWindow(hWnd);
+            break;
+        case ID_CONTROL_CONNECT:
+            CallConnectFunction(hWnd);
+            break;
+        case ID_CONTROL_DISCONNECT:
+            CallStopFunction(hWnd);
+            break;
+        case ID_CONTROL_EXIT:
+            PostQuitMessage(0);
             break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
