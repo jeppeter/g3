@@ -1030,6 +1030,7 @@ void StopConnect(HWND hwnd)
     g_SocketConnTimer= 0;
     if(g_Socket != INVALID_SOCKET)
     {
+    	DEBUG_INFO("Close Socket");
         closesocket(g_Socket);
     }
     g_Socket= INVALID_SOCKET;

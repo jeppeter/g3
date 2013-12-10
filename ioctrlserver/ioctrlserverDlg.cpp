@@ -462,6 +462,15 @@ int CioctrlserverDlg::__StartAccSocket(int port)
         goto fail;
     }
 
+    ret = listen(this->m_Accsock,5);
+    if(ret == SOCKET_ERROR)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Listen Error(%d)\n",ret);
+        goto fail;
+    }
+
+#if 1
     nonblock = 1;
     ret= ioctlsocket(this->m_Accsock,FIONBIO,&nonblock);
     if(ret != 0)
@@ -470,6 +479,7 @@ int CioctrlserverDlg::__StartAccSocket(int port)
         ERROR_INFO("Nonblock Set Error(%d)\n",ret);
         goto fail;
     }
+#endif
 
     SetLastError(0);
     return 0;
@@ -504,7 +514,7 @@ DWORD CioctrlserverDlg::__SocketThread()
     HANDLE *pWaitHandle=NULL;
     int waitnum=0;
     int waitsize=3;
-    int ret;
+    int ret,res;
     DWORD dret;
     SOCKET rsock=INVALID_SOCKET;
     struct sockaddr_in saddr;
@@ -513,6 +523,7 @@ DWORD CioctrlserverDlg::__SocketThread()
     char* pBuf;
     int hasrecv=0;
     u_long nonblock=1;
+    BOOL bret;
     pWaitHandle =(HANDLE*) calloc(waitsize,sizeof(*pWaitHandle));
     if(pWaitHandle == NULL)
     {
@@ -542,7 +553,8 @@ DWORD CioctrlserverDlg::__SocketThread()
 
     while(this->m_ThreadControl.running)
     {
-        dret = WaitForMultipleObjectsEx(waitnum,pWaitHandle,FALSE,INFINITE,TRUE);
+        dret = WaitForMultipleObjects(waitnum,pWaitHandle,FALSE,INFINITE);
+        DEBUG_INFO("wait return %d\n",dret);
         if(dret == WAIT_OBJECT_0)
         {
             ERROR_INFO("NOTIFY EXIT\n");
@@ -555,8 +567,21 @@ DWORD CioctrlserverDlg::__SocketThread()
             {
                 ret = WSAGetLastError() ? WSAGetLastError() : 1;
                 ERROR_INFO("accept Error(%d)\n",ret);
+                bret = WSAResetEvent(pWaitHandle[1]);
+                if(!bret)
+                {
+                    res = WSAGetLastError() ? WSAGetLastError() : 1;
+                    ERROR_INFO("Reset Event Error(%d)\n",res);
+                }
                 continue;
             }
+			/*clear the event ,we will ok*/
+			bret = WSAResetEvent(pWaitHandle[1]);
+			if(!bret)
+			{
+				res = WSAGetLastError() ? WSAGetLastError() : 1;
+				ERROR_INFO("Reset Event Error(%d)\n",res);
+			}
             /*now it is coming ,so we should close the handle*/
             if(pWaitHandle[2] != WSA_INVALID_EVENT)
             {
@@ -614,6 +639,13 @@ DWORD CioctrlserverDlg::__SocketThread()
         }
         else if(dret == (WAIT_OBJECT_0+2))
         {
+			bret = WSAResetEvent(pWaitHandle[2]);
+			if(!bret)
+			{
+				res = WSAGetLastError() ? WSAGetLastError() : 1;
+				ERROR_INFO("Reset Event Error(%d)\n",res);
+			}
+        	
             pBuf = (char*)&devevent;
             pBuf += hasrecv;
             ret = recv(this->m_Readsock,pBuf,(sizeof(devevent)-hasrecv),MSG_PEEK);
