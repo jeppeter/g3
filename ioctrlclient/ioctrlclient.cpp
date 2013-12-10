@@ -18,6 +18,10 @@
 
 #define MAX_LOADSTRING 100
 
+#define WM_SOCKET   (WM_USER + 1)
+#define SOCKET_TIMEOUT   3000
+#define SOCKET_TM_EVENTID 10003
+
 static char g_Host[256];
 static int g_Port;
 static int g_EscapeKey=DIK_RCONTROL;
@@ -102,7 +106,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
         UpdateCodeMessage();
     }
 
-	WSACleanup();
+    WSACleanup();
 
     return (int) msg.wParam;
 }
@@ -596,11 +600,6 @@ BOOL CALLBACK ConnectDialogProc(HWND hwndDlg,
     return bret;
 }
 
-BOOL StartConnect(HWND hwnd)
-{
-
-    return TRUE;
-}
 
 
 void StopConnect(HWND hwnd)
@@ -613,6 +612,74 @@ void StopConnect(HWND hwnd)
     g_Socket= INVALID_SOCKET;
     g_Connected = 0;
     return ;
+}
+
+
+BOOL StartConnect(HWND hwnd)
+{
+    int ret;
+    struct sockaddr_in saddr;
+    u_long nonblock;
+    UINT_PTR timeret;
+    StopConnect(hwnd);
+
+    /*now first to make socket*/
+    g_Socket = socket(AF_INET,SOCK_STREAM,0);
+    if(g_Socket == INVALID_SOCKET)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Socket Stream Error(%d)\n",ret);
+        goto fail;
+    }
+    nonblock = 1;
+    ret = ioctlsocket(g_Socket,FIONBIO,&nonblock);
+    if(ret != NO_ERROR)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("ioctl nonblock Error(%d)\n",ret);
+        goto fail;
+    }
+
+    ZeroMemory(&saddr,sizeof(saddr));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = inet_atoi(g_Host);
+    saddr.sin_port = htons(g_Port);
+
+    ret = connect(g_Socket,&saddr,sizeof(saddr));
+    if(ret == SOCKET_ERROR)
+    {
+        ret=WSAGetLastError() ? WSAGetLastError() : 1;
+        if(ret != WSAEWOULDBLOCK  &&
+                ret != WSAEINPROGRESS)
+        {
+            ERROR_INFO("connect (%s:%d) Error(%d)\n",g_Host,g_Port,ret);
+            goto fail;
+        }
+    }
+
+    ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CONNECT|FD_WRITE|FD_CLOSE);
+    if(ret != NO_ERROR)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Set hwnd(0x%08x) Select Error(%d)\n",hwnd,ret);
+        goto fail;
+    }
+
+    timeret = SetTimer(hwnd,SOCKET_TM_EVENTID,SOCKET_TIMEOUT,NULL);
+    if(timeret == 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+
+    SetLastError(0);
+    return TRUE;
+fail:
+    KillTimer(hwnd,SOCKET_TM_EVENTID);
+    StopConnect(hwnd);
+    SetLastError(ret);
+    return FALSE;
 }
 
 
