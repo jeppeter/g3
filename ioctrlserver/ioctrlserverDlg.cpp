@@ -35,6 +35,7 @@ CioctrlserverDlg::CioctrlserverDlg(CWnd* pParent /*=NULL*/)
     ZeroMemory(&m_ThreadControl,sizeof(m_ThreadControl));
     m_ThreadControl.exited = 1;
     m_pIoController = NULL;
+    m_hProc = NULL;
     m_Accsock = INVALID_SOCKET;
     m_Readsock = INVALID_SOCKET;
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -143,6 +144,24 @@ void CioctrlserverDlg::OnSelDll()
     return ;
 }
 
+unsigned long CioctrlserverDlg::__ItemAtoi(UINT id,int base)
+{
+    CString lstr;
+    unsigned long lret;
+#ifdef _UNICODE
+    wchar_t *pEndPtr;
+#else
+    char* pEndPtr;
+#endif
+    this->__GetItemText(id,lstr);
+#ifdef _UNICODE
+    lret = wcstoul((LPCWSTR)lstr,&pEndPtr,base);
+#else
+    lret = strtoul((LPCSTR)lstr,&pEndPtr,base);
+#endif
+    return lret;
+}
+
 void CioctrlserverDlg::OnSelExe()
 {
     CFileDialog fdlg(TRUE,NULL,NULL,OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_READONLY,
@@ -173,9 +192,18 @@ void CioctrlserverDlg::OnStart()
     char *pDllAnsi=NULL,*pExeAnsi=NULL,*pParamAnsi=NULL;
     int dllansisize=0,exeansisize=0,paramansisize=0;
     char *pCommandAnsi=NULL;
+    char *pPartDll=NULL;
     int commandsize=0;
     CString errstr;
     int ret;
+    int pid=0;
+    CString istr;
+    unsigned long bufsectsize,bufnum,waittime,listenport;
+#ifdef _UNICODE
+    wchar_t *pEndPtr;
+#else
+    char* pEndPtr;
+#endif
 
     this->__GetItemText(IDC_EDT_EXE,this->m_strExe);
     this->__GetItemText(IDC_EDT_PARAM,this->m_strParam);
@@ -249,6 +277,72 @@ void CioctrlserverDlg::OnStart()
         strncat_s(pCommandAnsi,commandsize,pParamAnsi);
     }
 
+    pPartDll = strrchr(pDllAnsi,'\\');
+    if(pPartDll)
+    {
+        pPartDll += 1;
+    }
+    else
+    {
+        pPartDll = pDllAnsi;
+    }
+    bufnum = this->__ItemAtoi(IDC_EDT_BUFNUM,10);
+    bufsectsize = this->__ItemAtoi(IDC_EDT_BUFSECTSIZE,16);
+    waittime = this->__ItemAtoi(IDC_EDT_WAITTIME,10);
+    listenport = this->__ItemAtoi(IDC_EDT_PORT,10);
+
+    if(bufnum == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        errstr.Format(TEXT("bufnum == 0"));
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    if(bufsectsize < 256)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        errstr.Format(TEXT("bufsectsize(%d) < 256"),bufsectsize);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    if(waittime == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        errstr.Format(TEXT("waittime == 0"));
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    if(listenport == 0 || listenport >= (1 << 16))
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        errstr.Format(TEXT("listen port(%d) not valid"),listenport);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+
+
+
+
+    /*to stop  the control for the next control*/
+    this->__StopControl();
+
+    /*now we should start for the command*/
+    ret = LoadInsert(NULL,pCommandAnsi,pDllAnsi,pPartDll);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Load Insert (%s) Dll(%s) (%s) Error(%d)\n"),pCommandAnsi,pDllAnsi,pPartDll,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        ERROR_INFO("Load Insert (%s) Dll(%s) (%s) Error(%d)\n",pCommandAnsi,pDllAnsi,pPartDll,ret);
+        goto fail;
+    }
+
+
+
 
 
 
@@ -290,27 +384,61 @@ void CioctrlserverDlg::__StopControl()
         closesocket(this->m_Accsock);
     }
     this->m_Accsock = INVALID_SOCKET;
+    if(this->m_hProc)
+    {
+        CloseHandle(this->m_hProc);
+    }
+    this->m_hProc = NULL;
 
     return ;
 }
 
 
-void CioctrlserverDlg::__CloseReadSock(void)
+void CioctrlserverDlg::__CloseAccSocket()
 {
-    if(this->m_Readsock != INVALID_SOCKET)
+    if(this->m_Accsock != INVALID_SOCKET)
     {
-        closesocket(this->m_Readsock);
+        closesocket(this->m_Accsock);
     }
-    this->m_Readsock = INVALID_SOCKET;
+    this->m_Accsock = INVALID_SOCKET;
     return ;
 }
 
 int CioctrlserverDlg::__StartAccSocket(int port)
 {
-    assert(this->m_Accsock == NULL);
+    int ret;
+    struct sockaddr saddr;
+    int socklen;
+    assert(this->m_Accsock == INVALID_SOCKET);
 
-    this->m_Accsock = socket(AF_INET,SOCK_STREAM,0);
+    this->m_Accsock = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+
+    if(this->m_Accsock == INVALID_SOCKET)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Socket Error(%d)\n",ret);
+        goto fail;
+    }
+    memset(&saddr,0,sizeof(saddr));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = inet_addr("0.0.0.0");
+    saddr.sin_port = htons(port);
+
+    ret = bind(this->m_Accsock,&saddr,sizeof(saddr));
+    if(ret == SOCKET_ERROR)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Bind port(%d) Error(%d)\n",port,ret);
+        goto fail;
+    }
+
+    SetLastError(0);
     return 0;
+
+fail:
+    this->__CloseAccSocket();
+    SetLastError(ret);
+    return -ret;
 }
 void CioctrlserverDlg::OnClose()
 {
@@ -340,7 +468,11 @@ DWORD CioctrlserverDlg::__SocketThread()
     int ret;
     DWORD dret;
     SOCKET rsock=INVALID_SOCKET;
-
+    struct sockaddr_in saddr;
+    int socklen;
+    DEVICEEVENT devevent;
+    char* pBuf;
+    int hasrecv=0;
     pWaitHandle = calloc(waitsize,sizeof(*pWaitHandle));
     if(pWaitHandle == NULL)
     {
@@ -369,23 +501,113 @@ DWORD CioctrlserverDlg::__SocketThread()
 
     while(this->m_ThreadControl.running)
     {
-        dret = WaitForMulitpleObjectEx(waitnum,pWaitHandle,FALSE,INFINITE);
+        dret = WaitForMulitpleObjectEx(waitnum,pWaitHandle,FALSE,INFINITE,TRUE);
         if(dret == WAIT_OJBECT_0)
         {
             ERROR_INFO("NOTIFY EXIT\n");
         }
         else if(dret == WAIT_OBJECT_1)
         {
+            socklen = sizeof(saddr);
+            rsock = accept(this->m_Accsock,&saddr,&socklen);
+            if(rsock == INVALID_SOCKET)
+            {
+                ret = WSAGetLastError() ? WSAGetLastError() : 1;
+                ERROR_INFO("accept Error(%d)\n",ret);
+                continue;
+            }
             /*now it is coming ,so we should close the handle*/
             if(pWaitHandle[2] != WSA_INVALID_EVENT)
             {
                 /*close the old socket and event*/
                 WSACloseEvent(pWaitHandle[2]);
             }
-            pWaitHandle
+            pWaitHandle[2] = WSA_INVALID_EVENT;
+            hasrecv = 0;
+            waitnum = 2;
+            /*now to test if the socket close*/
+            if(this->m_Readsock != INVALID_SOCKET)
+            {
+                closesocket(this->m_Readsock);
+            }
+
+            this->m_Readsock = rsock;
+            rsock = INVALID_SOCKET;
+
+            pWaitHandle[2] = WSACreateEvent();
+            if(pWaitHandle[2] == WSA_INVALID_EVENT)
+            {
+                ret = WSAGetLastError() ? WSAGetLastError() : 1;
+                ERROR_INFO("Create Event Error(%d)\n",ret);
+                closesocket(this->m_Readsock);
+                this->m_Readsock = INVALID_SOCKET;
+                waitnum = 2;
+                continue;
+            }
+            ret = WSASelectEvent(this->m_Readsock,pWaitHandle[2],FD_READ|FD_CLOSE);
+            if(ret == SOCKET_ERROR)
+            {
+                ret = WSAGetLastError() ? WSAGetLastError() : 1;
+                ERROR_INFO("Select Event Error(%d)\n",ret);
+                closesocket(this->m_Readsock);
+                this->m_Readsock = INVALID_SOCKET;
+                WSACloseEvent(pWaitHandle[2]);
+                pWaitHandle[2] = WSA_INVALID_EVENT;
+                waitnum = 2;
+                continue;
+            }
+            /*now all is ok ,so wait for 3 */
+            waitnum = 3;
+        }
+        else if(dret == WAIT_OBJECT_3)
+        {
+            pBuf = (char*)&devevent;
+            pBuf += hasrecv;
+            ret = recv(this->m_Readsock,pBuf,(sizeof(devevent)-hasrecv),MSG_PEEK);
+            if(ret == 0 || ret == SOCKET_ERROR)
+            {
+                ret = WSAGetLastError() ? WSAGetLastError() : 1;
+                ERROR_INFO("read error (%d)\n",ret);
+                closesocket(this->m_Readsock);
+                this->m_Readsock = INVALID_SOCKET;
+                WSACloseEvent(pWaitHandle[2]);
+                pWaitHandle[2] = WSA_INVALID_EVENT;
+                waitnum = 2;
+                continue;
+            }
+            ret = recv(this->m_Readsock,pBuf,(sizeof(devevent)-hasrecv),0);
+            if(ret == 0 || ret == SOCKET_ERROR)
+            {
+                ret = WSAGetLastError() ? WSAGetLastError() : 1;
+                ERROR_INFO("read error (%d)\n",ret);
+                closesocket(this->m_Readsock);
+                this->m_Readsock = INVALID_SOCKET;
+                WSACloseEvent(pWaitHandle[2]);
+                pWaitHandle[2] = WSA_INVALID_EVENT;
+                waitnum = 2;
+                continue;
+            }
+
+            hasrecv += ret;
+            if(hasrecv == sizeof(devevent))
+            {
+                /*receive one device event so ,put it to the handle*/
+                assert(this->m_pIoController);
+                this->m_pIoController->PushEvent(&devevent);
+                hasrecv = 0;
+            }
+        }
+        else if(dret == WAIT_FAILED)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Wait Error(%d)\n",ret);
+            goto out;
         }
     }
 
+
+    /*just ok exit*/
+    ret = 0;
 
 out:
 
@@ -415,4 +637,11 @@ out:
     SetLastError(ret);
     this->m_ThreadControl.exited = 1;
     return ret;
+}
+
+
+DWORD CioctrlserverDlg::HandleSocketThread(LPVOID pParam)
+{
+    CioctrlserverDlg* pThis = (CioctrlserverDlg*)pParam;
+    return pThis->__SocketThread();
 }

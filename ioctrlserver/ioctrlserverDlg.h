@@ -25,20 +25,17 @@ public:
 private:
 	void __StopControl();
 	int __StartAccSocket(int port);
-	void __CloseReadSock(void);
-	int __HandleAccept(void);
+	void __CloseAccSocket();
 	void __GetItemText(UINT id,CString& str);
 	DWORD __SocketThread();
 	static DWORD WINAPI HandleSocketThread(LPVOID pParam);
+	unsigned long __ItemAtoi(UINT id,int base=10);
 	
 
 private:
 	CIOController           *m_pIoController;
 	SOCKET m_Accsock;
 	SOCKET m_Readsock;
-// Implementation
-protected:
-	HICON m_hIcon;
 	CString m_strDll;
 	CString m_strExe;
 	CString m_strParam;
@@ -46,7 +43,11 @@ protected:
 	int m_BufSectSize;
 	int m_TimeWait;
 	int m_ListenPort;
+	HANDLE m_hProc;
 	thread_control_t m_ThreadControl;
+// Implementation
+protected:
+	HICON m_hIcon;
 
 	// Generated message map functions
 	virtual BOOL OnInitDialog();
