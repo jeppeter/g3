@@ -26,6 +26,7 @@ static char g_Host[256];
 static int g_Port;
 static int g_EscapeKey=DIK_RCONTROL;
 static SOCKET g_Socket=INVALID_SOCKET;
+static UINT_PTR g_SocketConnTimer=0;
 static int g_Connected=0;
 static int g_writesize=0;
 static HWND g_hWnd=NULL;
@@ -604,13 +605,26 @@ BOOL CALLBACK ConnectDialogProc(HWND hwndDlg,
 
 void StopConnect(HWND hwnd)
 {
-
+    BOOL bret;
+    int ret;
+    if(g_SocketConnTimer != 0)
+    {
+        bret = KillTimer(hwnd,g_SocketConnTimer);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("KillTimer hwnd(0x%08x)(%d) Error(%d)\n",hwnd,g_SocketConnTimer,ret);
+        }
+    }
+    g_SocketConnTimer= 0;
     if(g_Socket != INVALID_SOCKET)
     {
         closesocket(g_Socket);
     }
     g_Socket= INVALID_SOCKET;
     g_Connected = 0;
+
+    st_DevEvent.clear();
     return ;
 }
 
@@ -642,10 +656,10 @@ BOOL StartConnect(HWND hwnd)
 
     ZeroMemory(&saddr,sizeof(saddr));
     saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = inet_atoi(g_Host);
+    saddr.sin_addr.s_addr = inet_addr(g_Host);
     saddr.sin_port = htons(g_Port);
 
-    ret = connect(g_Socket,&saddr,sizeof(saddr));
+    ret = connect(g_Socket,(struct sockaddr*)&saddr,sizeof(saddr));
     if(ret == SOCKET_ERROR)
     {
         ret=WSAGetLastError() ? WSAGetLastError() : 1;
@@ -655,6 +669,22 @@ BOOL StartConnect(HWND hwnd)
             ERROR_INFO("connect (%s:%d) Error(%d)\n",g_Host,g_Port,ret);
             goto fail;
         }
+        else
+        {
+            timeret = SetTimer(hwnd,SOCKET_TM_EVENTID,SOCKET_TIMEOUT,NULL);
+            if(timeret == 0)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("SetTimer hwnd(0x%08x) (%d) Error(%d)\n",hwnd,SOCKET_TM_EVENTID,ret);
+                goto fail;
+            }
+            g_SocketConnTimer = timeret;
+        }
+    }
+    else
+    {
+    	/*we have connected*/
+        g_Connected = 1;
     }
 
     ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CONNECT|FD_WRITE|FD_CLOSE);
@@ -665,18 +695,10 @@ BOOL StartConnect(HWND hwnd)
         goto fail;
     }
 
-    timeret = SetTimer(hwnd,SOCKET_TM_EVENTID,SOCKET_TIMEOUT,NULL);
-    if(timeret == 0)
-    {
-        ret = LAST_ERROR_CODE();
-        goto fail;
-    }
-
 
     SetLastError(0);
     return TRUE;
 fail:
-    KillTimer(hwnd,SOCKET_TM_EVENTID);
     StopConnect(hwnd);
     SetLastError(ret);
     return FALSE;
@@ -689,7 +711,7 @@ BOOL CallConnectFunction(HWND hwnd)
     nRet = DialogBox(hInst,MAKEINTRESOURCE(IDD_DLG_CONNECT),hwnd,ConnectDialogProc);
     if(nRet == IDOK)
     {
-        ::MessageBox(hwnd,TEXT("Connect"),TEXT("Notice"),MB_OK);
+        StartConnect(hwnd);
     }
 
     return TRUE;
@@ -697,7 +719,60 @@ BOOL CallConnectFunction(HWND hwnd)
 
 void CallStopFunction(HWND hwnd)
 {
+    StopConnect(hwnd);
     return ;
+}
+
+
+int WriteDeviceEvent(HWND hwnd)
+{
+    int cnt=0;
+    DEVICEEVENT devevent;
+    char* pBuf=NULL;
+    int ret;
+    std::auto_ptr<TCHAR> pChar2(new TCHAR[256]);
+    TCHAR *pChar=pChar2.get();
+
+    if(g_Socket == INVALID_SOCKET || g_Connected == 0)
+    {
+        return 0;
+    }
+
+    if(st_DevEvent.size() > 20)
+    {
+        ERROR_INFO("DevEvent.size(%d)\n",st_DevEvent.size());
+    }
+
+    while(st_DevEvent.size() > 0)
+    {
+        devevent = st_DevEvent[0];
+        pBuf = (char*)&(devevent);
+        pBuf += g_writesize;
+        ret = send(g_Socket,pBuf,(sizeof(devevent)-g_writesize),0);
+        if(ret == SOCKET_ERROR)
+        {
+            ret = WSAGetLastError() ? WSAGetLastError() : 1;
+            StopConnect(hwnd);
+            SprintfString(pChar,256,TEXT("Write(%s:%d) Error(%d)"),g_Host,g_Port,ret);
+            ::MessageBox(hwnd,pChar,TEXT("Error"),MB_OK);
+            SetLastError(ret);
+            return -ret;
+        }
+        g_writesize += ret;
+        if(g_writesize >= sizeof(devevent))
+        {
+            st_DevEvent.erase(st_DevEvent.begin());
+            g_writesize = 0;
+            cnt ++;
+        }
+        else
+        {
+            /*we can not write any more ,so just return */
+            return cnt;
+        }
+    }
+
+    return cnt;
 }
 
 //
@@ -715,6 +790,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     int wmId, wmEvent;
     PAINTSTRUCT ps;
     HDC hdc;
+    DWORD event;
+    BOOL bret;
+    int ret,res;
+    std::auto_ptr<TCHAR> pChar2(new TCHAR[256]);
+    TCHAR *pChar=pChar2.get();
 
     switch(message)
     {
@@ -747,6 +827,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_DESTROY:
         PostQuitMessage(0);
+        break;
+    case WM_TIMER:
+        if(wParam == g_SocketConnTimer && g_SocketConnTimer != 0)
+        {
+            ret = WSAGetLastError() ? WSAGetLastError() : 1;
+            if(g_Socket != INVALID_SOCKET)
+            {
+                int error;
+                int errsize;
+                errsize = sizeof(error);
+                error = 0;
+                res = getsockopt(g_Socket,SOL_SOCKET,SO_ERROR,(char*)&error,&errsize);
+                if(res == 0)
+                {
+                    ret = error;
+                }
+            }
+            /*now we should disconnect*/
+            StopConnect(hWnd);
+            SprintfString(pChar,256,TEXT("Connect(%s:%d) Error(%d)"),g_Host,g_Port,ret);
+            ::MessageBox(hWnd,pChar,TEXT("Error"),MB_OK);
+        }
+        break;
+    case WM_SOCKET:
+        event = WSAGETSELECTEVENT(lParam);
+        if(event & FD_CONNECT)
+        {
+            if(g_Socket == INVALID_SOCKET || g_Connected == 1)
+            {
+                ERROR_INFO("Not valid socket for FD_CONNECT\n");
+                break;
+            }
+            g_Connected = 1;
+            bret =KillTimer(hWnd,g_SocketConnTimer);
+            if(!bret)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("Kill Timer(0x%08x) (%d) Error(%d)\n",hWnd,g_SocketConnTimer,ret);
+            }
+            g_SocketConnTimer = 0;
+        }
+        else if(event & FD_CLOSE)
+        {
+            StopConnect(hWnd);
+            SprintfString(pChar,256,TEXT("(%s:%d) Closed"),g_Host,g_Port);
+            ::MessageBox(hWnd,pChar,TEXT("Error"),MB_OK);
+        }
+        else if(event & FD_WRITE)
+        {
+            WriteDeviceEvent(hWnd);
+        }
+        else
+        {
+            ERROR_INFO("Event is 0x%08x\n",event);
+        }
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
