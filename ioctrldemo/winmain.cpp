@@ -211,9 +211,6 @@ HRESULT DirectInput_Init(HWND hwnd,HINSTANCE hInstance)
         g_KeyboardAcquire = 1;
     }
 
-
-
-
     return S_OK;
 fail:
     DirectInput_Fini();
