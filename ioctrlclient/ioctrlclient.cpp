@@ -21,12 +21,14 @@
 #define WM_SOCKET   (WM_USER + 1)
 #define SOCKET_TIMEOUT   3000
 #define SOCKET_TM_EVENTID 10003
+#define SOCKET_WRITE_EVENTID  10004
 
 static char g_Host[256];
 static int g_Port;
 static int g_EscapeKey=DIK_RCONTROL;
 static SOCKET g_Socket=INVALID_SOCKET;
 static UINT_PTR g_SocketConnTimer=0;
+static UINT_PTR g_SocketWriteTimer=0;
 static int g_Connected=0;
 static int g_writesize=0;
 static HWND g_hWnd=NULL;
@@ -1034,6 +1036,16 @@ void StopConnect(HWND hwnd)
         }
     }
     g_SocketConnTimer= 0;
+    if(g_SocketWriteTimer != 0)
+    {
+        bret = KillTimer(NULL,g_SocketWriteTimer);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("KillTimer for Write hwnd(0x%08x) Error(%d)\n",hwnd,g_SocketWriteTimer,ret);
+        }
+    }
+    g_SocketWriteTimer = 0;
     if(g_Socket != INVALID_SOCKET)
     {
         DEBUG_INFO("Close Socket");
@@ -1106,7 +1118,7 @@ BOOL StartConnect(HWND hwnd)
         g_Connected = 1;
     }
 
-    ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CONNECT|FD_WRITE|FD_CLOSE);
+    ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CONNECT|FD_CLOSE);
     if(ret != NO_ERROR)
     {
         ret = WSAGetLastError() ? WSAGetLastError() : 1;
@@ -1114,6 +1126,14 @@ BOOL StartConnect(HWND hwnd)
         goto fail;
     }
 
+    timeret = SetTimer(NULL,SOCKET_WRITE_EVENTID,10,NULL);
+    if(timeret == 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("SetTimer SocketWrite hwnd(0x%08x) (%d) Error(%d)\n",hwnd,SOCKET_TM_EVENTID,ret);
+        goto fail;
+    }
+    g_SocketWriteTimer = timeret;
 
     SetLastError(0);
     return TRUE;
@@ -1152,6 +1172,7 @@ int WriteDeviceEvent(HWND hwnd)
     std::auto_ptr<TCHAR> pChar2(new TCHAR[256]);
     TCHAR *pChar=pChar2.get();
 
+	DEBUG_INFO("g_Socket %d g_Connected %d\n",g_Socket,g_Connected);
     if(g_Socket == INVALID_SOCKET || g_Connected == 0)
     {
         return 0;
@@ -1285,6 +1306,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 #endif
             ::MessageBox(hWnd,pChar,TEXT("Error"),MB_OK);
         }
+        else if(wParam == g_SocketWriteTimer && g_SocketWriteTimer != 0)
+        {
+            WriteDeviceEvent(hWnd);
+        }
         break;
     case WM_SOCKET:
         if(g_Socket != wParam || g_Socket == INVALID_SOCKET)
@@ -1299,9 +1324,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             ret = WSAGetLastError() ? WSAGetLastError() : 1;
             StopConnect(hWnd);
 #ifdef _UNICODE
-            SprintfString(pChar,256,TEXT("Connect(%S:%d) Error(%d)Mask(0x%08x)"),g_Host,g_Port,ret,error);
+            SprintfString(pChar,256,TEXT("Connect(%S:%d) Error(%d)Code(%d)"),g_Host,g_Port,ret,error);
 #else
-            SprintfString(pChar,256,TEXT("Connect(%s:%d) Error(%d)Mask(0x%08x)"),g_Host,g_Port,ret,error);
+            SprintfString(pChar,256,TEXT("Connect(%s:%d) Error(%d)Code(%d)"),g_Host,g_Port,ret,error);
 #endif
             ::MessageBox(hWnd,pChar,TEXT("Error"),MB_OK);
             break;
@@ -1319,6 +1344,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
                 g_SocketConnTimer = 0;
             }
+
         }
         if(event & FD_CLOSE)
         {
@@ -1329,11 +1355,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SprintfString(pChar,256,TEXT("(%s:%d) Closed"),g_Host,g_Port);
 #endif
             ::MessageBox(hWnd,pChar,TEXT("Error"),MB_OK);
-			break;
-        }
-        if(event & FD_WRITE)
-        {
-            WriteDeviceEvent(hWnd);
+            break;
         }
         break;
     default:
