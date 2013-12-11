@@ -875,6 +875,7 @@ HWND WINAPI CreateWindowExACallBack(
                               );
     if(hWnd != NULL)
     {
+    	DEBUG_INFO("hWnd (0x%08x) ThreadId(%d)\n",hWnd,GetCurrentThreadId());
         st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
@@ -912,6 +913,7 @@ HWND WINAPI CreateWindowExWCallBack(
                               );
     if(hWnd != NULL)
     {
+    	DEBUG_INFO("hWnd (0x%08x) ThreadId(%d)\n",hWnd,GetCurrentThreadId());
         st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;

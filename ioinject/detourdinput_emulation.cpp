@@ -16,6 +16,7 @@ static DIMOUSESTATE  st_Dinput8MouseState;
 
 static std::vector<HWND> st_hWndVecs;
 static std::vector<RECT> st_hWndRectVecs;
+static std::vector<DWORD> st_hWndThreadId;
 static unsigned int st_KeyDownTimes[256] = {0};
 /********************************************
 .left 0
@@ -138,12 +139,6 @@ int DetourDinputPressKeyDownTimes(UINT scancode)
     return cnt;
 }
 
-#define DetourDinput_WND_STATE_EQUAL() \
-do\
-{\
-	assert(st_hWndVecs.size() == st_hWndLastTick.size());\
-	assert(st_hWndLastTick.size() == st_hWndRectVecs.size());\
-}while(0)
 
 
 int __ReCalculateMaxWindowRectNoLock()
@@ -274,6 +269,7 @@ static int Dinput8CreateWindowNotify(LPVOID pParam,LPVOID pInput)
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     st_hWndRectVecs.push_back(rect);
     st_hWndVecs.push_back(hwnd);
+    st_hWndThreadId.push_back(GetCurrentThreadId());
     __ReCalculateMaxWindowRectNoLock();
     __ReCalculateMousePointNoLock(0);
     ret = 1;
@@ -302,6 +298,7 @@ static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
     {
         st_hWndRectVecs.erase(st_hWndRectVecs.begin() + findidx);
         st_hWndVecs.erase(st_hWndVecs.begin() + findidx);
+        st_hWndThreadId.erase(st_hWndThreadId.begin() + findidx);
         ret = 1;
     }
     else
@@ -679,10 +676,32 @@ int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint)
     }
     else
     {
-        /*not find ,so we put it in the top-left point*/
-        ERROR_INFO("could not find 0x%08x hwnd\n",hwnd);
-        pPoint->x = 1;
-        pPoint->y = 1;
+        /*not find ,so we put it in the top-left point for the max rect*/
+        if(st_MousePoint.x <= st_MaxRect.left)
+        {
+            pPoint->x = 1;
+        }
+        else if(st_MousePoint.x >= st_MaxRect.right)
+        {
+            pPoint->x = (st_MaxRect.right - st_MaxRect.left -1);
+        }
+        else
+        {
+            pPoint->x = (st_MousePoint.x - st_MaxRect.left);
+        }
+
+        if(st_MousePoint.y <= st_MaxRect.top)
+        {
+            pPoint->y = 1;
+        }
+        else if(st_MousePoint.y >= st_MaxRect.bottom)
+        {
+            pPoint->y = (st_MaxRect.bottom - st_MaxRect.top - 1);
+        }
+        else
+        {
+            pPoint->y = (st_MousePoint.y - st_MaxRect.top);
+        }
     }
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
 
