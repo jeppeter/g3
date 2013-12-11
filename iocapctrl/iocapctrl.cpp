@@ -882,11 +882,11 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
     if(pIoCapEvt == NULL)
     {
         ret = ERROR_NO_DATA;
-        ERROR_INFO("Could not Get FreeEvent\n");
+        //ERROR_INFO("Could not Get FreeEvent\n");
         SetLastError(ret);
         return FALSE;
     }
     CopyMemory(pIoCapEvt->pEvent,pDevEvt,sizeof(*pDevEvt));
-    DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);
+    //DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);
     return this->__InsertInputEvent(pIoCapEvt);
 }

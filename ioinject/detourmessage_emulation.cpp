@@ -95,7 +95,6 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
     {
         uint32_t curtick = GetTickCount();
         ret = 0;
-        DEBUG_INFO("%s Insert 0x%p\n",back ? "Back" : "Front",lpMsg);
         EnterCriticalSection(&st_MessageEmulationCS);
         if(back)
         {

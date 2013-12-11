@@ -45,6 +45,8 @@ int                     g_KeyboardAcquire   = 0;
 unsigned char                    g_KeyStateBuffer[256] = {0};
 unsigned char                    g_LastpKeyStateBuffer[256] = {0};
 
+#define  SOCKET_REENABLE  1
+#undef SOCKET_REENABLE
 void DirectInput_Fini()
 {
     ULONG uret;
@@ -420,7 +422,7 @@ BOOL UpdateCodeMessage()
     CompareMouseBuffer(&g_diMouseState,&g_LastdiMouseState,event);
 
 
-    if(event.size() > 0)
+    if(event.size() > 20)
     {
         DEBUG_INFO("st_DevEvent size(%d) event.size(%d)\n",st_DevEvent.size(),event.size());
     }
@@ -839,6 +841,17 @@ BOOL InitializeConnectDialog(HWND hwnd)
         ERROR_INFO("Set IDC_EDT_PORT Error(%d)\n",ret);
         goto fail;
     }
+
+    SprintfString(pChar,256,TEXT("127.0.0.1"));
+    bret = SetDialogItemString(hwnd,IDC_EDT_HOST,pChar);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Set IDC_EDT_HOST Error(%d)\n",ret);
+        goto fail;
+    }
+
+
     SprintfString(pChar,256,TEXT("RCONTROL"));
     bret = InsertComboString(hwnd,IDC_COMBO_ESCAPE,0,pChar);
     if(!bret)
@@ -1048,6 +1061,7 @@ void StopConnect(HWND hwnd)
     g_SocketWriteTimer = 0;
     if(g_Socket != INVALID_SOCKET)
     {
+        WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,0);
         DEBUG_INFO("Close Socket");
         closesocket(g_Socket);
     }
@@ -1055,6 +1069,9 @@ void StopConnect(HWND hwnd)
     g_Connected = 0;
 
     st_DevEvent.clear();
+#ifdef SOCKET_REENABLE
+    WSACleanup();
+#endif
     return ;
 }
 
@@ -1066,7 +1083,16 @@ BOOL StartConnect(HWND hwnd)
     u_long nonblock;
     UINT_PTR timeret;
     StopConnect(hwnd);
-
+#ifdef SOCKET_REENABLE
+    WSADATA wsadata;
+    ret = WSAStartup(MAKEWORD(2,2),&wsadata);
+    if(ret != NO_ERROR)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("StartWSA Error(%d)\n",ret);
+        goto fail;
+    }
+#endif
     /*now first to make socket*/
     g_Socket = socket(AF_INET,SOCK_STREAM,0);
     if(g_Socket == INVALID_SOCKET)
@@ -1111,20 +1137,30 @@ BOOL StartConnect(HWND hwnd)
             g_SocketConnTimer = SOCKET_TM_EVENTID;
             DEBUG_INFO("SetTimer ret (0x%08x)\n",g_SocketConnTimer);
         }
+        DEBUG_INFO("Wait Connected\n");
+        ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CONNECT|FD_CLOSE);
+        if(ret != NO_ERROR)
+        {
+            ret = WSAGetLastError() ? WSAGetLastError() : 1;
+            ERROR_INFO("Set hwnd(0x%08x) Select Error(%d)\n",hwnd,ret);
+            goto fail;
+        }
+
     }
     else
     {
         /*we have connected*/
         g_Connected = 1;
+        DEBUG_INFO("Detect Closed\n");
+        ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CLOSE);
+        if(ret != NO_ERROR)
+        {
+            ret = WSAGetLastError() ? WSAGetLastError() : 1;
+            ERROR_INFO("Set hwnd(0x%08x) Select Error(%d)\n",hwnd,ret);
+            goto fail;
+        }
     }
 
-    ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CONNECT|FD_CLOSE);
-    if(ret != NO_ERROR)
-    {
-        ret = WSAGetLastError() ? WSAGetLastError() : 1;
-        ERROR_INFO("Set hwnd(0x%08x) Select Error(%d)\n",hwnd,ret);
-        goto fail;
-    }
 
     timeret = SetTimer(hwnd,SOCKET_WRITE_EVENTID,10,NULL);
     if(timeret == 0)
@@ -1171,13 +1207,30 @@ int WriteDeviceEvent(HWND hwnd)
     int ret;
     std::auto_ptr<TCHAR> pChar2(new TCHAR[256]);
     TCHAR *pChar=pChar2.get();
+    int error;
+    int errsize;
 
-	DEBUG_INFO("g_Socket %d g_Connected %d\n",g_Socket,g_Connected);
     if(g_Socket == INVALID_SOCKET || g_Connected == 0)
     {
+        if(g_Socket != INVALID_SOCKET)
+        {
+            errsize = sizeof(error);
+            error = 0;
+            ret = getsockopt(g_Socket,SOL_SOCKET,SO_ERROR,(char*)&error,&errsize);
+            if(ret == 0)
+            {
+                if(error == 0)
+                {
+                    g_Connected = 1;
+                    goto ok_write;
+                }
+            }
+        }
+
+        DEBUG_INFO("g_Socket %d g_Connected %d\n",g_Socket,g_Connected);
         return 0;
     }
-
+ok_write:
     if(st_DevEvent.size() > 20)
     {
         ERROR_INFO("DevEvent.size(%d)\n",st_DevEvent.size());
@@ -1186,7 +1239,7 @@ int WriteDeviceEvent(HWND hwnd)
     while(st_DevEvent.size() > 0)
     {
         devevent = st_DevEvent[0];
-        DEBUG_INFO("devevent.devtype %d\n",devevent.devtype);
+        //DEBUG_INFO("devevent.devtype %d\n",devevent.devtype);
         pBuf = (char*)&(devevent);
         pBuf += g_writesize;
         ret = send(g_Socket,pBuf,(sizeof(devevent)-g_writesize),0);
@@ -1222,7 +1275,6 @@ int WriteDeviceEvent(HWND hwnd)
             return cnt;
         }
     }
-    DEBUG_INFO("Write Device cnt(%d)\n",cnt);
     return cnt;
 }
 
@@ -1282,8 +1334,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
         if(wParam == g_SocketConnTimer && g_SocketConnTimer != 0)
         {
-			DEBUG_INFO("WM_TIMER wParam(0x%08x) lParam(0x%08x) g_SocketConnTimer (0x%08x)\n",
-					   wParam,lParam,g_SocketConnTimer);
+            DEBUG_INFO("WM_TIMER wParam(0x%08x) lParam(0x%08x) g_SocketConnTimer (0x%08x)\n",
+                       wParam,lParam,g_SocketConnTimer);
             ret = WSAGetLastError() ? WSAGetLastError() : 1;
             if(g_Socket != INVALID_SOCKET)
             {
@@ -1296,6 +1348,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 {
                     ret = error;
                 }
+#ifdef SOCKET_REENABLE
+                if(ret == 0)
+                {
+                    /*no error ,we could pass ok*/
+                    bret = KillTimer(hWnd,g_SocketConnTimer);
+                    if(!bret)
+                    {
+                        ret = LAST_ERROR_CODE();
+                        ERROR_INFO("Kill Timer(%d) Error(%d)\n",g_SocketConnTimer,ret);
+                    }
+                    g_SocketConnTimer = 0;
+                    g_Connected = 1;
+                    break;
+                }
+#endif /*SOCKET_REENABLE*/
             }
             /*now we should disconnect*/
             StopConnect(hWnd);
@@ -1312,6 +1379,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_SOCKET:
+        DEBUG_INFO("WM_SOCKET wParam(0x%08x) lParam(0x%08x)\n",wParam,lParam);
         if(g_Socket != wParam || g_Socket == INVALID_SOCKET)
         {
             ERROR_INFO("Get Socket Message wParam(0x%08x) lParam(0x%08x)\n",wParam,lParam);

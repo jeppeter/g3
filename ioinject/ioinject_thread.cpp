@@ -33,7 +33,7 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     BOOL bret;
     assert(idx < pStatus->m_Bufnumm);
     pEventList = &(pStatus->m_pEventListArray[idx]);
-    DEBUG_INFO("[%d]Base 0x%x offset 0x%x\n",idx,pEventList->m_BaseAddr,pEventList->m_Offset);
+    //DEBUG_INFO("[%d]Base 0x%x offset 0x%x\n",idx,pEventList->m_BaseAddr,pEventList->m_Offset);
     pDevEvent = (LPDEVICEEVENT)((ptr_t)pEventList->m_BaseAddr + (ptr_t)pEventList->m_Offset);
     totalret = st_EventHandlerFuncList.CallList(pDevEvent);
     bret = SetEvent(pEventList->m_hFillEvt);
