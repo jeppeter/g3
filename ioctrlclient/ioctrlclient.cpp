@@ -1028,7 +1028,7 @@ void StopConnect(HWND hwnd)
     int ret;
     if(g_SocketConnTimer != 0)
     {
-        bret = KillTimer(NULL,g_SocketConnTimer);
+        bret = KillTimer(hwnd,g_SocketConnTimer);
         if(!bret)
         {
             ret = LAST_ERROR_CODE();
@@ -1038,7 +1038,7 @@ void StopConnect(HWND hwnd)
     g_SocketConnTimer= 0;
     if(g_SocketWriteTimer != 0)
     {
-        bret = KillTimer(NULL,g_SocketWriteTimer);
+        bret = KillTimer(hwnd,g_SocketWriteTimer);
         if(!bret)
         {
             ret = LAST_ERROR_CODE();
@@ -1101,14 +1101,14 @@ BOOL StartConnect(HWND hwnd)
         }
         else
         {
-            timeret = SetTimer(NULL,SOCKET_TM_EVENTID,SOCKET_TIMEOUT,NULL);
+            timeret = SetTimer(hwnd,SOCKET_TM_EVENTID,SOCKET_TIMEOUT,NULL);
             if(timeret == 0)
             {
                 ret = LAST_ERROR_CODE();
                 ERROR_INFO("SetTimer hwnd(0x%08x) (%d) Error(%d)\n",hwnd,SOCKET_TM_EVENTID,ret);
                 goto fail;
             }
-            g_SocketConnTimer = timeret;
+            g_SocketConnTimer = SOCKET_TM_EVENTID;
             DEBUG_INFO("SetTimer ret (0x%08x)\n",g_SocketConnTimer);
         }
     }
@@ -1126,14 +1126,14 @@ BOOL StartConnect(HWND hwnd)
         goto fail;
     }
 
-    timeret = SetTimer(NULL,SOCKET_WRITE_EVENTID,10,NULL);
+    timeret = SetTimer(hwnd,SOCKET_WRITE_EVENTID,10,NULL);
     if(timeret == 0)
     {
         ret = LAST_ERROR_CODE();
         ERROR_INFO("SetTimer SocketWrite hwnd(0x%08x) (%d) Error(%d)\n",hwnd,SOCKET_TM_EVENTID,ret);
         goto fail;
     }
-    g_SocketWriteTimer = timeret;
+    g_SocketWriteTimer = SOCKET_WRITE_EVENTID;
 
     SetLastError(0);
     return TRUE;
@@ -1280,10 +1280,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
         break;
     case WM_TIMER:
-        DEBUG_INFO("WM_TIMER wParam(0x%08x) lParam(0x%08x) g_SocketConnTimer (0x%08x)\n",
-                   wParam,lParam,g_SocketConnTimer);
         if(wParam == g_SocketConnTimer && g_SocketConnTimer != 0)
         {
+			DEBUG_INFO("WM_TIMER wParam(0x%08x) lParam(0x%08x) g_SocketConnTimer (0x%08x)\n",
+					   wParam,lParam,g_SocketConnTimer);
             ret = WSAGetLastError() ? WSAGetLastError() : 1;
             if(g_Socket != INVALID_SOCKET)
             {
@@ -1336,7 +1336,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if(g_Socket != INVALID_SOCKET && g_Connected == 0)
             {
                 g_Connected = 1;
-                bret =KillTimer(NULL,g_SocketConnTimer);
+                bret =KillTimer(hWnd,g_SocketConnTimer);
                 if(!bret)
                 {
                     ret = LAST_ERROR_CODE();
