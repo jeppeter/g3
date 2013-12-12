@@ -1155,8 +1155,15 @@ public:
         DIRECT_INPUT_8A_IN();
         this->m_pCallParam = pvRef;
         this->m_pEnumCallBack = lpCallback;
-        hr = m_ptr->EnumDevices(dwDevType,CDirectInput8AHook::HookDIEnumDevicesCallback,this,dwFlags);
-        DEBUG_INFO("EnumDevices dwDevType 0x%08x dwFlags 0x%08x\n",dwDevType,dwFlags);
+        if(this->m_pEnumCallBack)
+        {
+            hr = m_ptr->EnumDevices(dwDevType,CDirectInput8AHook::HookDIEnumDevicesCallback,this,dwFlags);
+        }
+        else
+        {
+            hr = m_ptr->EnumDevices(dwDevType,NULL,pvRef,dwFlags);
+        }
+        DEBUG_INFO("EnumDevices dwDevType 0x%08x dwFlags 0x%08x this->m_pEnumCallBack 0x%p hr(0x%08x)\n",dwDevType,dwFlags,this->m_pEnumCallBack,hr);
         this->m_pCallParam = NULL;
         this->m_pEnumCallBack = NULL;
         DIRECT_INPUT_8A_OUT();
@@ -1486,11 +1493,19 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_8W_IN();
-		this->m_pCallParam = pvRef;
-		this->m_pEnumCallBack = lpCallback;
-        hr = m_ptr->EnumDevices(dwDevType,CDirectInput8WHook::HookDIEnumDevicesCallback,this,dwFlags);
-		this->m_pCallParam = NULL;
-		this->m_pEnumCallBack = NULL;
+        this->m_pCallParam = pvRef;
+        this->m_pEnumCallBack = lpCallback;
+        if(this->m_pEnumCallBack)
+        {
+            hr = m_ptr->EnumDevices(dwDevType,CDirectInput8WHook::HookDIEnumDevicesCallback,this,dwFlags);
+        }
+        else
+        {
+            hr = m_ptr->EnumDevices(dwDevType,NULL,pvRef,dwFlags);
+        }
+        DEBUG_INFO("EnumDevices dwDevType 0x%08x dwFlags 0x%08x this->m_pEnumCallBack 0x%p hr(0x%08x)\n",dwDevType,dwFlags,this->m_pEnumCallBack,hr);
+        this->m_pCallParam = NULL;
+        this->m_pEnumCallBack = NULL;
         DIRECT_INPUT_8W_OUT();
         return hr;
     }
