@@ -985,9 +985,65 @@ class CDirectInput8AHook :public IDirectInput8A
 {
 private:
     IDirectInput8A* m_ptr;
-
+    void* m_pCallParam;
+    LPDIENUMDEVICESCALLBACKA m_pEnumCallBack;
 public:
-    CDirectInput8AHook(IDirectInput8A* ptr):m_ptr(ptr) {};
+    CDirectInput8AHook(IDirectInput8A* ptr):m_ptr(ptr)
+    {
+        m_pCallParam = NULL;
+        m_pEnumCallBack=NULL;
+    };
+private:
+    static BOOL FAR PASCAL HookDIEnumDevicesCallback(LPCDIDEVICEINSTANCEA lpddi,LPVOID pvRef)
+    {
+        CDirectInput8AHook* pThis = (CDirectInput8AHook*)pvRef;
+        BOOL bret=DIENUM_CONTINUE;
+        if(pThis->m_pEnumCallBack)
+        {
+            bret = pThis->m_pEnumCallBack(lpddi,pThis->m_pCallParam);
+            DEBUG_BUFFER_FMT(lpddi,sizeof(*lpddi),"dwSize %d bret %d",lpddi->dwSize,bret);
+            DEBUG_INFO("guidInstance 0x%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                       lpddi->guidInstance.Data1,
+                       lpddi->guidInstance.Data2,
+                       lpddi->guidInstance.Data3,
+                       lpddi->guidInstance.Data4[0],
+                       lpddi->guidInstance.Data4[1],
+                       lpddi->guidInstance.Data4[2],
+                       lpddi->guidInstance.Data4[3],
+                       lpddi->guidInstance.Data4[4],
+                       lpddi->guidInstance.Data4[5],
+                       lpddi->guidInstance.Data4[6],
+                       lpddi->guidInstance.Data4[7]);
+            DEBUG_INFO("guidProduct 0x%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                       lpddi->guidProduct.Data1,
+                       lpddi->guidProduct.Data2,
+                       lpddi->guidProduct.Data3,
+                       lpddi->guidProduct.Data4[0],
+                       lpddi->guidProduct.Data4[1],
+                       lpddi->guidProduct.Data4[2],
+                       lpddi->guidProduct.Data4[3],
+                       lpddi->guidProduct.Data4[4],
+                       lpddi->guidProduct.Data4[5],
+                       lpddi->guidProduct.Data4[6],
+                       lpddi->guidProduct.Data4[7]);
+            DEBUG_INFO("dwDevType 0x%08x\n",lpddi->dwDevType);
+            DEBUG_INFO("tszInstanceName %s tszProductName %s\n",lpddi->tszInstanceName,lpddi->tszProductName);
+            DEBUG_INFO("guidFFDriver 0x%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                       lpddi->guidFFDriver.Data1,
+                       lpddi->guidFFDriver.Data2,
+                       lpddi->guidFFDriver.Data3,
+                       lpddi->guidFFDriver.Data4[0],
+                       lpddi->guidFFDriver.Data4[1],
+                       lpddi->guidFFDriver.Data4[2],
+                       lpddi->guidFFDriver.Data4[3],
+                       lpddi->guidFFDriver.Data4[4],
+                       lpddi->guidFFDriver.Data4[5],
+                       lpddi->guidFFDriver.Data4[6],
+                       lpddi->guidFFDriver.Data4[7]);
+            DEBUG_INFO("wUsagePage 0x%04x wUsage 0x%04x\n",lpddi->wUsagePage,lpddi->wUsage);
+        }
+        return bret;
+    };
 public:
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
     {
@@ -1097,7 +1153,12 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_8A_IN();
-        hr = m_ptr->EnumDevices(dwDevType,lpCallback,pvRef,dwFlags);
+        this->m_pCallParam = pvRef;
+        this->m_pEnumCallBack = lpCallback;
+        hr = m_ptr->EnumDevices(dwDevType,CDirectInput8AHook::HookDIEnumDevicesCallback,this,dwFlags);
+        DEBUG_INFO("EnumDevices dwDevType 0x%08x dwFlags 0x%08x\n",dwDevType,dwFlags);
+        this->m_pCallParam = NULL;
+        this->m_pEnumCallBack = NULL;
         DIRECT_INPUT_8A_OUT();
         return hr;
     }
@@ -1256,8 +1317,65 @@ class CDirectInput8WHook : IDirectInput8W
 {
 private:
     IDirectInput8W* m_ptr;
+    LPVOID m_pCallParam;
+    LPDIENUMDEVICESCALLBACKW m_pEnumCallBack;
 public:
-    CDirectInput8WHook(IDirectInput8W* ptr) : m_ptr(ptr) {};
+    CDirectInput8WHook(IDirectInput8W* ptr) : m_ptr(ptr)
+    {
+        m_pCallParam= NULL;
+        m_pEnumCallBack = NULL;
+    };
+    static BOOL FAR PASCAL HookDIEnumDevicesCallback(LPCDIDEVICEINSTANCEW lpddi,LPVOID pvRef)
+    {
+        CDirectInput8WHook* pThis = (CDirectInput8WHook*)pvRef;
+        BOOL bret=DIENUM_CONTINUE;
+        if(pThis->m_pEnumCallBack)
+        {
+            bret = pThis->m_pEnumCallBack(lpddi,pThis->m_pCallParam);
+            DEBUG_BUFFER_FMT(lpddi,sizeof(*lpddi),"dwSize %d bret %d",lpddi->dwSize,bret);
+            DEBUG_INFO("guidInstance 0x%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                       lpddi->guidInstance.Data1,
+                       lpddi->guidInstance.Data2,
+                       lpddi->guidInstance.Data3,
+                       lpddi->guidInstance.Data4[0],
+                       lpddi->guidInstance.Data4[1],
+                       lpddi->guidInstance.Data4[2],
+                       lpddi->guidInstance.Data4[3],
+                       lpddi->guidInstance.Data4[4],
+                       lpddi->guidInstance.Data4[5],
+                       lpddi->guidInstance.Data4[6],
+                       lpddi->guidInstance.Data4[7]);
+            DEBUG_INFO("guidProduct 0x%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                       lpddi->guidProduct.Data1,
+                       lpddi->guidProduct.Data2,
+                       lpddi->guidProduct.Data3,
+                       lpddi->guidProduct.Data4[0],
+                       lpddi->guidProduct.Data4[1],
+                       lpddi->guidProduct.Data4[2],
+                       lpddi->guidProduct.Data4[3],
+                       lpddi->guidProduct.Data4[4],
+                       lpddi->guidProduct.Data4[5],
+                       lpddi->guidProduct.Data4[6],
+                       lpddi->guidProduct.Data4[7]);
+            DEBUG_INFO("dwDevType 0x%08x\n",lpddi->dwDevType);
+            DEBUG_INFO("tszInstanceName %S tszProductName %S\n",lpddi->tszInstanceName,lpddi->tszProductName);
+            DEBUG_INFO("guidFFDriver 0x%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                       lpddi->guidFFDriver.Data1,
+                       lpddi->guidFFDriver.Data2,
+                       lpddi->guidFFDriver.Data3,
+                       lpddi->guidFFDriver.Data4[0],
+                       lpddi->guidFFDriver.Data4[1],
+                       lpddi->guidFFDriver.Data4[2],
+                       lpddi->guidFFDriver.Data4[3],
+                       lpddi->guidFFDriver.Data4[4],
+                       lpddi->guidFFDriver.Data4[5],
+                       lpddi->guidFFDriver.Data4[6],
+                       lpddi->guidFFDriver.Data4[7]);
+            DEBUG_INFO("wUsagePage 0x%04x wUsage 0x%04x\n",lpddi->wUsagePage,lpddi->wUsage);
+        }
+        return bret;
+    };
+
 public:
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
     {
@@ -1368,7 +1486,11 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_8W_IN();
-        hr = m_ptr->EnumDevices(dwDevType,lpCallback,pvRef,dwFlags);
+		this->m_pCallParam = pvRef;
+		this->m_pEnumCallBack = lpCallback;
+        hr = m_ptr->EnumDevices(dwDevType,CDirectInput8WHook::HookDIEnumDevicesCallback,this,dwFlags);
+		this->m_pCallParam = NULL;
+		this->m_pEnumCallBack = NULL;
         DIRECT_INPUT_8W_OUT();
         return hr;
     }
@@ -1493,27 +1615,27 @@ int DetourDinputSetWindowsRect(HWND hWnd,RECT *pRect)
 
 int DetourDinput8GetMousePointAbsolution(POINT *pPoint)
 {
-	pPoint->x = 0;
-	pPoint->y = 0;
-	return 0;
+    pPoint->x = 0;
+    pPoint->y = 0;
+    return 0;
 }
 
 
 int DetourDinputPressKeyDownTimes(UINT scancode)
 {
-	return 0;
+    return 0;
 }
 
 int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint)
 {
-	pPoint->x = 1;
-	pPoint->y = 1;
-	return 0;
+    pPoint->x = 1;
+    pPoint->y = 1;
+    return 0;
 }
 
 void DetourDinputDebugFini(HMODULE hModule)
 {
-	return;
+    return;
 }
 
 int DetourDinputDebugInit(HMODULE hModule)
@@ -1521,5 +1643,5 @@ int DetourDinputDebugInit(HMODULE hModule)
     /*now first to init all the critical section*/
     InitializeCriticalSection(&st_DIDevice8ACS);
     InitializeCriticalSection(&st_DIDevice8WCS);
-	return 0;
+    return 0;
 }
