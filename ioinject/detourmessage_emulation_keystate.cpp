@@ -46,7 +46,7 @@ static CRITICAL_SECTION st_EmuKeyStateCS;
 #define  MAP_CHAR_SPACE          0x20
 #define  MAP_CHAR_EMOTION        0x21
 #define  MAP_CHAR_DOUBLE_QUOTE   0x22
-#define  MAP_CHAR_SHARP          0x23
+#define  MAP_CHAR_NUMSIGN          0x23
 #define  MAP_CHAR_DOLLAR         0x24
 #define  MAP_CHAR_PERCENT        0x25
 #define  MAP_CHAR_AMPERSAND      0x26
@@ -83,7 +83,7 @@ static CRITICAL_SECTION st_EmuKeyStateCS;
 #define  MAP_CHAR_GREATER        0x3e
 #define  MAP_CHAR_QUESTION       0x3f
 
-#define  MAP_CHAR_ATEMAIL        0x40
+#define  MAP_CHAR_ATSYMBOL       0x40
 
 
 #define  MAP_CHAR_A              0x41
@@ -332,12 +332,54 @@ static uint8_t st_ShiftChar[256] =
     MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_SPACE       ,MAP_CHAR_NULL          ,MAP_CHAR_NULL          ,            /*35*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*40*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*45*/
-    MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_NULL        ,
+    MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_NULL        ,MAP_CHAR_RPAREN        ,MAP_CHAR_EMOTION       ,            /*50*/
+    MAP_CHAR_ATSYMBOL   ,MAP_CHAR_NUMSIGN       ,MAP_CHAR_DOLLAR      ,MAP_CHAR_PERCENT       ,MAP_CHAR_CARET         ,            /*55*/
+    MAP_CHAR_AMPERSAND  ,MAP_CHAR_NUMPAD_STAR   ,MAP_CHAR_LPAREN      ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*60*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_SPACE 	  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*65*/
+    MAP_CHAR_A			,MAP_CHAR_B 		    ,MAP_CHAR_C			  ,MAP_CHAR_D			  ,MAP_CHAR_E			  , 		   /*70*/
+    MAP_CHAR_F			,MAP_CHAR_G 		    ,MAP_CHAR_H			  ,MAP_CHAR_I			  ,MAP_CHAR_J			  , 		   /*75*/
+    MAP_CHAR_K			,MAP_CHAR_L 		    ,MAP_CHAR_M			  ,MAP_CHAR_N			  ,MAP_CHAR_O			  , 		   /*80*/
+    MAP_CHAR_P			,MAP_CHAR_Q 		    ,MAP_CHAR_R			  ,MAP_CHAR_S			  ,MAP_CHAR_T			  , 		   /*85*/
+    MAP_CHAR_U			,MAP_CHAR_V 		    ,MAP_CHAR_W			  ,MAP_CHAR_X			  ,MAP_CHAR_Y			  , 		   /*90*/
+    MAP_CHAR_Z			,MAP_CHAR_NULL		    ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*95*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*100*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*105*/
+    MAP_CHAR_NULL       ,MAP_CHAR_NUMPAD_STAR   ,MAP_CHAR_NUMPAD_PLUS ,MAP_CHAR_NULL          ,MAP_CHAR_NUMPAD_MINUS  ,            /*110*/
+    MAP_CHAR_NULL       ,MAP_CHAR_NUMPAD_SLASH  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*115*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*120*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*125*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*130*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*135*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*140*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*145*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*150*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*155*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*160*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*165*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*170*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*175*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*180*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*185*/
+    MAP_CHAR_NULL       ,MAP_CHAR_COLON         ,MAP_CHAR_NUMPAD_PLUS ,MAP_CHAR_LESS          ,MAP_CHAR_UNDERSCORE    ,            /*190*/
+    MAP_CHAR_GREATER    ,MAP_CHAR_QUESTION      ,MAP_CHAR_TILDE       ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*195*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*200*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*205*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*210*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*215*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_LBRACE    	  , 		   /*220*/
+    MAP_CHAR_VERT_BAR   ,MAP_CHAR_RBRACE        ,MAP_CHAR_DOUBLE_QUOTE,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*225*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*230*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*235*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*240*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*245*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*250*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*255*/
+    MAP_CHAR_NULL
 };
 
 static int __IsMenuPressedNoLock()
 {
-    return st_VirtKeyState[VK£ßMENU];
+    return st_VirtKeyState[VK_MENU];
 }
 
 
@@ -353,7 +395,7 @@ static int __SetVirtualKeyDownNoLock(int vk)
 
     ret = 1;
 
-    if(vk == VK_LMENU || vk == RMENU)
+    if(vk == VK_LMENU || vk == VK_RMENU)
     {
         st_VirtKeyState[VK_MENU] = 1;
         ret ++ ;
