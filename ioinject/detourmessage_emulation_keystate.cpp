@@ -518,10 +518,34 @@ int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
 {
     int ret;
     POINT pt;
+    int transvk = 0;
+
+    if(__IsCapsEnabled() && __IsShiftPressed())
+    {
+        transvk = st_NormChar[vk];
+    }
+    else if(__IsCapsEnabled())
+    {
+        transvk = st_CapsChar[vk];
+    }
+    else if(__IsShiftPressed())
+    {
+        transvk = st_ShiftChar[vk];
+    }
+    else
+    {
+        transvk = st_NormChar[vk];
+    }
+
+    if(transvk == MAP_CHAR_NULL)
+    {
+        /*nothing to map char*/
+        return 0;
+    }
 
     lpMsg->hwnd = NULL;
     lpMsg->message = WM_CHAR;
-    lpMsg->wParam = vk;
+    lpMsg->wParam = transvk;
     lpMsg->lParam = ((0x10 << 16)| 0x1);
     lpMsg->time = GetTickCount();
     ret = DetourDinputScreenMousePoint(NULL,&pt);
@@ -612,7 +636,7 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
     int cnt =0;
     MSG curmsg;
 
-    if(vk == VK_RMENU || vk == VK_LMENU || vk ==VK_RSHIFT || vk == VK_LSHIFT || vk == VK_RCONTROL || vk == VK_LCONTROL )
+    if(vk == VK_RMENU || vk == VK_LMENU || vk ==VK_RSHIFT || vk == VK_LSHIFT || vk == VK_RCONTROL || vk == VK_LCONTROL)
     {
         /*if this is the MENU down so we just send key down or up*/
         if(down)
@@ -659,9 +683,56 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
 
     if(__IsMenuPressed() && __IsCtrlPressed())
     {
+        /*just for the key set state just set*/
+        if(down)
+        {
+            ret = __FormatDownMessageNoLock(vk,&curmsg);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
+            }
+            msgs.push_back(curmsg);
+            ret = __SetVirtualKeyDownNoLock(vk);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
+            }
+
+        }
+        else
+        {
+            ret = __FormatUpMessageNoLock(vk,&curmsg);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
+            }
+            msgs.push_back(curmsg);
+            ret = __SetVirtualKeyUpNoLock(vk);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
+            }
+        }
+
+        return 1;
     }
     else if(__IsMenuPressed())
     {
+        /*now this first to make sure for */
+        if(down)
+        {
+        }
+        else
+        {
+        }
     }
     else if(__IsCtrlPressed())
     {
