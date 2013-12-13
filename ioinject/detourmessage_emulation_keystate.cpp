@@ -6,6 +6,7 @@ static CRITICAL_SECTION st_EmuKeyStateCS;
 #define  MAP_CHAR_NULL           0
 
 /*for 00 -- 07  no map char*/
+#define  MAP_CHAR_CTRL_SCROLL    0x03
 
 #define  MAP_CHAR_BACKSPACE      0x08
 #define  MAP_CHAR_TAB            0x09
@@ -210,6 +211,11 @@ static uint8_t st_NormChar[256] =
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*250*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*255*/
     MAP_CHAR_NULL
+};
+
+static uint8_t st_CtrlChar[256] =
+{
+	MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_CTRL_SCROLL   ,MAP_CHAR_NULL		  , 		   /*5*/
 };
 
 static int __IsMenuPressedNoLock()
