@@ -44,7 +44,16 @@ static CRITICAL_SECTION st_EmuKeyStateCS;
 #define  MAP_CHAR_CTRL_RBRACKET  0x1d
 
 #define  MAP_CHAR_SPACE          0x20
+#define  MAP_CHAR_EMOTION        0x21
+#define  MAP_CHAR_DOUBLE_QUOTE   0x22
+#define  MAP_CHAR_SHARP          0x23
+#define  MAP_CHAR_DOLLAR         0x24
+#define  MAP_CHAR_PERCENT        0x25
+#define  MAP_CHAR_AMPERSAND      0x26
 #define  MAP_CHAR_SINGLE_QUOTE   0x27
+
+#define  MAP_CHAR_LPAREN         0x28
+#define  MAP_CHAR_RPAREN         0x29
 
 #define  MAP_CHAR_NUMPAD_STAR    0x2a
 #define  MAP_CHAR_NUMPAD_PLUS    0x2b
@@ -67,8 +76,15 @@ static CRITICAL_SECTION st_EmuKeyStateCS;
 #define  MAP_CHAR_8              0x38
 #define  MAP_CHAR_9              0x39
 
-#define  MAP_CHAR_COLON          0x3b
+#define  MAP_CHAR_COLON          0x3a
+#define  MAP_CHAR_SEMICOLON      0x3b
+#define  MAP_CHAR_LESS           0x3c
 #define  MAP_CHAR_EQUAL          0x3d
+#define  MAP_CHAR_GREATER        0x3e
+#define  MAP_CHAR_QUESTION       0x3f
+
+#define  MAP_CHAR_ATEMAIL        0x40
+
 
 #define  MAP_CHAR_A              0x41
 #define  MAP_CHAR_B              0x42
@@ -100,6 +116,8 @@ static CRITICAL_SECTION st_EmuKeyStateCS;
 #define  MAP_CHAR_LBRACKET       0x5b
 #define  MAP_CHAR_BACKSLASH      0x5c
 #define  MAP_CHAR_RBRACKET       0x5d
+#define  MAP_CHAR_CARET          0x5e
+#define  MAP_CHAR_UNDERSCORE     0x5f
 #define  MAP_CHAR_APOSTROPHY     0x60
 
 #define  MAP_CHAR_a              0x61
@@ -128,7 +146,11 @@ static CRITICAL_SECTION st_EmuKeyStateCS;
 #define  MAP_CHAR_x              0x78
 #define  MAP_CHAR_y              0x79
 #define  MAP_CHAR_z              0x7a
+#define  MAP_CHAR_LBRACE         0x7b
+#define  MAP_CHAR_VERT_BAR       0x7c
+#define  MAP_CHAR_RBRACE         0x7d
 
+#define  MAP_CHAR_TILDE          0x7e
 #define  MAP_CHAR_CTRL_BACKSPACE 0x7f
 
 static uint8_t st_CapsChar[256] =
@@ -170,7 +192,7 @@ static uint8_t st_CapsChar[256] =
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*175*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*180*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*185*/
-    MAP_CHAR_NULL       ,MAP_CHAR_COLON       ,MAP_CHAR_EQUAL         ,MAP_CHAR_NULL          ,MAP_CHAR_MINUS         ,            /*190*/
+    MAP_CHAR_NULL       ,MAP_CHAR_SEMICOLON   ,MAP_CHAR_EQUAL         ,MAP_CHAR_NULL          ,MAP_CHAR_MINUS         ,            /*190*/
     MAP_CHAR_NULL       ,MAP_CHAR_NULL        ,MAP_CHAR_APOSTROPHY    ,MAP_CHAR_NULL          ,MAP_CHAR_NULL          ,            /*195*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*200*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*205*/
@@ -226,7 +248,7 @@ static uint8_t st_NormChar[256] =
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*175*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*180*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*185*/
-    MAP_CHAR_NULL       ,MAP_CHAR_COLON       ,MAP_CHAR_EQUAL         ,MAP_CHAR_COMMA         ,MAP_CHAR_MINUS         ,            /*190*/
+    MAP_CHAR_NULL       ,MAP_CHAR_SEMICOLON   ,MAP_CHAR_EQUAL         ,MAP_CHAR_COMMA         ,MAP_CHAR_MINUS         ,            /*190*/
     MAP_CHAR_DOT        ,MAP_CHAR_NUMPAD_SLASH,MAP_CHAR_APOSTROPHY    ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*195*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*200*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*205*/
@@ -297,6 +319,20 @@ static uint8_t st_CtrlChar[256] =
     MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*250*/
     MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*255*/
     MAP_CHAR_NULL
+};
+
+static uint8_t st_ShiftChar[256] =
+{
+    MAP_CHAR_NULL		,MAP_CHAR_NULL		    ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*5*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_BACKSPACE	  ,MAP_CHAR_TAB  		  , 		   /*10*/
+    MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_NULL        ,MAP_CHAR_ENTER         ,MAP_CHAR_NULL          ,            /*15*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*20*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*25*/
+    MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_ESCAPE      ,MAP_CHAR_NULL          ,MAP_CHAR_NULL          ,            /*30*/
+    MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_SPACE       ,MAP_CHAR_NULL          ,MAP_CHAR_NULL          ,            /*35*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*40*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*45*/
+    MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_NULL        ,
 };
 
 static int __IsMenuPressedNoLock()
