@@ -393,6 +393,7 @@ static int __SetVirtualKeyDownNoLock(int vk)
         return -ret;
     }
 
+
     ret = 1;
 
     if(vk == VK_LMENU || vk == VK_RMENU)
@@ -471,7 +472,127 @@ static int __SetVirtualKeyUpNoLock(int vk)
     return ret;
 }
 
+int __FormatDownMessageNoLock(int vk,LPMSG lpMsg)
+{
+    int ret;
+    POINT pt;
 
+    lpMsg->hwnd = NULL;
+    lpMsg->message = WM_KEYDOWN;
+    lpMsg->wParam = vk;
+    lpMsg->lParam = ((0x10 << 16)| 0x1);
+    lpMsg->time = GetTickCount();
+    ret = DetourDinputScreenMousePoint(NULL,&pt);
+    if(ret < 0)
+    {
+        return ret;
+    }
+
+    lpMsg->pt.x = pt.x;
+    lpMsg->pt.y = pt.y;
+    return 1;
+}
+
+int __FormatUpMessageNoLock(int vk,LPMSG lpMsg)
+{
+    int ret;
+    POINT pt;
+
+    lpMsg->hwnd = NULL;
+    lpMsg->message = WM_KEYUP;
+    lpMsg->wParam = vk;
+    lpMsg->lParam = ((0xc010 << 16)| 0x1);
+    lpMsg->time = GetTickCount();
+    ret = DetourDinputScreenMousePoint(NULL,&pt);
+    if(ret < 0)
+    {
+        return ret;
+    }
+
+    lpMsg->pt.x = pt.x;
+    lpMsg->pt.y = pt.y;
+    return 1;
+}
+
+int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
+{
+    int ret;
+    POINT pt;
+
+    lpMsg->hwnd = NULL;
+    lpMsg->message = WM_CHAR;
+    lpMsg->wParam = vk;
+    lpMsg->lParam = ((0x10 << 16)| 0x1);
+    lpMsg->time = GetTickCount();
+    ret = DetourDinputScreenMousePoint(NULL,&pt);
+    if(ret < 0)
+    {
+        return ret;
+    }
+
+    lpMsg->pt.x = pt.x;
+    lpMsg->pt.y = pt.y;
+    return 1;
+}
+
+int __FormatSysKeyDownMessageNoLock(int vk,LPMSG lpMsg)
+{
+    int ret;
+    POINT pt;
+
+    lpMsg->hwnd = NULL;
+    lpMsg->message = WM_SYSKEYDOWN;
+    lpMsg->wParam = vk;
+    lpMsg->lParam = ((0x10 << 16)| 0x1);
+    lpMsg->time = GetTickCount();
+    ret = DetourDinputScreenMousePoint(NULL,&pt);
+    if(ret < 0)
+    {
+        return ret;
+    }
+
+    lpMsg->pt.x = pt.x;
+    lpMsg->pt.y = pt.y;
+    return 1;
+}
+
+int __FormatSysKeyUpMessageNoLock(int vk,LPMSG lpMsg)
+{
+    int ret;
+    POINT pt;
+
+    lpMsg->hwnd = NULL;
+    lpMsg->message = WM_SYSKEYUP;
+    lpMsg->wParam = vk;
+    lpMsg->lParam = ((0x10 << 16)| 0x1);
+    lpMsg->time = GetTickCount();
+    ret = DetourDinputScreenMousePoint(NULL,&pt);
+    if(ret < 0)
+    {
+        return ret;
+    }
+
+    lpMsg->pt.x = pt.x;
+    lpMsg->pt.y = pt.y;
+    return 1;
+}
+
+/****************************************************************
+* vk is the virtual key
+* down 1 for KEYDOWN  0 for KEYUP
+* msgs  will put the format messages into it
+*
+*   return value:
+*           negative for error
+*           count of messages for success
+****************************************************************/
+int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
+{
+    int ret;
+    int cnt =0;
+
+
+}
 
 
 static int EmulationKeyStateInit(HMODULE hModule)
