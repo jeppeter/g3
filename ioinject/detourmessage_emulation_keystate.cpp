@@ -577,6 +577,26 @@ int __FormatSysKeyUpMessageNoLock(int vk,LPMSG lpMsg)
     return 1;
 }
 
+int __IsMenuPressed()
+{
+    return st_VirtKeyState[VK_MENU];
+}
+
+int __IsCtrlPressed()
+{
+    return st_VirtKeyState[VK_CONTROL];
+}
+
+int __IsShiftPressed()
+{
+    return st_VirtKeyState[VK_SHIFT];
+}
+
+int __IsCapsEnabled()
+{
+    return st_CapsLock;
+}
+
 /****************************************************************
 * vk is the virtual key
 * down 1 for KEYDOWN  0 for KEYUP
@@ -590,7 +610,56 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
 {
     int ret;
     int cnt =0;
+    MSG curmsg;
 
+    if(vk == VK_RMENU || vk == VM_LMENU)
+    {
+        /*if this is the MENU down so we just send key down or up*/
+        if(down)
+        {
+            ret = __FormatDownMessageNoLock(vk,&curmsg);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
+            }
+            msgs.push_back(curmsg);
+            ret = __SetVirtualKeyDownNoLock(vk);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
+            }
+
+        }
+        else
+        {
+            ret = __FormatUpMessageNoLock(vk,&curmsg);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
+            }
+            msgs.push_back(curmsg);
+            ret = __SetVirtualKeyUpNoLock(vk);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return -ret;
+            }
+        }
+
+        return 1;
+    }
+
+
+    if(__IsMenuPressed() && __IsCtrlPressed())
+    {
+    }
 
 }
 
