@@ -612,7 +612,7 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
     int cnt =0;
     MSG curmsg;
 
-    if(vk == VK_RMENU || vk == VM_LMENU)
+    if(vk == VK_RMENU || vk == VK_LMENU || vk ==VK_RSHIFT || vk == VK_LSHIFT || vk == VK_RCONTROL || vk == VK_LCONTROL )
     {
         /*if this is the MENU down so we just send key down or up*/
         if(down)
@@ -658,6 +658,12 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
 
 
     if(__IsMenuPressed() && __IsCtrlPressed())
+    {
+    }
+    else if(__IsMenuPressed())
+    {
+    }
+    else if(__IsCtrlPressed())
     {
     }
 
