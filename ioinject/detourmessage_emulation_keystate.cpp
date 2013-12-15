@@ -578,6 +578,10 @@ int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
     POINT pt;
     int transvk = 0;
 
+    if(__IsCtrlPressed() && __IsMenuPressed())
+    {
+        transvk = MAP_CHAR_NULL;
+    }
     if(__IsCapsEnabled() && __IsShiftPressed())
     {
         transvk = st_ShiftCapsChar[vk];
