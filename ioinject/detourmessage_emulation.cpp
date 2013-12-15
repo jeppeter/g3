@@ -7,6 +7,7 @@
 #include "detourdinput.h"
 #include <assert.h>
 
+#include "detourmessage_emulation_keystate.cpp"
 
 static GetMessageFunc_t GetMessageANext= GetMessageA;
 static PeekMessageFunc_t PeekMessageANext=PeekMessageA;
@@ -284,10 +285,13 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
 
 int __InsertKeyboardMessageDevEvent(LPDEVICEEVENT pDevEvent)
 {
-    MSG Msg= {0};
     int ret;
     UINT scancode;
     int keydown;
+    int vk;
+    int cnt;
+    std::vector<MSG> msgs;
+    int i;
 
     if(pDevEvent->devid != 0)
     {
@@ -311,22 +315,40 @@ int __InsertKeyboardMessageDevEvent(LPDEVICEEVENT pDevEvent)
 
     scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
     keydown = (pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN) ? 1 : 0;
-    ret = __PrepareKeyPressMessage(&Msg,scancode,keydown);
+
+    vk = MapVirtualKey(scancode,MAPVK_VSC_TO_VK_EX);
+    if(vk == 0)
+    {
+        /*can not find virtual key ,so we should return error*/
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("scancode (0x%08x:%d) can not find virtual key\n",scancode,scancode);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    ret =    GetKeyMessage(vk,keydown,msgs);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("Prepare Key scancode(%d) Error(%d)\n",scancode,keydown);
-        goto fail;
+        ERROR_INFO("Virtualkey %d keydown %d Error(%d)\n",vk,keydown,ret);
+        SetLastError(ret);
+        return -ret;
     }
 
-    ret= InsertEmulationMessageQueue(&Msg,1);
-    if(ret < 0)
+    cnt = ret;
+    assert((int)msgs.size() >= cnt);
+
+    for(i=0; i<cnt; i++)
     {
-        ret = LAST_ERROR_CODE();
-        goto fail;
+        ret= InsertEmulationMessageQueue(&(msgs[i]),1);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
     }
 
-    return 1;
+    return cnt;
 fail:
     assert(ret > 0);
     SetLastError(ret);
@@ -849,6 +871,14 @@ int __MessageDetour(void)
 {
     int ret;
     InitializeCriticalSection(&st_MessageEmulationCS);
+    ret = EmulationKeyStateInit();
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("EmulationKeyStateInit Error(%d)\n",ret);
+        return -ret;
+    }
+
     ret = RegisterEventListHandler(InsertMessageDevEvent,NULL,MESSAGE_EMULATION_PRIOR);
     if(ret < 0)
     {

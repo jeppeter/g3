@@ -433,11 +433,26 @@ static uint8_t st_ShiftCapsChar[256] =
     MAP_CHAR_NULL
 };
 
-static int __IsMenuPressedNoLock()
+
+int __IsMenuPressed()
 {
     return st_VirtKeyState[VK_MENU];
 }
 
+int __IsCtrlPressed()
+{
+    return st_VirtKeyState[VK_CONTROL];
+}
+
+int __IsShiftPressed()
+{
+    return st_VirtKeyState[VK_SHIFT];
+}
+
+int __IsCapsEnabled()
+{
+    return st_CapsLock;
+}
 
 static int __SetVirtualKeyDownNoLock(int vk)
 {
@@ -530,7 +545,7 @@ static int __SetVirtualKeyUpNoLock(int vk)
     return ret;
 }
 
-int __FormatDownMessageNoLock(int vk,LPMSG lpMsg)
+int __FormatKeyDownMessageNoLock(int vk,LPMSG lpMsg)
 {
     int ret;
     POINT pt;
@@ -551,7 +566,7 @@ int __FormatDownMessageNoLock(int vk,LPMSG lpMsg)
     return 1;
 }
 
-int __FormatUpMessageNoLock(int vk,LPMSG lpMsg)
+int __FormatKeyUpMessageNoLock(int vk,LPMSG lpMsg)
 {
     int ret;
     POINT pt;
@@ -582,7 +597,11 @@ int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
     {
         transvk = MAP_CHAR_NULL;
     }
-    if(__IsCapsEnabled() && __IsShiftPressed())
+    else if(__IsCtrlPressed())
+    {
+        transvk = st_CtrlChar[vk];
+    }
+    else if(__IsCapsEnabled() && __IsShiftPressed())
     {
         transvk = st_ShiftCapsChar[vk];
     }
@@ -593,10 +612,6 @@ int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
     else if(__IsShiftPressed())
     {
         transvk = st_ShiftChar[vk];
-    }
-    else if(__IsCtrlPressed() && ! __IsMenuPressed())
-    {
-        transvk = st_CtrlChar[vk];
     }
     else
     {
@@ -667,10 +682,10 @@ int __FormatSysKeyUpMessageNoLock(int vk,LPMSG lpMsg)
     return 1;
 }
 
-int __FormatWmSysCharMessage(int vk,LPMSG lpMsg)
+int __FormatWmSysCharMessageNoLock(int vk,LPMSG lpMsg)
 {
     int ret ;
-    int ctrlcode;
+    int transvk;
     POINT pt;
 
     if(vk >= 256)
@@ -682,28 +697,28 @@ int __FormatWmSysCharMessage(int vk,LPMSG lpMsg)
 
     if(__IsCapsEnabled() && __IsShiftPressed())
     {
-        ctrlcode = st_ShiftCapsChar[vk];
+        transvk = st_ShiftCapsChar[vk];
     }
     else if(__IsCapsEnabled())
     {
-        ctrlcode = st_CapsChar[vk];
+        transvk = st_CapsChar[vk];
     }
     else if(__IsShiftPressed())
     {
-        ctrlcode = st_ShiftChar[vk];
+        transvk = st_ShiftChar[vk];
     }
     else
     {
-        ctrlcode = st_NormChar[vk];
+        transvk = st_NormChar[vk];
     }
 
-    if(ctrlcode == MAP_CHAR_NULL)
+    if(transvk == MAP_CHAR_NULL)
     {
         return 0;
     }
 
-    lpMsg->message  = WM_SYSKEYCHAR;
-    lpMsg->wParam  = ctrlcode;
+    lpMsg->message  = WM_SYSCHAR;
+    lpMsg->wParam  = transvk;
     lpMsg->lParam = (0x2010 << 16) | 0x1;
     lpMsg->time = GetTickCount();
     ret = DetourDinputScreenMousePoint(NULL,&pt);
@@ -715,30 +730,8 @@ int __FormatWmSysCharMessage(int vk,LPMSG lpMsg)
     lpMsg->pt.x = pt.x;
     lpMsg->pt.y = pt.y;
     return 1;
-
-
-
 }
 
-int __IsMenuPressed()
-{
-    return st_VirtKeyState[VK_MENU];
-}
-
-int __IsCtrlPressed()
-{
-    return st_VirtKeyState[VK_CONTROL];
-}
-
-int __IsShiftPressed()
-{
-    return st_VirtKeyState[VK_SHIFT];
-}
-
-int __IsCapsEnabled()
-{
-    return st_CapsLock;
-}
 
 /****************************************************************
 * vk is the virtual key
@@ -760,13 +753,14 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
         /*if this is the MENU down so we just send key down or up*/
         if(down)
         {
-            ret = __FormatDownMessageNoLock(vk,&curmsg);
+            ret = __FormatKeyDownMessageNoLock(vk,&curmsg);
             if(ret < 0)
             {
                 ret = LAST_ERROR_CODE();
                 SetLastError(ret);
                 return -ret;
             }
+            cnt ++;
             msgs.push_back(curmsg);
             ret = __SetVirtualKeyDownNoLock(vk);
             if(ret < 0)
@@ -779,13 +773,14 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
         }
         else
         {
-            ret = __FormatUpMessageNoLock(vk,&curmsg);
+            ret = __FormatKeyUpMessageNoLock(vk,&curmsg);
             if(ret < 0)
             {
                 ret = LAST_ERROR_CODE();
                 SetLastError(ret);
                 return -ret;
             }
+            cnt ++;
             msgs.push_back(curmsg);
             ret = __SetVirtualKeyUpNoLock(vk);
             if(ret < 0)
@@ -796,7 +791,7 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
             }
         }
 
-        return 1;
+        return cnt;
     }
 
 
@@ -805,13 +800,14 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
         /*just for the key set state just set*/
         if(down)
         {
-            ret = __FormatDownMessageNoLock(vk,&curmsg);
+            ret = __FormatKeyDownMessageNoLock(vk,&curmsg);
             if(ret < 0)
             {
                 ret = LAST_ERROR_CODE();
                 SetLastError(ret);
                 return -ret;
             }
+            cnt ++;
             msgs.push_back(curmsg);
             ret = __SetVirtualKeyDownNoLock(vk);
             if(ret < 0)
@@ -824,13 +820,14 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
         }
         else
         {
-            ret = __FormatUpMessageNoLock(vk,&curmsg);
+            ret = __FormatKeyUpMessageNoLock(vk,&curmsg);
             if(ret < 0)
             {
                 ret = LAST_ERROR_CODE();
                 SetLastError(ret);
                 return -ret;
             }
+            cnt ++;
             msgs.push_back(curmsg);
             ret = __SetVirtualKeyUpNoLock(vk);
             if(ret < 0)
@@ -840,8 +837,6 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
                 return -ret;
             }
         }
-
-        return 1;
     }
     else if(__IsMenuPressed())
     {
@@ -861,7 +856,7 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
                 msgs.push_back(curmsg);
             }
 
-            ret = __FormatWmSysCharMessage(vk,&curmsg);
+            ret = __FormatWmSysCharMessageNoLock(vk,&curmsg);
             if(ret < 0)
             {
                 ret = LAST_ERROR_CODE();
@@ -891,11 +886,11 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
             }
         }
     }
-    else if(__IsCtrlPressed())
+    else
     {
         if(down)
         {
-            ret = __FormatDownMessageNoLock(vk,&curmsg);
+            ret = __FormatKeyDownMessageNoLock(vk,&curmsg);
             if(ret < 0)
             {
                 ret = LAST_ERROR_CODE();
@@ -920,7 +915,7 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
         }
         else
         {
-            ret = __FormatUpMessageNoLock(vk,&curmsg);
+            ret = __FormatKeyUpMessageNoLock(vk,&curmsg);
             if(ret < 0)
             {
                 ret = LAST_ERROR_CODE();
@@ -947,9 +942,9 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
         SetLastError(ret);
         return -ret;
     }
-
     return cnt;
 }
+
 
 int GetKeyMessage(int vk,int down,std::vector<MSG>& msgs)
 {
@@ -957,12 +952,17 @@ int GetKeyMessage(int vk,int down,std::vector<MSG>& msgs)
     EnterCriticalSection(&st_EmuKeyStateCS);
     ret = __GetKeyMessageNoLock(vk,down,  msgs);
     LeaveCriticalSection(&st_EmuKeyStateCS);
-    return ret
+    return ret;
 }
 
 
-static int EmulationKeyStateInit(HMODULE hModule)
+int EmulationKeyStateInit()
 {
     InitializeCriticalSection(&st_EmuKeyStateCS);
     return 0;
+}
+
+void EmulationKeyStateFini()
+{
+    return ;
 }
