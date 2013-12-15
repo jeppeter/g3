@@ -578,7 +578,7 @@ int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
 
     if(__IsCapsEnabled() && __IsShiftPressed())
     {
-        transvk = st_NormChar[vk];
+        transvk = st_ShiftCapsChar[vk];
     }
     else if(__IsCapsEnabled())
     {
