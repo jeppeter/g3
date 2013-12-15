@@ -450,7 +450,7 @@ static int __SetVirtualKeyDownNoLock(int vk)
     }
 
 
-    ret = 1;
+    ret = 0;
 
     if(vk == VK_LMENU || vk == VK_RMENU)
     {
@@ -469,6 +469,7 @@ static int __SetVirtualKeyDownNoLock(int vk)
     }
 
     st_VirtKeyState[vk] = 1;
+    ret ++;
     /*now to set the key*/
     return ret;
 }
@@ -485,7 +486,7 @@ static int __SetVirtualKeyUpNoLock(int vk)
         return -ret;
     }
 
-    ret = 1;
+    ret = 0;
 
     if(vk == VK_RMENU || vk == VK_LMENU)
     {
@@ -525,6 +526,7 @@ static int __SetVirtualKeyUpNoLock(int vk)
     }
 
     st_VirtKeyState[vk] = 0;
+    ret ++;
     return ret;
 }
 
@@ -587,6 +589,10 @@ int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
     else if(__IsShiftPressed())
     {
         transvk = st_ShiftChar[vk];
+    }
+    else if(__IsCtrlPressed() && ! __IsMenuPressed())
+    {
+        transvk = st_CtrlChar[vk];
     }
     else
     {
