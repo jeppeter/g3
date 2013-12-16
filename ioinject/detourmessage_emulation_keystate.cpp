@@ -379,7 +379,7 @@ static unsigned char st_ShiftChar[256] =
     MAP_CHAR_NULL
 };
 
-static uint8_t st_ShiftCapsChar[256] =
+static unsigned char st_ShiftCapsChar[256] =
 {
     MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*5*/
     MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_NULL        ,MAP_CHAR_BACKSPACE     ,MAP_CHAR_TAB           ,            /*10*/
@@ -388,8 +388,8 @@ static uint8_t st_ShiftCapsChar[256] =
     MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*25*/
     MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_ESCAPE      ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*30*/
     MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_SPACE       ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*35*/
-    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_ESCAPE	  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*40*/
-    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_ESCAPE	  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*45*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL  	  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*40*/
+    MAP_CHAR_NULL		,MAP_CHAR_NULL			,MAP_CHAR_NULL  	  ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*45*/
     MAP_CHAR_NULL       ,MAP_CHAR_NULL          ,MAP_CHAR_NULL        ,MAP_CHAR_RPAREN        ,MAP_CHAR_EMOTION       ,            /*50*/
     MAP_CHAR_ATSYMBOL   ,MAP_CHAR_NUMSIGN       ,MAP_CHAR_DOLLAR      ,MAP_CHAR_PERCENT       ,MAP_CHAR_CARET         ,            /*55*/
     MAP_CHAR_AMPERSAND  ,MAP_CHAR_NUMPAD_STAR   ,MAP_CHAR_LPAREN      ,MAP_CHAR_NULL		  ,MAP_CHAR_NULL		  , 		   /*60*/
