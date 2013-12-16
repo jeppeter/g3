@@ -700,6 +700,12 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
     {
+        POINT	 pt;
+        bret = ::GetCursorPos(&pt);
+        if(bret)
+        {
+            DEBUG_INFO("CursorPos (%d:%d)\n",pt.x,pt.y);
+        }
         DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                          lpMsg->hwnd,lpMsg->message,lpMsg->message,
                          lpMsg->wParam,lpMsg->wParam,
@@ -749,6 +755,12 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)
     {
+        POINT	 pt;
+        bret = ::GetCursorPos(&pt);
+        if(bret)
+        {
+            DEBUG_INFO("CursorPos (%d:%d)\n",pt.x,pt.y);
+        }
         DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                          lpMsg->hwnd,lpMsg->message,lpMsg->message,
                          lpMsg->wParam,lpMsg->wParam,
@@ -812,6 +824,12 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
     {
+        POINT	 pt;
+        bret = ::GetCursorPos(&pt);
+        if(bret)
+        {
+            DEBUG_INFO("CursorPos (%d:%d)\n",pt.x,pt.y);
+        }
         DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                          lpMsg->hwnd,lpMsg->message,lpMsg->message,
                          lpMsg->wParam,lpMsg->wParam,
@@ -860,6 +878,12 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)
     {
+        POINT	 pt;
+        bret = ::GetCursorPos(&pt);
+        if(bret)
+        {
+            DEBUG_INFO("CursorPos (%d:%d)\n",pt.x,pt.y);
+        }
         DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                          lpMsg->hwnd,lpMsg->message,lpMsg->message,
                          lpMsg->wParam,lpMsg->wParam,
