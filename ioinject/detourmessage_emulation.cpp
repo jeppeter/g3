@@ -639,7 +639,7 @@ out:
     {
         lpMsg->hwnd = GetCurrentProcessActiveWindow();
         st_GetMessageCount ++;
-        if((st_GetMessageCount % 50)==0)
+        if((st_GetMessageCount % 2)==0)
         {
             DEBUG_INFO("[%d] hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time(%d) pt.x(%d) pt.y(%d)\n",
                        st_GetMessageCount,lpMsg->hwnd,
@@ -700,6 +700,13 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
     {
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         return TRUE;
     }
 
@@ -742,6 +749,13 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)
     {
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         return TRUE;
     }
 
@@ -750,6 +764,13 @@ try_again:
                             wMsgFilterMax,wRemoveMsg);
     if(bret)
     {
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
                 (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
         {
@@ -791,6 +812,13 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
     {
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         return TRUE;
     }
 
@@ -832,6 +860,13 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)
     {
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         return TRUE;
     }
 
@@ -840,13 +875,13 @@ try_again:
                             wMsgFilterMax,wRemoveMsg);
     if(bret)
     {
-        //DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
-        //                 lpMsg->hwnd,lpMsg->message,lpMsg->message,
-        //                 lpMsg->wParam,lpMsg->wParam,
-        //                 lpMsg->lParam,lpMsg->lParam,
-        //                 lpMsg->time,lpMsg->time,
-        //                 lpMsg->pt.x,lpMsg->pt.x,
-        //                 lpMsg->pt.y,lpMsg->pt.y);
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)||
                 (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
         {
