@@ -34,6 +34,7 @@ static int g_writesize=0;
 static HWND g_hWnd=NULL;
 static CRITICAL_SECTION st_DevEventCS;
 static std::vector<DEVICEEVENT> st_DevEvent;
+static thread_control_t st_SockThreadCtrl= {0};
 
 LPDIRECTINPUT8          g_pKeyDirectInput      = NULL;
 LPDIRECTINPUT8          g_pMouseDirectInput    = NULL;
@@ -440,6 +441,107 @@ BOOL UpdateCodeMessage()
 
 }
 
+SOCKET ConnectSocket(char* pIp,int port,int *pConnected)
+{
+    SOCKET sock=INVALID_SOCKET;
+    int ret;
+    int nonblock;
+    struct sockaddr_in saddr;
+    sock = socket(AF_INET,SOCK_STREAM,0);
+    if(sock == INVALID_SOCKET)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Socket Stream Error(%d)\n",ret);
+        goto fail;
+    }
+    nonblock = 1;
+    ret = ioctlsocket(sock,FIONBIO,&nonblock);
+    if(ret != NO_ERROR)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("ioctl nonblock Error(%d)\n",ret);
+        goto fail;
+    }
+
+    ZeroMemory(&saddr,sizeof(saddr));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = inet_addr(pIp);
+    saddr.sin_port = htons(port);
+
+    ret = connect(sock,(struct sockaddr*)&saddr,sizeof(saddr));
+    if(ret == SOCKET_ERROR)
+    {
+        ret=WSAGetLastError() ? WSAGetLastError() : 1;
+        if(ret != WSAEWOULDBLOCK  &&
+                ret != WSAEINPROGRESS)
+        {
+            ERROR_INFO("connect (%s:%d) Error(%d)\n",pIp,port,ret);
+            goto fail;
+        }
+        *pConnected = 0;
+    }
+    else
+    {
+        *pConnected = 1;
+    }
+
+    return sock;
+
+fail:
+    assert(ret > 0);
+    if(sock != INVALID_SOCKET)
+    {
+        closesocket(sock);
+    }
+    sock = INVALID_SOCKET;
+    SetLastError(ret);
+    return INVALID_SOCKET;
+}
+
+DWORD SocketThreadImpl(LPVOID lparam)
+{
+    thread_control_t *pThreadControl= (thread_control_t*)lparam;
+    SOCKET sock=INVALID_SOCKET;
+    int ret;
+    int connected=0;
+    HANDLE* pWaitHandles=NULL;
+    int waitnum = 2;
+    int i;
+
+
+    sock =ConnectSocket(g_Host,g_Port,&connected);
+    if(sock == INVALID_SOCKET)
+    {
+        ret = LAST_ERROR_CODE();
+        goto out;
+    }
+
+    /*now check if we */
+
+    while(pThreadControl->running)
+    {
+    }
+
+    ret = 0;
+
+out:
+    if(pWaitHandles)
+    {
+        if(pWaitHandles[1])
+        {
+        }
+        free(pWaitHandles);
+    }
+    pWaitHandles = NULL;
+    if(sock != INVALID_SOCKET)
+    {
+        closesocket(sock);
+    }
+    sock = INVALID_SOCKET;
+    SetLastError(ret);
+    return (DWORD) -ret;
+}
+
 
 // 全局变量:
 HINSTANCE hInst;								// 当前实例
@@ -471,7 +573,9 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
     std::auto_ptr<TCHAR> pErrStr2(new TCHAR[256]);
     TCHAR *pErrStr=pErrStr2.get();
 
-	InitializeCriticalSection(&st_DevEventCS);
+    InitializeCriticalSection(&st_DevEventCS);
+    ZeroMemory(&st_SockThreadCtrl,sizeof(st_SockThreadCtrl));
+    st_SockThreadCtrl.exited = 1;
     hInst = hInstance;
     // 初始化全局字符串
     LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -531,7 +635,7 @@ out:
     DirectInput_Fini();
     WSACleanup();
 
-	DeleteCriticalSection(&st_DevEventCS);
+    DeleteCriticalSection(&st_DevEventCS);
     return ret;
 }
 
