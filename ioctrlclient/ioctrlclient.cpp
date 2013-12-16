@@ -7,10 +7,12 @@
 #include <iocapcommon.h>
 #include <memory>
 #include <vector>
-#include <Winsock.h>
+#include <Winsock2.h>
 #include <uniansi.h>
 #define  DIRECTINPUT_VERSION   0x800
 #include <dinput.h>
+#include <assert.h>
+#include <injectctrl.h>
 
 #pragma comment(lib,"dinput8.lib")
 #pragma comment(lib,"dxguid.lib")
@@ -18,7 +20,6 @@
 
 #define MAX_LOADSTRING 100
 
-#define WM_SOCKET   (WM_USER + 1)
 #define SOCKET_TIMEOUT   3000
 #define SOCKET_TM_EVENTID 10003
 #define SOCKET_WRITE_EVENTID  10004
@@ -26,15 +27,11 @@
 static char g_Host[256];
 static int g_Port;
 static int g_EscapeKey=DIK_RCONTROL;
-static SOCKET g_Socket=INVALID_SOCKET;
-static UINT_PTR g_SocketConnTimer=0;
-static UINT_PTR g_SocketWriteTimer=0;
-static int g_Connected=0;
-static int g_writesize=0;
 static HWND g_hWnd=NULL;
 static CRITICAL_SECTION st_DevEventCS;
 static std::vector<DEVICEEVENT> st_DevEvent;
 static thread_control_t st_SockThreadCtrl= {0};
+static SOCKET g_Socket=INVALID_SOCKET;
 
 LPDIRECTINPUT8          g_pKeyDirectInput      = NULL;
 LPDIRECTINPUT8          g_pMouseDirectInput    = NULL;
@@ -47,8 +44,15 @@ int                     g_KeyboardAcquire   = 0;
 unsigned char                    g_KeyStateBuffer[256] = {0};
 unsigned char                    g_LastpKeyStateBuffer[256] = {0};
 
-#define  SOCKET_REENABLE  1
-#undef SOCKET_REENABLE
+
+int InsertDevEvent(DEVICEEVENT *pDevEvent,int back);
+
+#ifdef _UNICODE
+int SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...);
+#else
+int SprintfString(char* pString ,int count,const char* pfmt,...);
+#endif
+
 void DirectInput_Fini()
 {
     ULONG uret;
@@ -404,6 +408,7 @@ void UpdateMouseBufferAfter(DIMOUSESTATE* pLastState)
 BOOL UpdateCodeMessage()
 {
     std::vector<DEVICEEVENT> event;
+    int ret;
     if(g_Socket == INVALID_SOCKET)
     {
         return TRUE;
@@ -432,7 +437,12 @@ BOOL UpdateCodeMessage()
     {
         DEVICEEVENT devevent;
         devevent = event[0];
-        st_DevEvent.push_back(devevent);
+        ret = InsertDevEvent(&devevent,1);
+        if(ret < 0)
+        {
+            ERROR_INFO("Could Not Insert devevent\n");
+            return FALSE;
+        }
         event.erase(event.begin());
     }
     UpdateMouseBufferAfter(&g_LastdiMouseState);
@@ -445,7 +455,7 @@ SOCKET ConnectSocket(char* pIp,int port,int *pConnected)
 {
     SOCKET sock=INVALID_SOCKET;
     int ret;
-    int nonblock;
+    u_long nonblock;
     struct sockaddr_in saddr;
     sock = socket(AF_INET,SOCK_STREAM,0);
     if(sock == INVALID_SOCKET)
@@ -498,15 +508,127 @@ fail:
     return INVALID_SOCKET;
 }
 
-DWORD SocketThreadImpl(LPVOID lparam)
+int InsertDevEvent(DEVICEEVENT *pDevEvent,int back)
+{
+    int ret =0;
+    EnterCriticalSection(&st_DevEventCS);
+    if(st_DevEvent.size() > 20)
+    {
+        ret = -ERROR_SHARING_BUFFER_EXCEEDED;
+        goto unlock;
+    }
+    if(back)
+    {
+        st_DevEvent.push_back(*pDevEvent);
+    }
+    else
+    {
+        st_DevEvent.insert(st_DevEvent.begin(),*pDevEvent);
+    }
+
+unlock:
+    LeaveCriticalSection(&st_DevEventCS);
+    return ret;
+}
+
+int GetDevEvent(DEVICEEVENT& devevent)
+{
+    int ret = 0;
+    EnterCriticalSection(&st_DevEventCS);
+    if(st_DevEvent.size() > 0)
+    {
+        devevent = st_DevEvent[0];
+        st_DevEvent.erase(st_DevEvent.begin());
+        ret = 1;
+    }
+    LeaveCriticalSection(&st_DevEventCS);
+    return ret;
+}
+
+int HandleSendDevEvent(SOCKET sock,int& haswrite,int& blocked)
+{
+    DEVICEEVENT devevent;
+    int curwrite=haswrite;
+    int ret;
+    int cnt =0;
+    char* pCurPtr;
+
+    pCurPtr = (char*)&devevent;
+    while(1)
+    {
+        ret = GetDevEvent(devevent);
+        if(ret == 0)
+        {
+            break;
+        }
+
+        ret = send(sock,(pCurPtr+curwrite),sizeof(devevent) - curwrite,0);
+        if(ret == SOCKET_ERROR)
+        {
+            ret = WSAGetLastError() ? WSAGetLastError() : 1;
+            if(ret != WSAEWOULDBLOCK)
+            {
+                ERROR_INFO("Send Socket Error(%d)\n",ret);
+                goto fail;
+            }
+            ret = InsertDevEvent(&devevent,0);
+            if(ret < 0)
+            {
+                ret = ERROR_SHARING_BUFFER_EXCEEDED;
+                goto fail;
+            }
+            blocked = 1;
+            haswrite = curwrite;
+            return cnt;
+        }
+
+        if((curwrite + ret) >= sizeof(devevent))
+        {
+            cnt ++;
+            curwrite = 0;
+        }
+        else
+        {
+            ret = InsertDevEvent(&devevent,0);
+            if(ret < 0)
+            {
+                ret = ERROR_SHARING_BUFFER_EXCEEDED;
+                goto fail;
+            }
+            blocked = 1;
+            curwrite += ret;
+            haswrite = curwrite;
+            return cnt;
+        }
+    }
+
+    return cnt;
+fail:
+    SetLastError(ret);
+    return -ret;
+}
+
+#define  MAX_ERROR_SIZE   256
+
+DWORD WINAPI SocketThreadImpl(LPVOID lparam)
 {
     thread_control_t *pThreadControl= (thread_control_t*)lparam;
     SOCKET sock=INVALID_SOCKET;
     int ret;
     int connected=0;
-    HANDLE* pWaitHandles=NULL;
+#ifdef _UNICODE
+    std::auto_ptr<wchar_t> pChar2(new wchar_t[MAX_ERROR_SIZE]);
+    wchar_t* pChar = pChar2.get();
+#else
+    std::auto_ptr<char> pChar2(new char[MAX_ERROR_SIZE]);
+    char* pChar = pChar2.get();
+#endif
+    HANDLE* pWaitHandle=NULL;
     int waitnum = 2;
-    int i;
+    int haswrite=0,blocked=0;
+    DWORD dret;
+    BOOL bret;
+    DWORD stick,ctick,etick;
 
 
     sock =ConnectSocket(g_Host,g_Port,&connected);
@@ -515,30 +637,157 @@ DWORD SocketThreadImpl(LPVOID lparam)
         ret = LAST_ERROR_CODE();
         goto out;
     }
+    g_Socket = sock;
 
-    /*now check if we */
+    /*now check if we have the connected*/
+    pWaitHandle = (HANDLE*)calloc(2,sizeof(*pWaitHandle));
+    if(pWaitHandle == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto out;
+    }
+    pWaitHandle[0] = NULL;
+    pWaitHandle[1] = WSA_INVALID_EVENT;
+
+    pWaitHandle[0] = pThreadControl->exitevt;
+    pWaitHandle[1] = WSACreateEvent();
+    if(pWaitHandle[1] == WSA_INVALID_EVENT)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("Create Accept Event Error(%d)\n",ret);
+        SprintfString(pChar,MAX_ERROR_SIZE,TEXT("Create Accept Event Error(%d)"),ret);
+        ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+        goto out;
+    }
+
+    if(connected)
+    {
+        ret = WSAEventSelect(sock,pWaitHandle[1],FD_CLOSE);
+        if(ret == SOCKET_ERROR)
+        {
+            ret = WSAGetLastError() ? WSAGetLastError() : 1;
+            ERROR_INFO("Select Accept Event Error(%d)\n",ret);
+            SprintfString(pChar,MAX_ERROR_SIZE,TEXT("Select Accept Event Error(%d)"),ret);
+            ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+            goto out;
+        }
+    }
+    else
+    {
+        ret = WSAEventSelect(sock,pWaitHandle[1],FD_CONNECT|FD_CLOSE);
+        if(ret == SOCKET_ERROR)
+        {
+            ret = WSAGetLastError() ? WSAGetLastError() : 1;
+            ERROR_INFO("Select Connect Event Error(%d)\n",ret);
+            SprintfString(pChar,MAX_ERROR_SIZE,TEXT("Select Connect Event Error(%d)"),ret);
+            ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+            goto out;
+        }
+        stick = GetTickCount();
+        etick = stick + 3000;
+        ctick = stick;
+    }
+    waitnum = 2;
 
     while(pThreadControl->running)
     {
+        /*we wait for the time*/
+        dret = WaitForMultipleObjects(waitnum,pWaitHandle,FALSE,20);
+        if(dret == WAIT_OBJECT_0)
+        {
+            ERROR_INFO("exit notify\n");
+        }
+        else if(dret == (WAIT_OBJECT_0 + 1))
+        {
+
+            bret = WSAResetEvent(pWaitHandle[1]);
+            if(!bret)
+            {
+                ret = WSAGetLastError() ? WSAGetLastError() : 1;
+                ERROR_INFO("Reset Event Error(%d)\n",ret);
+                SprintfString(pChar,MAX_ERROR_SIZE,TEXT("Reset Event Error(%d)"),ret);
+                ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+                goto out;
+            }
+            if(connected == 0)
+            {
+                ret = WSAEventSelect(sock,pWaitHandle[1],FD_CLOSE);
+                if(ret == SOCKET_ERROR)
+                {
+                    ret = WSAGetLastError() ? WSAGetLastError() : 1;
+                    ERROR_INFO("Select Close Event Error(%d)\n",ret);
+                    SprintfString(pChar,MAX_ERROR_SIZE,TEXT("Select Close Event Error(%d)"),ret);
+                    ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+                    goto out;
+                }
+                connected = 1;
+            }
+            else
+            {
+                ERROR_INFO("Closed\n");
+                SprintfString(pChar,MAX_ERROR_SIZE,TEXT("Remote Closed"));
+                ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+                ret = 0;
+                goto out;
+            }
+        }
+        else if(dret == WAIT_TIMEOUT)
+        {
+            if(connected)
+            {
+                ret = HandleSendDevEvent(sock,haswrite,blocked);
+                if(ret < 0)
+                {
+                    ret = LAST_ERROR_CODE();
+                    SprintfString(pChar,MAX_ERROR_SIZE,TEXT("Send Event Error(%d)"),ret);
+                    ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+                    goto out;
+                }
+            }
+            else
+            {
+                ctick = GetTickCount();
+                if(ctick > etick)
+                {
+                    ret = ERROR_CONNECTION_UNAVAIL;
+                    ERROR_INFO("Connect(%s:%d) Failed\n",g_Host,g_Port);
+                    SprintfString(pChar,MAX_ERROR_SIZE,TEXT("Connect(%s:%d) Failed"),g_Host,g_Port);
+                    ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+                    goto out;
+                }
+            }
+        }
+        else if(dret == WAIT_FAILED)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Wait Error(%d)\n",ret);
+            SprintfString(pChar,MAX_ERROR_SIZE,TEXT("wait failed (%d)"),ret);
+            ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
+            goto out;
+        }
     }
 
     ret = 0;
 
 out:
-    if(pWaitHandles)
+    if(pWaitHandle)
     {
-        if(pWaitHandles[1])
+        if(pWaitHandle[1] != WSA_INVALID_EVENT)
         {
+            WSACloseEvent(pWaitHandle[1]);
         }
-        free(pWaitHandles);
+        pWaitHandle[1] = WSA_INVALID_EVENT;
+        free(pWaitHandle);
     }
-    pWaitHandles = NULL;
+    pWaitHandle = NULL;
     if(sock != INVALID_SOCKET)
     {
         closesocket(sock);
     }
     sock = INVALID_SOCKET;
+    g_Socket = sock;
     SetLastError(ret);
+    pThreadControl->exited = 1;
     return (DWORD) -ret;
 }
 
@@ -1143,41 +1392,8 @@ BOOL CALLBACK ConnectDialogProc(HWND hwndDlg,
 
 void StopConnect(HWND hwnd)
 {
-    BOOL bret;
-    int ret;
-    if(g_SocketConnTimer != 0)
-    {
-        bret = KillTimer(hwnd,g_SocketConnTimer);
-        if(!bret)
-        {
-            ret = LAST_ERROR_CODE();
-            ERROR_INFO("KillTimer hwnd(0x%08x)(%d) Error(%d)\n",hwnd,g_SocketConnTimer,ret);
-        }
-    }
-    g_SocketConnTimer= 0;
-    if(g_SocketWriteTimer != 0)
-    {
-        bret = KillTimer(hwnd,g_SocketWriteTimer);
-        if(!bret)
-        {
-            ret = LAST_ERROR_CODE();
-            ERROR_INFO("KillTimer for Write hwnd(0x%08x) Error(%d)\n",hwnd,g_SocketWriteTimer,ret);
-        }
-    }
-    g_SocketWriteTimer = 0;
-    if(g_Socket != INVALID_SOCKET)
-    {
-        WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,0);
-        DEBUG_INFO("Close Socket");
-        closesocket(g_Socket);
-    }
-    g_Socket= INVALID_SOCKET;
-    g_Connected = 0;
-
+    StopThreadControl(&st_SockThreadCtrl);
     st_DevEvent.clear();
-#ifdef SOCKET_REENABLE
-    WSACleanup();
-#endif
     return ;
 }
 
@@ -1185,99 +1401,15 @@ void StopConnect(HWND hwnd)
 BOOL StartConnect(HWND hwnd)
 {
     int ret;
-    struct sockaddr_in saddr;
-    u_long nonblock;
-    UINT_PTR timeret;
     StopConnect(hwnd);
-#ifdef SOCKET_REENABLE
-    WSADATA wsadata;
-    ret = WSAStartup(MAKEWORD(2,2),&wsadata);
-    if(ret != NO_ERROR)
-    {
-        ret = WSAGetLastError() ? WSAGetLastError() : 1;
-        ERROR_INFO("StartWSA Error(%d)\n",ret);
-        goto fail;
-    }
-#endif
-    /*now first to make socket*/
-    g_Socket = socket(AF_INET,SOCK_STREAM,0);
-    if(g_Socket == INVALID_SOCKET)
-    {
-        ret = WSAGetLastError() ? WSAGetLastError() : 1;
-        ERROR_INFO("Socket Stream Error(%d)\n",ret);
-        goto fail;
-    }
-    nonblock = 1;
-    ret = ioctlsocket(g_Socket,FIONBIO,&nonblock);
-    if(ret != NO_ERROR)
-    {
-        ret = WSAGetLastError() ? WSAGetLastError() : 1;
-        ERROR_INFO("ioctl nonblock Error(%d)\n",ret);
-        goto fail;
-    }
-
-    ZeroMemory(&saddr,sizeof(saddr));
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = inet_addr(g_Host);
-    saddr.sin_port = htons(g_Port);
-
-    ret = connect(g_Socket,(struct sockaddr*)&saddr,sizeof(saddr));
-    if(ret == SOCKET_ERROR)
-    {
-        ret=WSAGetLastError() ? WSAGetLastError() : 1;
-        if(ret != WSAEWOULDBLOCK  &&
-                ret != WSAEINPROGRESS)
-        {
-            ERROR_INFO("connect (%s:%d) Error(%d)\n",g_Host,g_Port,ret);
-            goto fail;
-        }
-        else
-        {
-            timeret = SetTimer(hwnd,SOCKET_TM_EVENTID,SOCKET_TIMEOUT,NULL);
-            if(timeret == 0)
-            {
-                ret = LAST_ERROR_CODE();
-                ERROR_INFO("SetTimer hwnd(0x%08x) (%d) Error(%d)\n",hwnd,SOCKET_TM_EVENTID,ret);
-                goto fail;
-            }
-            g_SocketConnTimer = SOCKET_TM_EVENTID;
-            DEBUG_INFO("SetTimer ret (0x%08x)\n",g_SocketConnTimer);
-        }
-        DEBUG_INFO("Wait Connected\n");
-        ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CONNECT|FD_CLOSE);
-        if(ret != NO_ERROR)
-        {
-            ret = WSAGetLastError() ? WSAGetLastError() : 1;
-            ERROR_INFO("Set hwnd(0x%08x) Select Error(%d)\n",hwnd,ret);
-            goto fail;
-        }
-
-    }
-    else
-    {
-        /*we have connected*/
-        g_Connected = 1;
-        DEBUG_INFO("Detect Closed\n");
-        ret = WSAAsyncSelect(g_Socket,hwnd,WM_SOCKET,FD_CLOSE);
-        if(ret != NO_ERROR)
-        {
-            ret = WSAGetLastError() ? WSAGetLastError() : 1;
-            ERROR_INFO("Set hwnd(0x%08x) Select Error(%d)\n",hwnd,ret);
-            goto fail;
-        }
-    }
-
-
-    timeret = SetTimer(hwnd,SOCKET_WRITE_EVENTID,10,NULL);
-    if(timeret == 0)
+    ret = StartThreadControl(&st_SockThreadCtrl,SocketThreadImpl,&st_SockThreadCtrl,1);
+    if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("SetTimer SocketWrite hwnd(0x%08x) (%d) Error(%d)\n",hwnd,SOCKET_TM_EVENTID,ret);
+        ERROR_INFO("Start Connect Thread Error(%d)\n",ret);
         goto fail;
     }
-    g_SocketWriteTimer = SOCKET_WRITE_EVENTID;
 
-    SetLastError(0);
     return TRUE;
 fail:
     StopConnect(hwnd);
@@ -1305,85 +1437,6 @@ void CallStopFunction(HWND hwnd)
 }
 
 
-int WriteDeviceEvent(HWND hwnd)
-{
-    int cnt=0;
-    DEVICEEVENT devevent;
-    char* pBuf=NULL;
-    int ret;
-    std::auto_ptr<TCHAR> pChar2(new TCHAR[256]);
-    TCHAR *pChar=pChar2.get();
-    int error;
-    int errsize;
-
-    if(g_Socket == INVALID_SOCKET || g_Connected == 0)
-    {
-        if(g_Socket != INVALID_SOCKET)
-        {
-            errsize = sizeof(error);
-            error = 0;
-            ret = getsockopt(g_Socket,SOL_SOCKET,SO_ERROR,(char*)&error,&errsize);
-            if(ret == 0)
-            {
-                if(error == 0)
-                {
-                    g_Connected = 1;
-                    goto ok_write;
-                }
-            }
-        }
-
-        DEBUG_INFO("g_Socket %d g_Connected %d\n",g_Socket,g_Connected);
-        return 0;
-    }
-ok_write:
-    if(st_DevEvent.size() > 20)
-    {
-        ERROR_INFO("DevEvent.size(%d)\n",st_DevEvent.size());
-    }
-
-    while(st_DevEvent.size() > 0)
-    {
-        devevent = st_DevEvent[0];
-        //DEBUG_INFO("devevent.devtype %d\n",devevent.devtype);
-        pBuf = (char*)&(devevent);
-        pBuf += g_writesize;
-        ret = send(g_Socket,pBuf,(sizeof(devevent)-g_writesize),0);
-        if(ret == SOCKET_ERROR)
-        {
-            ret = WSAGetLastError() ? WSAGetLastError() : 1;
-            if(ret != WSAEWOULDBLOCK)
-            {
-                StopConnect(hwnd);
-#ifdef _UNICODE
-                SprintfString(pChar,256,TEXT("Write(%S:%d) Error(%d)"),g_Host,g_Port,ret);
-#else
-                SprintfString(pChar,256,TEXT("Write(%s:%d) Error(%d)"),g_Host,g_Port,ret);
-#endif
-                ::MessageBox(hwnd,pChar,TEXT("Error"),MB_OK);
-                SetLastError(ret);
-                return -ret;
-            }
-            DEBUG_INFO("Write Device Block\n");
-            return cnt;
-        }
-        g_writesize += ret;
-        if(g_writesize >= sizeof(devevent))
-        {
-            st_DevEvent.erase(st_DevEvent.begin());
-            g_writesize = 0;
-            cnt ++;
-        }
-        else
-        {
-            /*we can not write any more ,so just return */
-            DEBUG_INFO("Write Device cnt(%d)\n",cnt);
-            return cnt;
-        }
-    }
-    return cnt;
-}
-
 //
 //  º¯Êý:  WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -1399,11 +1452,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     int wmId, wmEvent;
     PAINTSTRUCT ps;
     HDC hdc;
-    DWORD event,error;
-    BOOL bret;
-    int ret,res;
-    std::auto_ptr<TCHAR> pChar2(new TCHAR[256]);
-    TCHAR *pChar=pChar2.get();
 
     switch(message)
     {
@@ -1436,101 +1484,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_DESTROY:
         PostQuitMessage(0);
-        break;
-    case WM_TIMER:
-        if(wParam == g_SocketConnTimer && g_SocketConnTimer != 0)
-        {
-            DEBUG_INFO("WM_TIMER wParam(0x%08x) lParam(0x%08x) g_SocketConnTimer (0x%08x)\n",
-                       wParam,lParam,g_SocketConnTimer);
-            ret = WSAGetLastError() ? WSAGetLastError() : 1;
-            if(g_Socket != INVALID_SOCKET)
-            {
-                int error;
-                int errsize;
-                errsize = sizeof(error);
-                error = 0;
-                res = getsockopt(g_Socket,SOL_SOCKET,SO_ERROR,(char*)&error,&errsize);
-                if(res == 0)
-                {
-                    ret = error;
-                }
-#ifdef SOCKET_REENABLE
-                if(ret == 0)
-                {
-                    /*no error ,we could pass ok*/
-                    bret = KillTimer(hWnd,g_SocketConnTimer);
-                    if(!bret)
-                    {
-                        ret = LAST_ERROR_CODE();
-                        ERROR_INFO("Kill Timer(%d) Error(%d)\n",g_SocketConnTimer,ret);
-                    }
-                    g_SocketConnTimer = 0;
-                    g_Connected = 1;
-                    break;
-                }
-#endif /*SOCKET_REENABLE*/
-            }
-            /*now we should disconnect*/
-            StopConnect(hWnd);
-#ifdef _UNICODE
-            SprintfString(pChar,256,TEXT("Connect(%S:%d) Error(%d)"),g_Host,g_Port,ret);
-#else
-            SprintfString(pChar,256,TEXT("Connect(%s:%d) Error(%d)"),g_Host,g_Port,ret);
-#endif
-            ::MessageBox(hWnd,pChar,TEXT("Error"),MB_OK);
-        }
-        else if(wParam == g_SocketWriteTimer && g_SocketWriteTimer != 0)
-        {
-            WriteDeviceEvent(hWnd);
-        }
-        break;
-    case WM_SOCKET:
-        DEBUG_INFO("WM_SOCKET wParam(0x%08x) lParam(0x%08x)\n",wParam,lParam);
-        if(g_Socket != wParam || g_Socket == INVALID_SOCKET)
-        {
-            ERROR_INFO("Get Socket Message wParam(0x%08x) lParam(0x%08x)\n",wParam,lParam);
-            break;
-        }
-        event = WSAGETSELECTEVENT(lParam);
-        error = WSAGETSELECTERROR(lParam);
-        if(error)
-        {
-            ret = WSAGetLastError() ? WSAGetLastError() : 1;
-            StopConnect(hWnd);
-#ifdef _UNICODE
-            SprintfString(pChar,256,TEXT("Connect(%S:%d) Error(%d)Code(%d)"),g_Host,g_Port,ret,error);
-#else
-            SprintfString(pChar,256,TEXT("Connect(%s:%d) Error(%d)Code(%d)"),g_Host,g_Port,ret,error);
-#endif
-            ::MessageBox(hWnd,pChar,TEXT("Error"),MB_OK);
-            break;
-        }
-        if(event & FD_CONNECT)
-        {
-            if(g_Socket != INVALID_SOCKET && g_Connected == 0)
-            {
-                g_Connected = 1;
-                bret =KillTimer(hWnd,g_SocketConnTimer);
-                if(!bret)
-                {
-                    ret = LAST_ERROR_CODE();
-                    ERROR_INFO("Kill Timer(0x%08x) (%d) Error(%d)\n",hWnd,g_SocketConnTimer,ret);
-                }
-                g_SocketConnTimer = 0;
-            }
-
-        }
-        if(event & FD_CLOSE)
-        {
-            StopConnect(hWnd);
-#ifdef _UNICODE
-            SprintfString(pChar,256,TEXT("(%S:%d) Closed"),g_Host,g_Port);
-#else
-            SprintfString(pChar,256,TEXT("(%s:%d) Closed"),g_Host,g_Port);
-#endif
-            ::MessageBox(hWnd,pChar,TEXT("Error"),MB_OK);
-            break;
-        }
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
