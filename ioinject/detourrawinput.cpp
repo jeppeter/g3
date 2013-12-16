@@ -4,10 +4,10 @@
 #include <detours/detours.h>
 
 #define  DETOUR_RAWINPUT_DEBUG      1
-#undef   DETOUR_RAWINPUT_DEBUG
+//#undef   DETOUR_RAWINPUT_DEBUG
 
 #define  DETOUR_RAWINPUT_EMULATION  1
-//#undef   DETOUR_RAWINPUT_EMULATION
+#undef   DETOUR_RAWINPUT_EMULATION
 
 typedef UINT(WINAPI *GetRawInputDataFunc_t)(
     HRAWINPUT hRawInput,

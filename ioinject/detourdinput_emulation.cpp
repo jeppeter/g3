@@ -2181,7 +2181,16 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_8A_IN();
-        hr = m_ptr->EnumDevices(dwDevType,lpCallback,pvRef,dwFlags);
+        if(dwDevType == DI8DEVCLASS_GAMECTRL)
+        {
+            /*we do not get any gamectrl ,so just return ok*/
+        	DEBUG_INFO("\n");
+            hr = DI_OK;
+        }
+        else
+        {
+            hr = m_ptr->EnumDevices(dwDevType,lpCallback,pvRef,dwFlags);
+        }
         DIRECT_INPUT_8A_OUT();
         return hr;
     }
@@ -2451,7 +2460,15 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_8W_IN();
-        hr = m_ptr->EnumDevices(dwDevType,lpCallback,pvRef,dwFlags);
+        if(dwDevType == DI8DEVCLASS_GAMECTRL)
+        {
+        	DEBUG_INFO("\n");
+        	hr = DI_OK;
+        }
+        else
+        {
+            hr = m_ptr->EnumDevices(dwDevType,lpCallback,pvRef,dwFlags);
+        }
         DIRECT_INPUT_8W_OUT();
         return hr;
     }
