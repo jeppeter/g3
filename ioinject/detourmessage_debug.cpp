@@ -154,13 +154,13 @@ BOOL WINAPI PeekMessageWCallBack(
                             wMsgFilterMax,wRemoveMsg);
     if(bret)
     {
-        //DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
-        //                 lpMsg->hwnd,lpMsg->message,lpMsg->message,
-        //                 lpMsg->wParam,lpMsg->wParam,
-        //                 lpMsg->lParam,lpMsg->lParam,
-        //                 lpMsg->time,lpMsg->time,
-        //                 lpMsg->pt.x,lpMsg->pt.x,
-        //                 lpMsg->pt.y,lpMsg->pt.y);
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
         {
             DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW Keyboard hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",

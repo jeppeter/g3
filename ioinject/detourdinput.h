@@ -24,7 +24,7 @@ int DetourDinputMouseBtnDown(UINT btn);
 int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint);
 int DetourDinputSetWindowsRect(HWND hWnd);
 int DetourDinput8GetMousePointAbsolution(POINT *pPoint);
-
+HWND GetCurrentProcessActiveWindow();
 
 
 #ifdef __cplusplus

@@ -311,6 +311,18 @@ static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
     return ret;
 }
 
+HWND GetCurrentProcessActiveWindow()
+{
+    HWND hwnd=NULL;
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(st_hWndVecs.size() > 0)
+    {
+        hwnd = st_hWndVecs[0];
+    }
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+    return hwnd;
+}
+
 int Dinput8SetWindowRectState(HWND hwnd)
 {
     int findidx = -1;
@@ -2184,7 +2196,7 @@ public:
         if(dwDevType == DI8DEVCLASS_GAMECTRL)
         {
             /*we do not get any gamectrl ,so just return ok*/
-        	DEBUG_INFO("\n");
+            DEBUG_INFO("\n");
             hr = DI_OK;
         }
         else
@@ -2462,8 +2474,8 @@ public:
         DIRECT_INPUT_8W_IN();
         if(dwDevType == DI8DEVCLASS_GAMECTRL)
         {
-        	DEBUG_INFO("\n");
-        	hr = DI_OK;
+            DEBUG_INFO("\n");
+            hr = DI_OK;
         }
         else
         {

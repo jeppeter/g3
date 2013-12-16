@@ -633,6 +633,10 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         lpMsg->pt.y = pt.y;
     }
 out:
+    if(ret > 0)
+    {
+        lpMsg->hwnd = GetCurrentProcessActiveWindow();
+    }
     if(lGetMsg)
     {
         free(lGetMsg);
@@ -699,10 +703,6 @@ try_again:
             goto try_again;
         }
     }
-    if(lpMsg->message == WM_QUIT)
-    {
-        __SetMessageQuit();
-    }
     return bret;
 }
 
@@ -752,10 +752,6 @@ try_again:
         }
     }
 
-    if(lpMsg->message == WM_QUIT)
-    {
-        __SetMessageQuit();
-    }
 
     return bret;
 }
@@ -796,10 +792,6 @@ try_again:
             /*we discard this message ,so get the next one*/
             goto try_again;
         }
-    }
-    if(lpMsg->message == WM_QUIT)
-    {
-        __SetMessageQuit();
     }
     return bret;
 }
@@ -857,10 +849,6 @@ try_again:
         }
 
 
-    }
-    if(lpMsg->message == WM_QUIT)
-    {
-        __SetMessageQuit();
     }
     return bret;
 }

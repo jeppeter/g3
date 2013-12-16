@@ -875,8 +875,13 @@ HWND WINAPI CreateWindowExACallBack(
                               );
     if(hWnd != NULL)
     {
-    	DEBUG_INFO("hWnd (0x%08x) ThreadId(%d)\n",hWnd,GetCurrentThreadId());
-        st_CreateWindowFuncList.CallList(hWnd);
+        DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
+                   dwStyle,dwExStyle);
+        if(dwStyle & WS_VISIBLE)
+        {
+        	/*only visible window ,we put it ok*/
+            st_CreateWindowFuncList.CallList(hWnd);
+        }
     }
     return hWnd;
 }
@@ -913,8 +918,13 @@ HWND WINAPI CreateWindowExWCallBack(
                               );
     if(hWnd != NULL)
     {
-    	DEBUG_INFO("hWnd (0x%08x) ThreadId(%d)\n",hWnd,GetCurrentThreadId());
-        st_CreateWindowFuncList.CallList(hWnd);
+        DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
+                   dwStyle,dwExStyle);
+        if(dwStyle & WS_VISIBLE)
+        {
+        	/*only visible window, we put it ok*/
+            st_CreateWindowFuncList.CallList(hWnd);
+        }
     }
     return hWnd;
 }

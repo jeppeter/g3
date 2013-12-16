@@ -5,10 +5,10 @@
 #include <detours/detours.h>
 
 #define  DETOUR_MESSAGE_DEBUG   1
-//#undef   DETOUR_MESSAGE_DEBUG
+#undef   DETOUR_MESSAGE_DEBUG
 
 #define  DETOUR_MESSAGE_EMULATION  1
-#undef  DETOUR_MESSAGE_EMULATION
+//#undef  DETOUR_MESSAGE_EMULATION
 
 typedef BOOL (WINAPI *GetMessageFunc_t)(
     LPMSG lpMsg,
