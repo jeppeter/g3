@@ -32,6 +32,7 @@ static UINT_PTR g_SocketWriteTimer=0;
 static int g_Connected=0;
 static int g_writesize=0;
 static HWND g_hWnd=NULL;
+static CRITICAL_SECTION st_DevEventCS;
 static std::vector<DEVICEEVENT> st_DevEvent;
 
 LPDIRECTINPUT8          g_pKeyDirectInput      = NULL;
@@ -470,6 +471,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
     std::auto_ptr<TCHAR> pErrStr2(new TCHAR[256]);
     TCHAR *pErrStr=pErrStr2.get();
 
+	InitializeCriticalSection(&st_DevEventCS);
     hInst = hInstance;
     // 初始化全局字符串
     LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -529,9 +531,9 @@ out:
     DirectInput_Fini();
     WSACleanup();
 
+	DeleteCriticalSection(&st_DevEventCS);
     return ret;
 }
-
 
 
 //
