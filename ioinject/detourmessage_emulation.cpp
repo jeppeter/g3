@@ -521,6 +521,7 @@ int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
 LPMSG __GetEmulationMessageQueue()
 {
     LPMSG lGetMsg=NULL;
+    static int st_getmessagedebug=0;
     if(st_MessageEmualtionInited)
     {
         EnterCriticalSection(&st_MessageEmulationCS);
@@ -575,6 +576,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     LPMSG lGetMsg=NULL;
     int ret = 0,res;
     POINT pt;
+    static int st_GetMessageCount=0;
 
     lGetMsg = __GetEmulationMessageQueue();
     if(lGetMsg == NULL)
@@ -636,6 +638,16 @@ out:
     if(ret > 0)
     {
         lpMsg->hwnd = GetCurrentProcessActiveWindow();
+        st_GetMessageCount ++;
+        if((st_GetMessageCount % 50)==0)
+        {
+            DEBUG_INFO("[%d] hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time(%d) pt.x(%d) pt.y(%d)\n",
+                       st_GetMessageCount,lpMsg->hwnd,
+                       lpMsg->message,lpMsg->message,
+                       lpMsg->wParam,lpMsg->wParam,
+                       lpMsg->lParam,lpMsg->lParam,
+                       lpMsg->time,lpMsg->pt.x,lpMsg->pt.y);
+        }
     }
     if(lGetMsg)
     {
@@ -828,13 +840,13 @@ try_again:
                             wMsgFilterMax,wRemoveMsg);
     if(bret)
     {
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
-                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
-                         lpMsg->wParam,lpMsg->wParam,
-                         lpMsg->lParam,lpMsg->lParam,
-                         lpMsg->time,lpMsg->time,
-                         lpMsg->pt.x,lpMsg->pt.x,
-                         lpMsg->pt.y,lpMsg->pt.y);
+        //DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+        //                 lpMsg->hwnd,lpMsg->message,lpMsg->message,
+        //                 lpMsg->wParam,lpMsg->wParam,
+        //                 lpMsg->lParam,lpMsg->lParam,
+        //                 lpMsg->time,lpMsg->time,
+        //                 lpMsg->pt.x,lpMsg->pt.x,
+        //                 lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)||
                 (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
         {
