@@ -161,6 +161,7 @@ int __ReCalculateMaxWindowRectNoLock()
         if(((st_hWndRectVecs[i].right - st_hWndRectVecs[i].left) > (st_hWndRectVecs[pickidx].right - st_hWndRectVecs[pickidx].left)) &&
                 ((st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top) > (st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top)))
         {
+        	DEBUG_INFO("picked %d\n",i);
             pickidx = i;
         }
     }
@@ -388,6 +389,16 @@ int Dinput8SetWindowRectState(HWND hwnd)
                     st_hWndRectVecs[findidx].right != rRect.right ||
                     st_hWndRectVecs[findidx].bottom != rRect.bottom)
             {
+                DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d)\n",
+                           st_hWndVecs[findidx],
+                           st_hWndRectVecs[findidx].left,
+                           st_hWndRectVecs[findidx].top,
+                           st_hWndRectVecs[findidx].right,
+                           st_hWndRectVecs[findidx].bottom,
+                           rRect.left,
+                           rRect.top,
+                           rRect.right,
+                           rRect.bottom);
                 st_hWndRectVecs[findidx] = rRect;
                 refreshed ++;
             }
@@ -405,6 +416,16 @@ int Dinput8SetWindowRectState(HWND hwnd)
                         st_hWndRectVecs[i].right != rRect.right ||
                         st_hWndRectVecs[i].bottom != rRect.bottom)
                 {
+                    DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d)\n",
+                               st_hWndVecs[i],
+                               st_hWndRectVecs[i].left,
+                               st_hWndRectVecs[i].top,
+                               st_hWndRectVecs[i].right,
+                               st_hWndRectVecs[i].bottom,
+                               rRect.left,
+                               rRect.top,
+                               rRect.right,
+                               rRect.bottom);
                     st_hWndRectVecs[i] = rRect;
                     refreshed ++;
                 }
