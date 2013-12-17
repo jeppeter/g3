@@ -660,6 +660,10 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         if(!(remove & PM_REMOVE) && lGetMsg->message != WM_QUIT)
         {
             /*not remove ,so we put back*/
+            DEBUG_INFO("ReInsertMsg hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
+                       lGetMsg->hwnd,lGetMsg->message,lGetMsg->message,
+                       lGetMsg->wParam,lGetMsg->wParam,
+                       lGetMsg->lParam,lGetMsg->lParam);
             res = InsertEmulationMessageQueue(lGetMsg,0);
             assert(res >= 0);
         }

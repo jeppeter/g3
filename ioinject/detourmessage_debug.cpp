@@ -128,6 +128,8 @@ BOOL WINAPI GetMessageWCallBack(
         }
         else if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST)
         {
+        	lpMsg->pt.x = 0;
+			lpMsg->pt.y = 0;
             DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW Mouse hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                              lpMsg->hwnd,lpMsg->message,lpMsg->message,
                              lpMsg->wParam,lpMsg->wParam,
@@ -194,7 +196,9 @@ BOOL WINAPI PeekMessageWCallBack(
     }
     else
     {
-        DEBUG_INFO("PeekMessageW Return FALSE\n");
+        DEBUG_INFO("PeekMessageW Return FALSE hWnd(0x%08x) wMinFilter (0x%x:%d) wMaxFilter (0x%x:%d) PeekMode (0x%08x)\n",
+			hWnd,wMsgFilterMin,wMsgFilterMin,
+			wMsgFilterMax,wMsgFilterMax,wRemoveMsg);
     }
     return bret;
 }

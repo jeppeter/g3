@@ -877,11 +877,8 @@ HWND WINAPI CreateWindowExACallBack(
     {
         DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
                    dwStyle,dwExStyle);
-        if(dwStyle & WS_BORDER)
-        {
-        	/*only visible window ,we put it ok*/
-            st_CreateWindowFuncList.CallList(hWnd);
-        }
+        /*only visible window ,we put it when call*/
+        st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
 }
@@ -920,11 +917,8 @@ HWND WINAPI CreateWindowExWCallBack(
     {
         DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
                    dwStyle,dwExStyle);
-        if(dwStyle & WS_BORDER)
-        {
-        	/*only visible window, we put it ok*/
-            st_CreateWindowFuncList.CallList(hWnd);
-        }
+        /*only visible window, we put it ok*/
+        st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
 }

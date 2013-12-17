@@ -314,10 +314,31 @@ static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
 HWND GetCurrentProcessActiveWindow()
 {
     HWND hwnd=NULL;
+    LONG style,exstyle;
+    UINT i;
+    int findidx=-1;
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     if(st_hWndVecs.size() > 0)
     {
-        hwnd = st_hWndVecs[0];
+        for(i=0; i<st_hWndVecs.size(); i++)
+        {
+            style = GetWindowLong(st_hWndVecs[i],GWL_STYLE);
+            exstyle = GetWindowLong(st_hWndVecs[i],GWL_EXSTYLE);
+            if(0)
+            {
+                DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndVecs[i],
+                           style,exstyle);
+            }
+            if(style & WS_CHILD)
+            {
+                findidx = i;
+                break;
+            }
+        }
+        if(findidx >= 0)
+        {
+            hwnd = st_hWndVecs[findidx];
+        }
     }
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return hwnd;
@@ -476,8 +497,8 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         {
             /*this is relative one*/
             __MoveMouseRelativeNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
-			//DEBUG_INFO("x %d y %d mousepoint(%d:%d)\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y,
-			//	st_MousePoint.x,st_MousePoint.y);
+            //DEBUG_INFO("x %d y %d mousepoint(%d:%d)\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y,
+            //	st_MousePoint.x,st_MousePoint.y);
         }
         else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
         {
@@ -503,13 +524,13 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         {
             st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x80;
             __SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,1);
-			DEBUG_INFO("MouseLeftDown Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
+            DEBUG_INFO("MouseLeftDown Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
             st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x0;
             __SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,0);
-			DEBUG_INFO("MouseLeftUp Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
+            DEBUG_INFO("MouseLeftUp Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
         }
         else
         {
