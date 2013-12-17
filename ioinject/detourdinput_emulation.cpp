@@ -475,8 +475,9 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
         {
             /*this is relative one*/
-			DEBUG_INFO("x %d y %d\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
             __MoveMouseRelativeNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
+			//DEBUG_INFO("x %d y %d mousepoint(%d:%d)\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y,
+			//	st_MousePoint.x,st_MousePoint.y);
         }
         else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
         {
@@ -502,11 +503,13 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         {
             st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x80;
             __SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,1);
+			DEBUG_INFO("MouseLeftDown Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
             st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x0;
             __SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,0);
+			DEBUG_INFO("MouseLeftUp Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
         }
         else
         {
