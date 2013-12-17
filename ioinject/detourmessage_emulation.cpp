@@ -127,7 +127,13 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
                                         lpRemove->wParam,lpRemove->wParam,
                                         lpRemove->lParam,lpRemove->lParam);
             free(lpRemove);
-            EMULATIONMESSAGE_DEBUG_INFO("remove over\n");
+        }
+        if(ret >= 0)
+        {
+            EMULATIONMESSAGE_DEBUG_INFO("insert 0x%p Message Code(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
+                                        lpMsg,lpMsg->message,lpMsg->message,
+                                        lpMsg->wParam,lpMsg->wParam,
+                                        lpMsg->lParam,lpMsg->lParam);
         }
         lpRemove = NULL;
         return ret;
@@ -505,10 +511,12 @@ int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
     /*now to test for the dev event*/
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
+        DEBUG_BUFFER_FMT(pDevEvent,sizeof(*pDevEvent),"Keyboard Event 0x%p",pDevEvent);
         return __InsertKeyboardMessageDevEvent(pDevEvent);
     }
     else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
     {
+        DEBUG_BUFFER_FMT(pDevEvent,sizeof(*pDevEvent),"Mouse Event 0x%p",pDevEvent);
         return __InsertMouseMessageDevEvent(pDevEvent);
     }
 
@@ -585,6 +593,11 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         goto out;
     }
 
+    EMULATIONMESSAGE_DEBUG_INFO("lGetMsg 0x%p Message Code(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
+                                lGetMsg,lGetMsg->message,lGetMsg->message,
+                                lGetMsg->wParam,lGetMsg->wParam,
+                                lGetMsg->lParam,lGetMsg->lParam);
+
     /*now to compare whether it is the ok*/
     if(wMsgFilterMin == 0 && wMsgFilterMax == 0)
     {
@@ -611,6 +624,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     else
     {
         /*now in it ,so we do not use this*/
+        DEBUG_INFO("FilterMin %d FilterMax %d\n",wMsgFilterMin,wMsgFilterMax);
         res = InsertEmulationMessageQueue(lGetMsg,0);
         assert(res >= 0);
         ret = 0;
@@ -622,8 +636,8 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     {
         /*we put the mouse pointer here */
         lpMsg->lParam = 0;
-        ret = DetourDinputScreenMousePoint(hWnd,&pt);
-        if(ret < 0)
+        res = DetourDinputScreenMousePoint(hWnd,&pt);
+        if(res < 0)
         {
             ret = LAST_ERROR_CODE();
             ERROR_INFO("hWnd(0x%08x) Could not GetScreen mouse point Error(%d)\n",hWnd,ret);
@@ -654,6 +668,7 @@ out:
         free(lGetMsg);
     }
     lGetMsg = NULL;
+    DEBUG_INFO("ret %d\n",ret);
     SetLastError(0);
     return ret;
 
@@ -706,7 +721,7 @@ try_again:
         {
             DEBUG_INFO("CursorPos (%d:%d)\n",pt.x,pt.y);
         }
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                          lpMsg->hwnd,lpMsg->message,lpMsg->message,
                          lpMsg->wParam,lpMsg->wParam,
                          lpMsg->lParam,lpMsg->lParam,
@@ -721,6 +736,13 @@ try_again:
     bret = GetMessageANext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
     if(bret)
     {
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
                 (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
         {
@@ -830,7 +852,7 @@ try_again:
         {
             DEBUG_INFO("CursorPos (%d:%d)\n",pt.x,pt.y);
         }
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                          lpMsg->hwnd,lpMsg->message,lpMsg->message,
                          lpMsg->wParam,lpMsg->wParam,
                          lpMsg->lParam,lpMsg->lParam,
@@ -844,6 +866,13 @@ try_again:
     bret = GetMessageWNext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
     if(bret)
     {
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
+                         lpMsg->wParam,lpMsg->wParam,
+                         lpMsg->lParam,lpMsg->lParam,
+                         lpMsg->time,lpMsg->time,
+                         lpMsg->pt.x,lpMsg->pt.x,
+                         lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
                 (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
         {
@@ -884,7 +913,7 @@ try_again:
         {
             DEBUG_INFO("CursorPos (%d:%d)\n",pt.x,pt.y);
         }
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageA hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"PeekMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                          lpMsg->hwnd,lpMsg->message,lpMsg->message,
                          lpMsg->wParam,lpMsg->wParam,
                          lpMsg->lParam,lpMsg->lParam,

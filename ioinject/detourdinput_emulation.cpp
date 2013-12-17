@@ -475,6 +475,7 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
         {
             /*this is relative one*/
+			DEBUG_INFO("x %d y %d\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
             __MoveMouseRelativeNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
         }
         else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
