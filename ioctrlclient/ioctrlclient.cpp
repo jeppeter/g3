@@ -877,6 +877,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
+		Sleep(100);
         UpdateCodeMessage();
     }
     ret = 0;

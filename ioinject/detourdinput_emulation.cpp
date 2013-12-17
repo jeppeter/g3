@@ -317,6 +317,8 @@ HWND GetCurrentProcessActiveWindow()
     LONG style,exstyle;
     UINT i;
     int findidx=-1;
+    BOOL bret;
+    RECT rRect;
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     if(st_hWndVecs.size() > 0)
     {
@@ -329,11 +331,25 @@ HWND GetCurrentProcessActiveWindow()
                 DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndVecs[i],
                            style,exstyle);
             }
-            if(style & WS_CHILD)
+#if 1
+            if(style & WS_VISIBLE)
             {
                 findidx = i;
+                bret = GetClientRect(st_hWndVecs[i],&rRect);
+                if(bret)
+                {
+                    DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d)\n",
+                               st_hWndVecs[i],
+                               rRect.left,rRect.top,
+                               rRect.right,rRect.bottom);
+                    DEBUG_INFO("MaxRect (%d:%d)=>(%d:%d) MousePoint (%d:%d)\n",
+                               st_MaxRect.left,
+                               st_MaxRect.top,st_MaxRect.right,st_MaxRect.bottom,
+                               st_MousePoint.x,st_MousePoint.y);
+                }
                 break;
             }
+#endif
         }
         if(findidx >= 0)
         {
