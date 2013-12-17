@@ -159,9 +159,9 @@ int __ReCalculateMaxWindowRectNoLock()
     for(i=0; i<st_hWndVecs.size() ; i++)
     {
         if(((st_hWndRectVecs[i].right - st_hWndRectVecs[i].left) > (st_hWndRectVecs[pickidx].right - st_hWndRectVecs[pickidx].left)) &&
-                ((st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top) > (st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top)))
+                ((st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top) > (st_hWndRectVecs[pickidx].bottom - st_hWndRectVecs[pickidx].top)))
         {
-        	DEBUG_INFO("picked %d\n",i);
+            DEBUG_INFO("picked %d\n",i);
             pickidx = i;
         }
     }
@@ -318,8 +318,8 @@ HWND GetCurrentProcessActiveWindow()
     LONG style,exstyle;
     UINT i;
     int findidx=-1;
-    BOOL bret;
-    RECT rRect;
+    //BOOL bret;
+    //RECT rRect;
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
     if(st_hWndVecs.size() > 0)
     {
@@ -332,10 +332,10 @@ HWND GetCurrentProcessActiveWindow()
                 DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndVecs[i],
                            style,exstyle);
             }
-#if 1
             if(style & WS_VISIBLE)
             {
                 findidx = i;
+#if 0
                 bret = GetClientRect(st_hWndVecs[i],&rRect);
                 if(bret)
                 {
@@ -348,9 +348,9 @@ HWND GetCurrentProcessActiveWindow()
                                st_MaxRect.top,st_MaxRect.right,st_MaxRect.bottom,
                                st_MousePoint.x,st_MousePoint.y);
                 }
+#endif
                 break;
             }
-#endif
         }
         if(findidx >= 0)
         {
