@@ -147,6 +147,14 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
 {
     int ret=-ERROR_NOT_SUPPORTED;
     LPMSG lcpMsg=NULL;
+    if(lpMsg->message == WM_LBUTTONDOWN)
+    {
+        EMULATIONMESSAGE_DEBUG_INFO("LBUTTONDOWN\n");
+    }
+    else if(lpMsg->message == WM_LBUTTONUP)
+    {
+        EMULATIONMESSAGE_DEBUG_INFO("LBUTTONUP\n");
+    }
     if(st_MessageEmualtionInited)
     {
         lcpMsg = (LPMSG)calloc(sizeof(*lcpMsg),1);
@@ -507,17 +515,54 @@ fail:
 int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
 {
     LPDEVICEEVENT pDevEvent = (LPDEVICEEVENT)pInput;
-    int ret;
+    int ret,res;
+    HWND hwnd= NULL;
+    BOOL bret;
     /*now to test for the dev event*/
+	/*we post message ,for it will give the thread to get message ok*/
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
-        DEBUG_BUFFER_FMT(pDevEvent,sizeof(*pDevEvent),"Keyboard Event 0x%p",pDevEvent);
-        return __InsertKeyboardMessageDevEvent(pDevEvent);
+        ret =  __InsertKeyboardMessageDevEvent(pDevEvent);
+        if(ret >= 0)
+        {
+            hwnd = GetCurrentProcessActiveWindow();
+            if(hwnd != NULL)
+            {
+                bret = PostMessage(hwnd,WM_KEYDOWN,'a',0);
+                if(!bret)
+                {
+                    res = LAST_ERROR_CODE();
+                    ERROR_INFO("Send (0x%08x) WM_KEYDOWN Error(%d)\n",hwnd,res);
+                }
+            }
+        }
+        if(ret >= 0)
+        {
+            SetLastError(0);
+        }
+        return ret;
     }
     else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
     {
-        DEBUG_BUFFER_FMT(pDevEvent,sizeof(*pDevEvent),"Mouse Event 0x%p",pDevEvent);
-        return __InsertMouseMessageDevEvent(pDevEvent);
+        ret =  __InsertMouseMessageDevEvent(pDevEvent);
+        if(ret >= 0)
+        {
+            hwnd = GetCurrentProcessActiveWindow();
+            if(hwnd != NULL)
+            {
+                bret = PostMessage(hwnd,WM_MOUSEMOVE,0,0);
+                if(!bret)
+                {
+                    res = LAST_ERROR_CODE();
+                    ERROR_INFO("Send (0x%08x) WM_KEYDOWN Error(%d)\n",hwnd,res);
+                }
+            }
+        }
+        if(ret >= 0)
+        {
+            SetLastError(0);
+        }
+        return ret;
     }
 
     ret = ERROR_NOT_SUPPORTED;
@@ -591,6 +636,14 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     {
         ret = 0;
         goto out;
+    }
+    if(lGetMsg->message == WM_LBUTTONDOWN)
+    {
+        EMULATIONMESSAGE_DEBUG_INFO("LBUTTONDOWN\n");
+    }
+    else if(lGetMsg->message == WM_LBUTTONUP)
+    {
+        EMULATIONMESSAGE_DEBUG_INFO("LBUTTONUP\n");
     }
 
     EMULATIONMESSAGE_DEBUG_INFO("lGetMsg 0x%p Message Code(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",

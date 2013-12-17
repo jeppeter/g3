@@ -547,10 +547,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,LPSTR lpCmdLine,
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-        }		
+        }
 
         UpdateCodeMessage();
-		Sleep(10);
+        Sleep(100);
 
     }
 
@@ -1342,10 +1342,10 @@ BOOL CALLBACK ShowDialogProc(HWND hwndDlg,
             EndDialog(hwndDlg,wParam);
             return TRUE;
         case ID_BTN_EXE_SEL:
-			SelectFileAndSetEdit(hwndDlg,TEXT("Exe File(*.exe)\0*.exe\0"),IDC_EDT_EXE);
+            SelectFileAndSetEdit(hwndDlg,TEXT("Exe File(*.exe)\0*.exe\0"),IDC_EDT_EXE);
             break;
         case ID_BTN_DLL_SEL:
-			SelectFileAndSetEdit(hwndDlg,TEXT("Dll File(*.dll)\0*.dll\0"),IDC_EDT_DLL);
+            SelectFileAndSetEdit(hwndDlg,TEXT("Dll File(*.dll)\0*.dll\0"),IDC_EDT_DLL);
             break;
         }
         break;
