@@ -291,6 +291,7 @@ int __AllocateFreeEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pFreeEvtBaseNa
     uint8_t fullname[IO_NAME_MAX_SIZE];
     int ret;
     uint32_t i;
+	assert(pStatus->m_Bufnumm > 0);
     /*now we should allocate size*/
     pStatus->m_pFreeEvts = (HANDLE*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pFreeEvts[0]));
     if(pStatus->m_pFreeEvts == NULL)
@@ -326,6 +327,7 @@ int __AllocateEventList(PDETOUR_THREAD_STATUS_t pStatus)
 {
     int ret;
     uint32_t i;
+	assert(pStatus->m_Bufnumm);
     /*now first to allocate event list array*/
     pStatus->m_pEventListArray = (EVENT_LIST_t*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pEventListArray[0]));
     if(pStatus->m_pEventListArray == NULL)
@@ -360,6 +362,7 @@ int __AllocateInputEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pInputEvtBase
     uint8_t fullname[IO_NAME_MAX_SIZE];
     int ret;
     uint32_t i;
+	assert(pStatus->m_Bufnumm > 0);
     /*now we should allocate size*/
     pStatus->m_pInputEvts = (HANDLE*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pInputEvts[0]));
     if(pStatus->m_pInputEvts == NULL)
