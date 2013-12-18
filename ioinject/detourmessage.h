@@ -8,8 +8,8 @@
 extern "C" {
 #endif
 
-BOOL DetourMessageInputInit(void);
-void DetourMessageInputFini(void);
+BOOL DetourMessageInputInit(HMODULE hModule);
+void DetourMessageInputFini(HMODULE hModule);
 int InsertEmulationMessageQueue(LPMSG lpMsg,int back);
 
 #ifdef __cplusplus

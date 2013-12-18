@@ -45,12 +45,12 @@ typedef BOOL (WINAPI *PeekMessageFunc_t)(
 #include "detourmessage_emulation.cpp"
 #endif
 
-BOOL DetourMessageInputInit(void)
+BOOL DetourMessageInputInit(HMODULE hModule)
 {
 	__MessageDetour();
 	return TRUE;
 }
-void DetourMessageInputFini(void)
+void DetourMessageInputFini(HMODULE hModule)
 {
 	return ;
 }
