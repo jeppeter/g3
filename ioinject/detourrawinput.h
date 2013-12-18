@@ -6,8 +6,8 @@
 #include <iocapcommon.h>
 
 
-BOOL DetourRawInputInit(void);
-void DetourRawInputFini(void);
+BOOL DetourRawInputInit(HMODULE hModule);
+void DetourRawInputFini(HMODULE hModule);
 
 
 int DetourRawInputControl(PIO_CAP_CONTROL_t pControl);

@@ -65,14 +65,14 @@ typedef SHORT(WINAPI *GetAsyncKeyStateFunc_t)(
 #endif
 
 
-BOOL DetourRawInputInit(void)
+BOOL DetourRawInputInit(HMODULE hModule)
 {
     __RawInputDetour();
     return TRUE;
 }
 
 
-void DetourRawInputFini(void)
+void DetourRawInputFini(HMODULE hModule)
 {
     return ;
 }

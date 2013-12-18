@@ -16,7 +16,7 @@ void FiniIoInject(HMODULE hModule)
     if(st_IoInjectInited)
     {
         DetourDirectInputFini(hModule);
-        DetourRawInputFini();
+        DetourRawInputFini(hModule);
         DetourMessageInputFini();
 		IoInjectThreadFini(hModule);
     }
@@ -43,7 +43,7 @@ BOOL InitIoInject(HMODULE hModule)
         return TRUE;
     }
 
-    bret = DetourRawInputInit();
+    bret = DetourRawInputInit(hModule);
     if(!bret)
     {
         return TRUE;
