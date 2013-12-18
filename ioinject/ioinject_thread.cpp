@@ -126,6 +126,8 @@ void __ClearEventList(PDETOUR_THREAD_STATUS_t pStatus)
 void __FreeDetourEvents(PDETOUR_THREAD_STATUS_t pStatus)
 {
     unsigned int i;
+    BOOL bret;
+    int ret;
 
     if(pStatus == NULL)
     {
@@ -138,7 +140,13 @@ void __FreeDetourEvents(PDETOUR_THREAD_STATUS_t pStatus)
         {
             if(pStatus->m_pFreeEvts[i])
             {
-                CloseHandle(pStatus->m_pFreeEvts[i]);
+                bret = CloseHandle(pStatus->m_pFreeEvts[i]);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("[%d] FreeEvent(0x%08x) Close Error(%d)\n",
+                               i,pStatus->m_pFreeEvts[i],ret);
+                }
             }
             pStatus->m_pFreeEvts[i] = NULL;
         }
@@ -154,7 +162,13 @@ void __FreeDetourEvents(PDETOUR_THREAD_STATUS_t pStatus)
         {
             if(pStatus->m_pInputEvts[i])
             {
-                CloseHandle(pStatus->m_pInputEvts[i]);
+                bret = CloseHandle(pStatus->m_pInputEvts[i]);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("[%d] InputEvent(0x%08x) Close Error(%d)\n",
+                               i,pStatus->m_pInputEvts[i],ret);
+                }
             }
             pStatus->m_pInputEvts[i] = NULL;
         }
@@ -188,23 +202,17 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
         return;
     }
     pStatus = *ppStatus;
-    DEBUG_INFO("\n");
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
-    DEBUG_INFO("\n");
 
     /*now to delete all the free event*/
     __ClearEventList(pStatus);
-    DEBUG_INFO("\n");
     __FreeDetourEvents(pStatus);
-    DEBUG_INFO("\n");
 
     /*now to unmap memory*/
     __UnMapMemBase(pStatus);
-    DEBUG_INFO("\n");
 
     free(pStatus);
-    DEBUG_INFO("\n");
     *ppStatus = NULL;
 
     return ;

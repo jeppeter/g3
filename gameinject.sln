@@ -63,6 +63,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ioctrlserver", "ioctrlserve
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ioctrlclient", "ioctrlclient\ioctrlclient.vcxproj", "{7AEA039C-EE1B-48A0-88CB-B7777CCE6CC8}"
 	ProjectSection(ProjectDependencies) = postProject
+		{313E4E00-2487-433C-9FEB-669F78E5B271} = {313E4E00-2487-433C-9FEB-669F78E5B271}
 		{09533139-1483-448E-97BF-1463B3F411BA} = {09533139-1483-448E-97BF-1463B3F411BA}
 	EndProjectSection
 EndProject
