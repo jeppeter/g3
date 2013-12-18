@@ -1660,3 +1660,15 @@ int DetourDinputDebugInit(HMODULE hModule)
     InitializeCriticalSection(&st_DIDevice8WCS);
     return 0;
 }
+
+int DetourDinputSetWindowsRect(HWND hWnd)
+{
+    return 0;
+}
+
+HWND GetCurrentProcessActiveWindow()
+{
+    return NULL;
+}
+
+
