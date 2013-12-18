@@ -3,11 +3,6 @@
 #include "ioinject.h"
 #include <output_debug.h>
 
-#ifdef _DEBUG
-#pragma comment(lib,"injectbased.lib")
-#else
-#pragma comment(lib,"injectbase.lib")
-#endif
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,

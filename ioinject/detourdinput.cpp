@@ -43,15 +43,6 @@
 
 static int st_IOInjectInit=0;
 
-#pragma comment(lib,"dinput8.lib")
-#pragma comment(lib,"dxguid.lib")
-
-#ifdef _DEBUG
-#pragma comment(lib,"injectbased.lib")
-#else
-#pragma comment(lib,"injectbase.lib")
-
-#endif
 
 /*****************************************
 *  to make the IDirectInputDevice8A hook
