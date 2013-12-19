@@ -811,14 +811,6 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
             }
             cnt ++;
             msgs.push_back(curmsg);
-            ret = __SetVirtualKeyDownNoLock(vk);
-            if(ret < 0)
-            {
-                ret = LAST_ERROR_CODE();
-                SetLastError(ret);
-                return -ret;
-            }
-
         }
         else
         {
@@ -831,13 +823,6 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
             }
             cnt ++;
             msgs.push_back(curmsg);
-            ret = __SetVirtualKeyUpNoLock(vk);
-            if(ret < 0)
-            {
-                ret = LAST_ERROR_CODE();
-                SetLastError(ret);
-                return -ret;
-            }
         }
     }
     else if(__IsMenuPressed())
@@ -899,7 +884,11 @@ int __GetKeyMessageNoLock(int vk,int down,std::vector<MSG>& msgs)
                 SetLastError(ret);
                 return -ret;
             }
-            msgs.push_back(curmsg);
+            if(ret > 0)
+            {
+                cnt ++;
+                msgs.push_back(curmsg);
+            }
 
             ret=  __FormatWmCharMessageNoLock(vk,&curmsg);
             if(ret < 0)

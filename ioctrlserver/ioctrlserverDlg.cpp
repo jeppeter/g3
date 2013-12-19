@@ -555,7 +555,7 @@ DWORD CioctrlserverDlg::__SocketThread()
     {
     	//DEBUG_INFO("waitnum %d\n",waitnum);
         dret = WaitForMultipleObjects(waitnum,pWaitHandle,FALSE,INFINITE);
-        DEBUG_INFO("wait return %d waitnum %d\n",dret,waitnum);
+        //DEBUG_INFO("wait return %d waitnum %d\n",dret,waitnum);
         if(dret == WAIT_OBJECT_0)
         {
             ERROR_INFO("NOTIFY EXIT\n");
