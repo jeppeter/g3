@@ -22,11 +22,13 @@ static RID_DEVICE_INFO* st_KeyRawInputHandle=NULL;
 static uint8_t *st_KeyRawInputName=NULL;
 static wchar_t *st_KeyRawInputNameWide=NULL;
 static int st_KeyLastInfo=DEVICE_GET_INFO;
+static int st_KeyRegistered=0;
 static std::vector<RAWINPUT*> st_MouseRawInputVecs;
 static RID_DEVICE_INFO* st_MouseRawInputHandle=NULL;
 static uint8_t *st_MouseRawInputName=NULL;
 static wchar_t *st_MouseRawInputNameWide=NULL;
 static int st_MouseLastInfo=DEVICE_GET_INFO;
+static int st_MouseRegistered=0;
 
 
 static CRITICAL_SECTION  st_KeyStateEmulationCS;
@@ -371,7 +373,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         ERROR_INFO("<0x%p> event (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.event);
         goto fail;
     }
-	/*if we are not successful in the insertkeyboardinput ,we can record the keydown or keyup event*/
+    /*if we are not successful in the insertkeyboardinput ,we can record the keydown or keyup event*/
     SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
 
     pKeyInput->data.keyboard.Reserved = 0;
@@ -402,7 +404,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         ret = LAST_ERROR_CODE();
         goto fail;
     }
-	
+
     return 0;
 fail:
     assert(ret > 0);
@@ -620,7 +622,7 @@ fail:
 static int RawInputEmulationInsertEventList(LPVOID pParam,LPVOID pInput)
 {
     LPDEVICEEVENT pDevEvent = (LPDEVICEEVENT)pInput;
-	int ret;
+    int ret;
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
         return __RawInputInsertKeyboardEvent(pDevEvent);
@@ -679,7 +681,7 @@ void __UnRegisterKeyboardHandle()
     return ;
 }
 
-HANDLE __RegisterKeyboardHandle()
+HANDLE __RegisterKeyboardHandle(int add)
 {
     RID_DEVICE_INFO *pKeyboardInfo=NULL,*pAllocInfo=NULL;
     uint8_t *pKeyName=NULL;
@@ -689,6 +691,10 @@ HANDLE __RegisterKeyboardHandle()
 
     EnterCriticalSection(&st_EmulationRawinputCS);
     pKeyboardInfo = st_KeyRawInputHandle;
+    if(pKeyboardInfo && add)
+    {
+        st_KeyRegistered ++;
+    }
     LeaveCriticalSection(&st_EmulationRawinputCS);
 
     if(pKeyboardInfo == NULL)
@@ -743,6 +749,10 @@ HANDLE __RegisterKeyboardHandle()
         {
             pKeyboardInfo = st_KeyRawInputHandle;
             inserted = 0;
+        }
+        if(add)
+        {
+            st_KeyRegistered ++;
         }
         LeaveCriticalSection(&st_EmulationRawinputCS);
 
@@ -805,7 +815,7 @@ void __UnRegisterMouseHandle()
     return ;
 }
 
-HANDLE __RegisterMouseHandle()
+HANDLE __RegisterMouseHandle(int add)
 {
     RID_DEVICE_INFO *pMouseInfo=NULL,*pAllocInfo=NULL;
     uint8_t *pMouseName=NULL;
@@ -815,6 +825,10 @@ HANDLE __RegisterMouseHandle()
 
     EnterCriticalSection(&st_EmulationRawinputCS);
     pMouseInfo = st_MouseRawInputHandle;
+    if(pMouseInfo && add)
+    {
+        st_MouseRegistered ++;
+    }
     LeaveCriticalSection(&st_EmulationRawinputCS);
 
     if(pMouseInfo == NULL)
@@ -867,6 +881,10 @@ HANDLE __RegisterMouseHandle()
         {
             pMouseInfo = st_KeyRawInputHandle;
             inserted = 0;
+        }
+        if(add)
+        {
+            st_MouseRegistered ++;
         }
         LeaveCriticalSection(&st_EmulationRawinputCS);
 
@@ -1264,7 +1282,7 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
 
         if(pDevice->usUsage == 2)
         {
-            pMouse =(RID_DEVICE_INFO*) __RegisterMouseHandle();
+            pMouse =(RID_DEVICE_INFO*) __RegisterMouseHandle(1);
             if(pMouse == NULL)
             {
                 ret = LAST_ERROR_CODE();
@@ -1280,7 +1298,7 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
 
         if(pDevice->usUsage == 0x6)
         {
-            pKeyBoard = (RID_DEVICE_INFO*)__RegisterKeyboardHandle();
+            pKeyBoard = (RID_DEVICE_INFO*)__RegisterKeyboardHandle(1);
             if(pKeyBoard== NULL)
             {
                 ret = LAST_ERROR_CODE();
@@ -1320,10 +1338,15 @@ UINT WINAPI GetRawInputDeviceListCallBack(
 
     num = *puiNumDevices;
 
-    if(*puiNumDevices < 2 || pRawInputDeviceList == NULL)
+    if(pRawInputDeviceList == NULL)
     {
-        ret = ERROR_INVALID_PARAMETER;
         *puiNumDevices = 2;
+        return (UINT) 0;
+    }
+
+    if(*puiNumDevices < 2)
+    {
+        ret=  ERROR_INSUFFICIENT_BUFFER;
         SetLastError(ret);
         return (UINT) -1;
     }
