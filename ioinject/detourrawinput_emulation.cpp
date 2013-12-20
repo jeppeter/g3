@@ -16,6 +16,8 @@
 
 #define  RAW_INPUT_MAX_INPUT_SIZE  20
 
+static int st_RawinputEmulationInit=0;
+
 static CRITICAL_SECTION st_EmulationRawinputCS;
 static std::vector<RAWINPUT*> st_KeyRawInputVecs;
 static RID_DEVICE_INFO* st_KeyRawInputHandle=NULL;
@@ -1338,24 +1340,26 @@ UINT WINAPI GetRawInputDeviceListCallBack(
 
     num = *puiNumDevices;
 
+    if(st_RawinputEmulationInit == 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        SetLastError(ret);
+        return (UINT)-1;
+    }
+	
+    retnum = __GetRawInputDeviceNum();
     if(pRawInputDeviceList == NULL)
     {
-        *puiNumDevices = 2;
+		*puiNumDevices = retnum;
         return (UINT) 0;
     }
 
-    if(*puiNumDevices < 2)
+    if(*puiNumDevices < retnum)
     {
         ret=  ERROR_INSUFFICIENT_BUFFER;
+		*puiNumDevices = retnum;
         SetLastError(ret);
         return (UINT) -1;
-    }
-
-    retnum = __GetRawInputDeviceNum();
-    *puiNumDevices = retnum;
-    if(retnum == 0)
-    {
-        return 0;
     }
 
     num = 0;
@@ -1379,6 +1383,7 @@ UINT WINAPI GetRawInputDeviceListCallBack(
     {
         num ++;
     }
+	
     *puiNumDevices = num;
 
     return num;
@@ -1711,8 +1716,23 @@ UINT WINAPI GetRawInputDataCallBack(
 int __RawInputDetour(void)
 {
     int ret;
+    HANDLE hHandle=NULL;
     InitializeCriticalSection(&st_EmulationRawinputCS);
     InitializeCriticalSection(&st_KeyStateEmulationCS);
+    hHandle = __RegisterKeyboardHandle(0);
+    if(hHandle == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        return 0;
+    }
+
+    hHandle = __RegisterMouseHandle(0);
+    if(hHandle == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        return 0;
+    }
+
     ret = RegisterEventListHandler(RawInputEmulationInsertEventList,NULL,RAWINPUT_EMULATION_PRIOR);
     if(ret < 0)
     {
@@ -1720,6 +1740,7 @@ int __RawInputDetour(void)
         ERROR_INFO("Register Rawinput Emulation Error(%d)\n",ret);
         return ret;
     }
+
     DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"Before RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
     DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"Before GetRawInputDataNext(0x%p)",GetRawInputDataNext);
     DEBUG_BUFFER_FMT(GetRawInputDeviceInfoANext,10,"Before GetRawInputDeviceInfoANext(0x%p)",GetRawInputDeviceInfoANext);
@@ -1744,6 +1765,8 @@ int __RawInputDetour(void)
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"After GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
     DEBUG_BUFFER_FMT(GetKeyStateNext,10,"After GetKeyStateNext(0x%p)",GetKeyStateNext);
     DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"After GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
+
+    st_RawinputEmulationInit = 1;
     return 0;
 }
 
