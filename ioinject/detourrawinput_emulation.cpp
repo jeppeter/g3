@@ -1000,6 +1000,8 @@ BOOL __GetDeviceInfo(HANDLE hDevice,RID_DEVICE_INFO* pInfo)
     return bret;
 }
 
+
+
 BOOL __GetDeviceNameANoLock(HANDLE hDevice,void* pData, UINT* pcbSize)
 {
     BOOL bret=FALSE;
@@ -1046,6 +1048,24 @@ BOOL __GetDeviceNameA(HANDLE hDevice,void* pData, UINT* pcbSize)
     EnterCriticalSection(&st_EmulationRawinputCS);
     bret = __GetDeviceNameANoLock(hDevice,pData,pcbSize);
     LeaveCriticalSection(&st_EmulationRawinputCS);
+    return bret;
+}
+
+BOOL __GetDeviceNameANull(HANDLE hDevice,UINT* pcbSize)
+{
+    BOOL bret;
+    int ret;
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    bret = __GetDeviceNameANoLock(hDevice,NULL,pcbSize);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        if(ret == ERROR_INSUFFICIENT_BUFFER)
+        {
+            bret = TRUE;
+        }
+    }
     return bret;
 }
 
@@ -1116,6 +1136,24 @@ BOOL __GetDeviceNameW(HANDLE hDevice,void* pData, UINT* pcbSize)
     return bret;
 }
 
+BOOL __GetDeviceNameWNull(HANDLE hDevice,UINT* pcbSize)
+{
+    BOOL bret;
+    int ret;
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    bret = __GetDeviceNameWNoLock(hDevice,pData,pcbSize);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        if(ret == ERROR_INSUFFICIENT_BUFFER)
+        {
+            bret = TRUE;
+        }
+    }
+    return bret;
+}
+
 int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
 {
     BOOL bret = FALSE;
@@ -1131,6 +1169,10 @@ int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
             if(!bret)
             {
                 ret = LAST_ERROR_CODE();
+                if(pData == NULL && ret == ERROR_INSUFFICIENT_BUFFER)
+                {
+                    copiedlen = 0;
+                }
             }
             else
             {
@@ -1144,6 +1186,10 @@ int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
             if(!bret)
             {
                 ret = LAST_ERROR_CODE();
+                if(pData == NULL && ret == ERROR_INSUFFICIENT_BUFFER)
+                {
+                    copiedlen = 0;
+                }
             }
             else
             {
@@ -1157,6 +1203,7 @@ int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
             {
                 ret = ERROR_INSUFFICIENT_BUFFER;
                 *pcbSize = sizeof(RID_DEVICE_INFO);
+				copiedlen = 0;
             }
             else if(*pcbSize != sizeof(RID_DEVICE_INFO))
             {
@@ -1164,15 +1211,24 @@ int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
             }
             else
             {
-                bret = __GetDeviceInfoNoLock(hDevice,(RID_DEVICE_INFO*)pData);
-                if(!bret)
+                if(pData)
                 {
-                    ret = LAST_ERROR_CODE();
+                    bret = __GetDeviceInfoNoLock(hDevice,(RID_DEVICE_INFO*)pData);
+                    if(!bret)
+                    {
+                        ret = LAST_ERROR_CODE();
+                    }
+                    else
+                    {
+                        copiedlen = sizeof(RID_DEVICE_INFO);
+                        ret = 0;
+                    }
                 }
                 else
                 {
-                    copiedlen = sizeof(RID_DEVICE_INFO);
-                    ret = 0;
+                    ret = ERROR_INSUFFICIENT_BUFFER;
+					*pcbSize = sizeof(RID_DEVICE_INFO);
+                    copiedlen = 0;
                 }
             }
         }
@@ -1190,6 +1246,10 @@ int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
             if(!bret)
             {
                 ret = LAST_ERROR_CODE();
+                if(pData == NULL && ret == ERROR_INSUFFICIENT_BUFFER)
+                {
+                    copiedlen = 0;
+                }
             }
             else
             {
@@ -1203,6 +1263,10 @@ int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
             if(!bret)
             {
                 ret = LAST_ERROR_CODE();
+                if(pData == NULL && ret == ERROR_INSUFFICIENT_BUFFER)
+                {
+                    copiedlen = 0;
+                }
             }
             else
             {
@@ -1216,6 +1280,7 @@ int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
             {
                 ret = ERROR_INSUFFICIENT_BUFFER;
                 *pcbSize = sizeof(RID_DEVICE_INFO);
+				copiedlen = 0;
             }
             else if(*pcbSize != sizeof(RID_DEVICE_INFO))
             {
@@ -1243,10 +1308,7 @@ int __GetDeviceInfoLast(HANDLE hDevice,void* pData,UINT* pcbSize)
     }
 
     LeaveCriticalSection(&st_EmulationRawinputCS);
-    if(copiedlen < 0)
-    {
-        SetLastError(ret);
-    }
+	SetLastError(ret);
     return copiedlen;
 }
 
@@ -1346,18 +1408,18 @@ UINT WINAPI GetRawInputDeviceListCallBack(
         SetLastError(ret);
         return (UINT)-1;
     }
-	
+
     retnum = __GetRawInputDeviceNum();
     if(pRawInputDeviceList == NULL)
     {
-		*puiNumDevices = retnum;
+        *puiNumDevices = retnum;
         return (UINT) 0;
     }
 
     if(*puiNumDevices < retnum)
     {
         ret=  ERROR_INSUFFICIENT_BUFFER;
-		*puiNumDevices = retnum;
+        *puiNumDevices = retnum;
         SetLastError(ret);
         return (UINT) -1;
     }
@@ -1383,7 +1445,7 @@ UINT WINAPI GetRawInputDeviceListCallBack(
     {
         num ++;
     }
-	
+
     *puiNumDevices = num;
 
     return num;
@@ -1405,9 +1467,28 @@ UINT WINAPI GetRawInputDeviceInfoACallBack(
         SetLastError(ret);
         return (UINT) -1;
     }
+
+    if(st_RawinputEmulationInit == 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        SetLastError(ret);
+        return (UINT)-1;
+    }
+
     /*now first to copy the data*/
     if(uiCommand == RIDI_DEVICENAME)
     {
+        if(pData == NULL)
+        {
+            bret = __GetDeviceNameANull(hDevice,pcbSize);
+            if(!bret)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return (UINT)-1;
+            }
+            return 0;
+        }
         bret= __GetDeviceNameA(hDevice,pData,pcbSize);
         if(!bret)
         {
@@ -1424,6 +1505,11 @@ UINT WINAPI GetRawInputDeviceInfoACallBack(
             ret = ERROR_INVALID_PARAMETER;
             SetLastError(ret);
             return (UINT) -1;
+        }
+
+        if(pData == NULL)
+        {
+            return 0;
         }
 
         bret= __GetDeviceInfo(hDevice,(RID_DEVICE_INFO*)pData);
@@ -1465,9 +1551,28 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
         return (UINT) -1;
     }
 
+    if(st_RawinputEmulationInit == 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        SetLastError(ret);
+        return (UINT)-1;
+    }
+
     /*now first to copy the data*/
     if(uiCommand == RIDI_DEVICENAME)
     {
+        if(pData == NULL)
+        {
+            bret = __GetDeviceNameWNull(hDevice,pcbSize);
+            if(!bret)
+            {
+                ret = LAST_ERROR_CODE();
+                SetLastError(ret);
+                return (UINT)-1;
+            }
+            return 0;
+        }
+
         bret= __GetDeviceNameW(hDevice,pData,pcbSize);
         if(!bret)
         {
@@ -1485,6 +1590,11 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
             *pcbSize = sizeof(RID_DEVICE_INFO);
             SetLastError(ret);
             return (UINT) -1;
+        }
+
+        if(pData == NULL)
+        {
+            return 0;
         }
 
         bret= __GetDeviceInfo(hDevice,(RID_DEVICE_INFO*)pData);
