@@ -702,7 +702,10 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
 out:
     if(ret > 0)
     {
-        lpMsg->hwnd = GetCurrentProcessActiveWindow();
+        if(lpMsg->hwnd == NULL)
+        {
+            lpMsg->hwnd = GetCurrentProcessActiveWindow();
+        }
         //DEBUG_INFO("[%d] hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time(%d) pt.x(%d) pt.y(%d)\n",
         //           st_GetMessageCount,lpMsg->hwnd,
         //           lpMsg->message,lpMsg->message,
@@ -790,7 +793,7 @@ try_again:
         //                 lpMsg->pt.x,lpMsg->pt.x,
         //                 lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
-                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) || 
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) ||
                 lpMsg->message == WM_INPUT)
         {
             /*we discard this message*/
@@ -850,7 +853,7 @@ try_again:
         //                 lpMsg->pt.x,lpMsg->pt.x,
         //                 lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
-                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) || 
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) ||
                 lpMsg->message == WM_INPUT)
         {
             if(!(wRemoveMsg & PM_REMOVE))
