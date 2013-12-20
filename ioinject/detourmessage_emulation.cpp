@@ -790,7 +790,8 @@ try_again:
         //                 lpMsg->pt.x,lpMsg->pt.x,
         //                 lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
-                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) || 
+                lpMsg->message == WM_INPUT)
         {
             /*we discard this message*/
             goto try_again;
@@ -849,7 +850,8 @@ try_again:
         //                 lpMsg->pt.x,lpMsg->pt.x,
         //                 lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
-                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) || 
+                lpMsg->message == WM_INPUT)
         {
             if(!(wRemoveMsg & PM_REMOVE))
             {
@@ -914,7 +916,8 @@ try_again:
                          lpMsg->pt.x,lpMsg->pt.x,
                          lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
-                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) ||
+                lpMsg->message == WM_INPUT)
         {
             /*we discard this message ,so get the next one*/
             goto try_again;
@@ -975,7 +978,8 @@ try_again:
         //                 lpMsg->pt.x,lpMsg->pt.x,
         //                 lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)||
-                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST))
+                (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) ||
+                lpMsg->message == WM_INPUT)
         {
             if(!(wRemoveMsg & PM_REMOVE))
             {

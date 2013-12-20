@@ -25,12 +25,14 @@ static uint8_t *st_KeyRawInputName=NULL;
 static wchar_t *st_KeyRawInputNameWide=NULL;
 static int st_KeyLastInfo=DEVICE_GET_INFO;
 static int st_KeyRegistered=0;
+static HWND st_KeyHwnd=NULL;
 static std::vector<RAWINPUT*> st_MouseRawInputVecs;
 static RID_DEVICE_INFO* st_MouseRawInputHandle=NULL;
 static uint8_t *st_MouseRawInputName=NULL;
 static wchar_t *st_MouseRawInputNameWide=NULL;
 static int st_MouseLastInfo=DEVICE_GET_INFO;
 static int st_MouseRegistered=0;
+static HWND st_MouseHwnd=NULL;
 
 
 static CRITICAL_SECTION  st_KeyStateEmulationCS;
@@ -286,13 +288,14 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
 }
 
 
-LONG __InsertKeyboardInput(RAWINPUT* pInput)
+LONG __InsertKeyboardInput(RAWINPUT* pInput,HWND* pHwnd)
 {
     LONG lret=0;
     RAWINPUT *pRemove=NULL;
+    RAWKEYBOARD *pKeyboard=NULL;
 
     EnterCriticalSection(&st_EmulationRawinputCS);
-    if(st_KeyRawInputHandle)
+    if(st_MouseHwnd)
     {
         pInput->header.hDevice = st_KeyRawInputHandle;
         pInput->header.wParam = RIM_INPUT;
@@ -303,10 +306,18 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput)
             st_KeyRawInputVecs.erase(st_KeyRawInputVecs.begin());
         }
         st_KeyRawInputVecs.push_back(pInput);
+		*pHwnd = st_MouseHwnd;
     }
     LeaveCriticalSection(&st_EmulationRawinputCS);
     if(pRemove)
     {
+        pKeyboard = &(pRemove->data.keyboard);
+        ERROR_INFO("Remove Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
+                   pKeyboard->MakeCode,pKeyboard->MakeCode,
+                   pKeyboard->Flags,
+                   pKeyboard->VKey,
+                   pKeyboard->Message,pKeyboard->Message,
+                   pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
         free(pRemove);
     }
     pRemove = NULL;
@@ -322,6 +333,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     int vk;
     LONG lparam;
     MSG InputMsg= {0};
+	HWND hwnd=NULL;
 
     if(pDevEvent->event.keyboard.code >= 256)
     {
@@ -382,7 +394,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     pKeyInput->data.keyboard.VKey = vk;
     pKeyInput->data.keyboard.ExtraInformation = 0;
 
-    lparam = __InsertKeyboardInput(pKeyInput);
+    lparam = __InsertKeyboardInput(pKeyInput,&hwnd);
     if(lparam == 0)
     {
         ret = ERROR_DEV_NOT_EXIST;
@@ -392,7 +404,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     /*now to input key state*/
 
     pKeyInput = NULL;
-    InputMsg.hwnd = NULL ;
+    InputMsg.hwnd = hwnd ;
     InputMsg.message = WM_INPUT;
     InputMsg.wParam = RIM_INPUT;
     InputMsg.lParam = lparam;
@@ -407,6 +419,8 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
+	
+
     return 0;
 fail:
     assert(ret > 0);
@@ -419,13 +433,14 @@ fail:
     return -ret;
 }
 
-LONG __InsertMouseInput(RAWINPUT * pInput)
+LONG __InsertMouseInput(RAWINPUT * pInput,HWND *pHwnd)
 {
     LONG lret=0;
     RAWINPUT *pRemove=NULL;
+    RAWMOUSE *pMouse=NULL;
 
     EnterCriticalSection(&st_EmulationRawinputCS);
-    if(st_MouseRawInputHandle)
+    if(st_MouseHwnd)
     {
         lret = (LONG) st_MouseRawInputHandle;
         pInput->header.hDevice = (HANDLE) st_MouseRawInputHandle;
@@ -436,11 +451,16 @@ LONG __InsertMouseInput(RAWINPUT * pInput)
             st_MouseRawInputVecs.erase(st_MouseRawInputVecs.begin());
         }
         st_MouseRawInputVecs.push_back(pInput);
+        *pHwnd = st_MouseHwnd;
     }
     LeaveCriticalSection(&st_EmulationRawinputCS);
 
     if(pRemove)
     {
+        pMouse = &(pRemove->data.mouse);
+        ERROR_INFO("Remove Mouse Input Flags(0x%08x:%d) usButtonData(%d)  x:y(%d:%d)\n",
+                   pMouse->usFlags,pMouse->usFlags,
+                   pMouse->usButtonData,pMouse->lLastX,pMouse->lLastY);
         free(pRemove);
     }
     pRemove = NULL;
@@ -453,6 +473,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     int ret;
     LONG lparam;
     MSG InputMsg= {0};
+    HWND hwnd;
     POINT pt;
 
 
@@ -584,7 +605,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         }
     }
 
-    lparam = __InsertMouseInput(pMouseInput);
+    lparam = __InsertMouseInput(pMouseInput,&hwnd);
     if(lparam == 0)
     {
         ret = ERROR_DEV_NOT_EXIST;
@@ -592,7 +613,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     }
     pMouseInput = NULL;
 
-    InputMsg.hwnd = NULL ;
+    InputMsg.hwnd = hwnd ;
     InputMsg.message = WM_INPUT;
     InputMsg.wParam = RIM_INPUT;
     InputMsg.lParam = lparam;
@@ -640,7 +661,7 @@ static int RawInputEmulationInsertEventList(LPVOID pParam,LPVOID pInput)
 
 }
 
-void __UnRegisterKeyboardHandle()
+void __UnRegisterKeyboardHandle(HWND hwnd)
 {
     RID_DEVICE_INFO *pKeyboardInfo=NULL;
     uint8_t *pKeyName=NULL;
@@ -656,14 +677,19 @@ void __UnRegisterKeyboardHandle()
     {
         st_KeyRegistered -- ;
     }
-    if(st_KeyRegistered == 0 && pKeyboardInfo )
+    if(st_KeyRegistered == 0 && pKeyboardInfo)
     {
         st_KeyRawInputHandle = NULL;
         st_KeyRawInputName = NULL;
         st_KeyRawInputNameWide = NULL;
         removekeyrawinput = st_KeyRawInputVecs;
+        st_KeyHwnd = NULL;
         st_KeyRawInputVecs.clear();
         cleared = 1;
+    }
+    if(hwnd == st_KeyHwnd)
+    {
+        st_KeyHwnd = NULL;
     }
     LeaveCriticalSection(&st_EmulationRawinputCS);
 
@@ -697,7 +723,7 @@ void __UnRegisterKeyboardHandle()
     return ;
 }
 
-HANDLE __RegisterKeyboardHandle(int add)
+HANDLE __RegisterKeyboardHandle(HWND hwnd)
 {
     RID_DEVICE_INFO *pKeyboardInfo=NULL,*pAllocInfo=NULL;
     uint8_t *pKeyName=NULL;
@@ -707,9 +733,13 @@ HANDLE __RegisterKeyboardHandle(int add)
 
     EnterCriticalSection(&st_EmulationRawinputCS);
     pKeyboardInfo = st_KeyRawInputHandle;
-    if(pKeyboardInfo && add)
+    if(pKeyboardInfo)
     {
         st_KeyRegistered ++;
+    }
+    if(pKeyboardInfo && hwnd)
+    {
+        st_KeyHwnd = hwnd;
     }
     LeaveCriticalSection(&st_EmulationRawinputCS);
 
@@ -766,9 +796,10 @@ HANDLE __RegisterKeyboardHandle(int add)
             pKeyboardInfo = st_KeyRawInputHandle;
             inserted = 0;
         }
-        if(add)
+        st_KeyRegistered ++;
+        if(hwnd)
         {
-            st_KeyRegistered ++;
+            st_KeyHwnd = hwnd;
         }
         LeaveCriticalSection(&st_EmulationRawinputCS);
 
@@ -788,7 +819,7 @@ HANDLE __RegisterKeyboardHandle(int add)
 }
 
 
-void __UnRegisterMouseHandle()
+void __UnRegisterMouseHandle(HWND hwnd)
 {
     RID_DEVICE_INFO *pMouseInfo=NULL;
     uint8_t *pMouseName=NULL;
@@ -810,8 +841,13 @@ void __UnRegisterMouseHandle()
         st_MouseRawInputName = NULL;
         st_MouseRawInputNameWide = NULL;
         removemouserawinput = st_MouseRawInputVecs;
+        st_MouseHwnd = NULL;
         st_MouseRawInputVecs.clear();
         cleared = 1;
+    }
+    if(hwnd == st_MouseHwnd)
+    {
+        st_MouseHwnd = NULL;
     }
     LeaveCriticalSection(&st_EmulationRawinputCS);
 
@@ -845,7 +881,7 @@ void __UnRegisterMouseHandle()
     return ;
 }
 
-HANDLE __RegisterMouseHandle(int add)
+HANDLE __RegisterMouseHandle(HWND hwnd)
 {
     RID_DEVICE_INFO *pMouseInfo=NULL,*pAllocInfo=NULL;
     uint8_t *pMouseName=NULL;
@@ -855,9 +891,13 @@ HANDLE __RegisterMouseHandle(int add)
 
     EnterCriticalSection(&st_EmulationRawinputCS);
     pMouseInfo = st_MouseRawInputHandle;
-    if(pMouseInfo && add)
+    if(pMouseInfo)
     {
         st_MouseRegistered ++;
+    }
+    if(pMouseInfo && hwnd)
+    {
+        st_MouseHwnd = hwnd;
     }
     LeaveCriticalSection(&st_EmulationRawinputCS);
 
@@ -912,9 +952,10 @@ HANDLE __RegisterMouseHandle(int add)
             pMouseInfo = st_KeyRawInputHandle;
             inserted = 0;
         }
-        if(add)
+        st_MouseRegistered ++;
+        if(hwnd)
         {
-            st_MouseRegistered ++;
+            st_MouseHwnd = hwnd;
         }
         LeaveCriticalSection(&st_EmulationRawinputCS);
 
@@ -1350,6 +1391,7 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
     int ret;
     UINT i;
     RID_DEVICE_INFO *pMouse=NULL,*pKeyBoard=NULL;
+    HWND mousehwnd=NULL,keyhwnd=NULL;
 
 
 
@@ -1371,37 +1413,44 @@ BOOL WINAPI RegisterRawInputDevicesCallBack(
             SetLastError(ret);
             return FALSE;
         }
+    }
+
+    for(i=0; i<uiNumDevices; i++)
+    {
+        pDevice = (RAWINPUTDEVICE*)&(pRawInputDevices[i]);
 
         if(pDevice->usUsage == 2)
         {
-            pMouse =(RID_DEVICE_INFO*) __RegisterMouseHandle(1);
+            pMouse =(RID_DEVICE_INFO*) __RegisterMouseHandle(pDevice->hwndTarget);
             if(pMouse == NULL)
             {
                 ret = LAST_ERROR_CODE();
                 if(pKeyBoard)
                 {
-                    __UnRegisterKeyboardHandle();
+                    __UnRegisterKeyboardHandle(keyhwnd);
                 }
                 pKeyBoard = NULL;
                 SetLastError(ret);
                 return FALSE;
             }
+            keyhwnd = pDevice->hwndTarget;
         }
 
         if(pDevice->usUsage == 0x6)
         {
-            pKeyBoard = (RID_DEVICE_INFO*)__RegisterKeyboardHandle(1);
+            pKeyBoard = (RID_DEVICE_INFO*)__RegisterKeyboardHandle(pDevice->hwndTarget);
             if(pKeyBoard== NULL)
             {
                 ret = LAST_ERROR_CODE();
                 if(pMouse)
                 {
-                    __UnRegisterMouseHandle();
+                    __UnRegisterMouseHandle(mousehwnd);
                 }
                 pMouse = NULL;
                 SetLastError(ret);
                 return FALSE;
             }
+            mousehwnd = pDevice->hwndTarget;
         }
     }
 
@@ -1864,17 +1913,19 @@ int __RawInputDetour(void)
     HANDLE hHandle=NULL;
     InitializeCriticalSection(&st_EmulationRawinputCS);
     InitializeCriticalSection(&st_KeyStateEmulationCS);
-    hHandle = __RegisterKeyboardHandle(1);
+    hHandle = __RegisterKeyboardHandle(NULL);
     if(hHandle == NULL)
     {
         ret = LAST_ERROR_CODE();
+        SetLastError(ret);
         return 0;
     }
 
-    hHandle = __RegisterMouseHandle(1);
+    hHandle = __RegisterMouseHandle(NULL);
     if(hHandle == NULL)
     {
         ret = LAST_ERROR_CODE();
+        SetLastError(ret);
         return 0;
     }
 
