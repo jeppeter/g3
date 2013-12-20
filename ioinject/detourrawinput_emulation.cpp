@@ -745,7 +745,7 @@ HANDLE __RegisterKeyboardHandle(int add)
 
         pAllocInfo->cbSize = sizeof(pAllocInfo->cbSize) + sizeof(pAllocInfo->dwType) + sizeof(pAllocInfo->keyboard);
         pAllocInfo->dwType = RIM_TYPEKEYBOARD;
-        pAllocInfo->keyboard.dwType = 7;
+        pAllocInfo->keyboard.dwType = 81;
         pAllocInfo->keyboard.dwSubType = 0;
         pAllocInfo->keyboard.dwKeyboardMode = 1;
         pAllocInfo->keyboard.dwNumberOfFunctionKeys = 12;
@@ -893,9 +893,9 @@ HANDLE __RegisterMouseHandle(int add)
 
         pAllocInfo->cbSize = sizeof(pAllocInfo->cbSize) + sizeof(pAllocInfo->dwType) + sizeof(pAllocInfo->keyboard);
         pAllocInfo->dwType = RIM_TYPEMOUSE;
-        pAllocInfo->mouse.dwId = 256;
-        pAllocInfo->mouse.dwNumberOfButtons = 3;
-        pAllocInfo->mouse.dwSampleRate = 0;
+        pAllocInfo->mouse.dwId = 2;
+        pAllocInfo->mouse.dwNumberOfButtons = 2;
+        pAllocInfo->mouse.dwSampleRate = 60;
         pAllocInfo->mouse.fHasHorizontalWheel = 0;
 
         EnterCriticalSection(&st_EmulationRawinputCS);
@@ -1169,7 +1169,7 @@ BOOL __GetDeviceNameWNull(HANDLE hDevice,UINT* pcbSize)
     BOOL bret;
     int ret;
     EnterCriticalSection(&st_EmulationRawinputCS);
-    bret = __GetDeviceNameWNoLock(hDevice,pData,pcbSize);
+    bret = __GetDeviceNameWNoLock(hDevice,NULL,pcbSize);
     LeaveCriticalSection(&st_EmulationRawinputCS);
     if(!bret)
     {
@@ -1444,7 +1444,7 @@ UINT WINAPI GetRawInputDeviceListCallBack(
         return (UINT) 0;
     }
 
-    if(*puiNumDevices < retnum)
+    if((int)*puiNumDevices < retnum)
     {
         ret=  ERROR_INSUFFICIENT_BUFFER;
         *puiNumDevices = retnum;
