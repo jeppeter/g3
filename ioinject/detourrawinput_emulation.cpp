@@ -1712,22 +1712,26 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
 {
     RAWINPUT *pRawInput=NULL;
     int ret;
+	int copied = -1;
     if(pData == NULL)
     {
         ret = ERROR_INVALID_PARAMETER;
         if(uiCommand == RID_HEADER)
         {
             *pcbSize = sizeof(pRawInput->header);
+			copied = 0;
         }
         else if(uiCommand == RID_INPUT)
         {
             if(hRawInput == (HRAWINPUT)st_KeyRawInputHandle)
             {
                 *pcbSize = sizeof(pRawInput->header) + sizeof(pRawInput->data.keyboard);
+				copied = 0;
             }
             else if(hRawInput == (HRAWINPUT) st_MouseRawInputHandle)
             {
                 *pcbSize = sizeof(pRawInput->header) + sizeof(pRawInput->data.mouse);
+				copied = 0;
             }
             else
             {
@@ -1739,7 +1743,7 @@ UINT __GetRawInputDataNoLock(HRAWINPUT hRawInput,
             ret = ERROR_NOT_SUPPORTED;
         }
         SetLastError(ret);
-        return (UINT) -1;
+        return (UINT) copied;
     }
 
     if(uiCommand == RID_HEADER)
