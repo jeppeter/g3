@@ -295,7 +295,7 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput,HWND* pHwnd)
     RAWKEYBOARD *pKeyboard=NULL;
 
     EnterCriticalSection(&st_EmulationRawinputCS);
-    if(st_MouseHwnd)
+    if(st_MouseRawInputHandle && st_MouseRegistered > 1)
     {
         pInput->header.hDevice = st_KeyRawInputHandle;
         pInput->header.wParam = RIM_INPUT;
@@ -441,7 +441,7 @@ LONG __InsertMouseInput(RAWINPUT * pInput,HWND *pHwnd)
     RAWMOUSE *pMouse=NULL;
 
     EnterCriticalSection(&st_EmulationRawinputCS);
-    if(st_MouseHwnd)
+    if(st_MouseRawInputHandle && st_MouseRegistered > 1)
     {
         lret = (LONG) st_MouseRawInputHandle;
         pInput->header.hDevice = (HANDLE) st_MouseRawInputHandle;
