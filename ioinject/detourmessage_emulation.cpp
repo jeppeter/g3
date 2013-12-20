@@ -894,7 +894,8 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
     {
-        if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
+        //if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
+        if (lpMsg->message == WM_INPUT)
         {
             DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                              lpMsg->hwnd,lpMsg->message,lpMsg->message,

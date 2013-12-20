@@ -398,6 +398,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     if(lparam == 0)
     {
         ret = ERROR_DEV_NOT_EXIST;
+		ERROR_INFO("Insert Keyboard Not Exist\n");
         goto fail;
     }
 
@@ -609,9 +610,11 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     if(lparam == 0)
     {
         ret = ERROR_DEV_NOT_EXIST;
+		ERROR_INFO("Insert Mouse Not Exist\n");
         goto fail;
     }
     pMouseInput = NULL;
+
 
     InputMsg.hwnd = hwnd ;
     InputMsg.message = WM_INPUT;
@@ -620,6 +623,10 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     InputMsg.time = GetTickCount();
     InputMsg.pt.x = 0;
     InputMsg.pt.y = 0;
+	DEBUG_INFO("Message (0x%08x:%d) wparam (0x%08x:%d) lparam (0x%08x:%d)\n",
+		InputMsg.message,
+		InputMsg.wParam,InputMsg.wParam,
+		InputMsg.lParam,InputMsg.lParam);
 
     ret = InsertEmulationMessageQueue(&InputMsg,1);
     if(ret < 0)
@@ -648,10 +655,12 @@ static int RawInputEmulationInsertEventList(LPVOID pParam,LPVOID pInput)
     int ret;
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
+    	DEBUG_INFO("Input Keyboard Event\n");
         return __RawInputInsertKeyboardEvent(pDevEvent);
     }
     else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
     {
+    	DEBUG_INFO("Input Mouse Event\n");
         return __RawInputInsertMouseEvent(pDevEvent);
     }
     ret = ERROR_NOT_SUPPORTED;
@@ -1899,6 +1908,7 @@ UINT WINAPI GetRawInputDataCallBack(
         SetLastError(ret);
         return (UINT)-1;
     }
+	DEBUG_INFO("\n");
 
     EnterCriticalSection(&st_EmulationRawinputCS);
     uret = __GetRawInputDataNoLock(hRawInput,uiCommand,pData,pcbSize,cbSizeHeader);
@@ -1962,6 +1972,7 @@ int __RawInputDetour(void)
     DEBUG_BUFFER_FMT(GetKeyStateNext,10,"After GetKeyStateNext(0x%p)",GetKeyStateNext);
     DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"After GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
 
+	DEBUG_INFO("Rawinput Emulation\n");
     st_RawinputEmulationInit = 1;
     return 0;
 }
