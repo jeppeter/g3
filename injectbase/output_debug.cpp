@@ -53,7 +53,6 @@ extern "C" void DebugOutString(const char* file,int lineno,const char* fmt,...)
 }
 
 
-
 extern "C" void DebugBufferFmt(const char* file,int lineno,unsigned char* pBuffer,int buflen,const char* fmt,...)
 {
     int fmtlen=2000;
