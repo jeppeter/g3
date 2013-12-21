@@ -126,7 +126,7 @@ int SetKeyState(UINT vsk,int keydown)
     UINT vk[2];
     int vknum=1;
     int i;
-    vk[0] = MapVirtualKey(vsk,MAPVK_VSC_TO_VK_EX);
+    vk[0] = vsk;
     if(vk[0] == 0)
     {
         /*if not return ,just not set*/
