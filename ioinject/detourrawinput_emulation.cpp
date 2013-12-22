@@ -400,11 +400,12 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
-    vk = MapVirtualKey(scank,MAPVK_VSC_TO_VK_EX);
+	SetLastError(0);
+    vk = MapVirtualKeyEx(scank,MAPVK_VSC_TO_VK_EX,GetKeyboardLayout(0));
     if(vk == 0)
     {
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p> code (%d) => scank (%d) => vk not valid\n",pDevEvent,pDevEvent->event.keyboard.code,scank);
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("<0x%p> code (%d) => scank (%d) => vk not valid Error(%d)\n",pDevEvent,pDevEvent->event.keyboard.code,scank,ret);
         goto fail;
     }
 

@@ -230,7 +230,7 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
     }
 
     lpMsg->wParam = 0;
-    vk = MapVirtualKey(scancode,MAPVK_VSC_TO_VK_EX);
+    vk = MapVirtualKeyEx(scancode,MAPVK_VSC_TO_VK_EX,GetKeyboardLayout(0));
     if(vk == 0)
     {
         /*can not find virtual key ,so we should return error*/
@@ -315,12 +315,13 @@ int __InsertKeyboardMessageDevEvent(LPDEVICEEVENT pDevEvent)
     scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
     keydown = (pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN) ? 1 : 0;
 
-    vk = MapVirtualKey(scancode,MAPVK_VSC_TO_VK_EX);
+	SetLastError(0);
+    vk = MapVirtualKeyEx(scancode,MAPVK_VSC_TO_VK_EX,GetKeyboardLayout(0));
     if(vk == 0)
     {
         /*can not find virtual key ,so we should return error*/
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("scancode (0x%08x:%d) can not find virtual key\n",scancode,scancode);
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("scancode (0x%08x:%d) can not find virtual key Error(%d)\n",scancode,scancode,ret);
         SetLastError(ret);
         return -ret;
     }
