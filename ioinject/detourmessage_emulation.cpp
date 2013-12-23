@@ -6,6 +6,7 @@
 #include <dinput.h>
 #include "detourdinput.h"
 #include <assert.h>
+#include "detourrawinput.h"
 
 #include "detourmessage_emulation_keystate.cpp"
 
@@ -230,7 +231,7 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
     }
 
     lpMsg->wParam = 0;
-    vk = MapVirtualKeyEx(scancode,MAPVK_VSC_TO_VK_EX,GetKeyboardLayout(0));
+    vk = MapVirtualKeyEmulation(scancode);
     if(vk == 0)
     {
         /*can not find virtual key ,so we should return error*/
@@ -316,7 +317,7 @@ int __InsertKeyboardMessageDevEvent(LPDEVICEEVENT pDevEvent)
     keydown = (pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN) ? 1 : 0;
 
 	SetLastError(0);
-    vk = MapVirtualKeyEx(scancode,MAPVK_VSC_TO_VK_EX,GetKeyboardLayout(0));
+    vk = MapVirtualKeyEmulation( scancode);
     if(vk == 0)
     {
         /*can not find virtual key ,so we should return error*/
