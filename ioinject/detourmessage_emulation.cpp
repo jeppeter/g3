@@ -141,6 +141,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
 {
     int ret=-ERROR_NOT_SUPPORTED;
     LPMSG lcpMsg=NULL;
+    HWND hwnd;
     if(st_MessageEmualtionInited)
     {
         lcpMsg = (LPMSG)calloc(sizeof(*lcpMsg),1);
@@ -159,6 +160,18 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
             return -ret;
         }
         lcpMsg = NULL;
+        if(lpMsg->hwnd)
+        {
+            PostMessage(lpMsg->hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+        }
+        else
+        {
+            hwnd = GetCurrentProcessActiveWindow();
+            if(hwnd)
+            {
+                PostMessage(hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+            }
+        }
 
         SetLastError(0);
         return 0;
@@ -316,8 +329,8 @@ int __InsertKeyboardMessageDevEvent(LPDEVICEEVENT pDevEvent)
     scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
     keydown = (pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN) ? 1 : 0;
 
-	SetLastError(0);
-    vk = MapVirtualKeyEmulation( scancode);
+    SetLastError(0);
+    vk = MapVirtualKeyEmulation(scancode);
     if(vk == 0)
     {
         /*can not find virtual key ,so we should return error*/
@@ -518,47 +531,11 @@ int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
     /*we post message ,for it will give the thread to get message ok*/
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
-        ret =  __InsertKeyboardMessageDevEvent(pDevEvent);
-        if(ret >= 0)
-        {
-            hwnd = GetCurrentProcessActiveWindow();
-            if(hwnd != NULL)
-            {
-                bret = PostMessage(hwnd,WM_KEYDOWN,'a',0);
-                if(!bret)
-                {
-                    res = LAST_ERROR_CODE();
-                    ERROR_INFO("Send (0x%08x) WM_KEYDOWN Error(%d)\n",hwnd,res);
-                }
-            }
-        }
-        if(ret >= 0)
-        {
-            SetLastError(0);
-        }
-        return ret;
+        return __InsertKeyboardMessageDevEvent(pDevEvent);
     }
     else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
     {
-        ret =  __InsertMouseMessageDevEvent(pDevEvent);
-        if(ret >= 0)
-        {
-            hwnd = GetCurrentProcessActiveWindow();
-            if(hwnd != NULL)
-            {
-                bret = PostMessage(hwnd,WM_MOUSEMOVE,0,0);
-                if(!bret)
-                {
-                    res = LAST_ERROR_CODE();
-                    ERROR_INFO("Send (0x%08x) WM_KEYDOWN Error(%d)\n",hwnd,res);
-                }
-            }
-        }
-        if(ret >= 0)
-        {
-            SetLastError(0);
-        }
-        return ret;
+        return  __InsertMouseMessageDevEvent(pDevEvent);
     }
 
     ret = ERROR_NOT_SUPPORTED;
@@ -897,7 +874,7 @@ try_again:
     if(ret > 0)
     {
         //if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
-        if (lpMsg->message == WM_INPUT)
+        if(lpMsg->message == WM_INPUT)
         {
             DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                              lpMsg->hwnd,lpMsg->message,lpMsg->message,

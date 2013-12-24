@@ -399,7 +399,7 @@ static unsigned int st_ScanNumLockVk[256]=
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 145 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 150 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 155 */
-    VK_NULL          ,VK_ENTER         ,VK_CONTROL       ,VK_NULL          ,VK_NULL          ,    /* 160 */
+    VK_NULL          ,VK_RETURN        ,VK_CONTROL       ,VK_NULL          ,VK_NULL          ,    /* 160 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 165 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 170 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 175 */
@@ -407,7 +407,7 @@ static unsigned int st_ScanNumLockVk[256]=
     VK_NULL          ,VK_DIVIDE        ,VK_NULL          ,VK_NULL          ,VK_MENU          ,    /* 185 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 190 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 195 */
-    VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_HOME          ,    /* 200 */
+    VK_NULL          ,VK_NULL          ,VK_PRINT         ,VK_NULL          ,VK_HOME          ,    /* 200 */
     VK_UP            ,VK_PRIOR         ,VK_NULL          ,VK_LEFT          ,VK_NULL          ,    /* 205 */
     VK_RIGHT         ,VK_NULL          ,VK_END           ,VK_DOWN          ,VK_NEXT          ,    /* 210 */
     VK_INSERT        ,VK_DELETE        ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 215 */
@@ -456,14 +456,14 @@ static unsigned int st_ScanNumNoLockvk[256]=
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 145 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 150 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 155 */
-    VK_NULL          ,VK_ENTER         ,VK_CONTROL       ,VK_NULL          ,VK_NULL          ,    /* 160 */
+    VK_NULL          ,VK_RETURN        ,VK_CONTROL       ,VK_NULL          ,VK_NULL          ,    /* 160 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 165 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 170 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 175 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 180 */
     VK_NULL          ,VK_DIVIDE        ,VK_NULL          ,VK_NULL          ,VK_MENU          ,    /* 185 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 190 */
-    VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,    /* 195 */
+    VK_NULL          ,VK_NULL          ,VK_PRINT         ,VK_NULL          ,VK_NULL          ,    /* 195 */
     VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_NULL          ,VK_HOME          ,    /* 200 */
     VK_UP            ,VK_PRIOR         ,VK_NULL          ,VK_LEFT          ,VK_NULL          ,    /* 205 */
     VK_RIGHT         ,VK_NULL          ,VK_END           ,VK_DOWN          ,VK_NEXT          ,    /* 210 */
@@ -535,7 +535,7 @@ static unsigned char st_VkFlagMap[256]=
     RI_KEY_MAKE    ,
 };
 
-static unsigned char st_VkMsgMap[256]=
+static unsigned int st_VkMsgMap[256]=
 {
     0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*005*/
     0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*010*/
@@ -588,7 +588,7 @@ static unsigned char st_VkMsgMap[256]=
     0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*245*/
     0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*250*/
     0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*255*/
-    0x100    ,
+    0x100    
 };
 
 static unsigned char st_VkExtMap[256]=
@@ -779,7 +779,7 @@ int __RawInputInsertKeyStruct(int scank,int vk,int flag,int msg,int down)
     HWND hwnd;
     DWORD lparam;
     RAWINPUT *pKeyInput=NULL;
-    pKeyInput = calloc(1,sizeof(*pKeyInput));
+    pKeyInput = (RAWINPUT*)calloc(1,sizeof(*pKeyInput));
     if(pKeyInput == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -794,7 +794,7 @@ int __RawInputInsertKeyStruct(int scank,int vk,int flag,int msg,int down)
     }
     else
     {
-        pKeyInput->data.keyboard.Flag = (flag | 1);
+        pKeyInput->data.keyboard.Flags = (flag | 1);
     }
     pKeyInput->data.keyboard.Message = msg;
 
@@ -841,7 +841,6 @@ fail:
 int __Scan4cCodeInput(int down)
 {
     int ret;
-    int vk;
 
     if(down)
     {
@@ -883,7 +882,6 @@ int __Scan4cCodeInput(int down)
         }
     }
 
-
     SetKeyState(0x2a,down);
 
     return 0;
@@ -899,7 +897,6 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     int ret;
     int scank;
     int vk;
-    LONG lparam;
     int down;
     int hasext;
     int putscank;
@@ -950,8 +947,9 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         msg = st_VkMsgMap[scank];
         flag = st_VkFlagMap[scank];
 
-        if(vk == 0)
+        if(vk == VK_NULL)
         {
+        	assert(hasext == 0);
             ret = ERROR_INVALID_PARAMETER;
             ERROR_INFO("<0x%p> code 0x%08x:%d down vk error\n",pDevEvent,scank,scank);
             goto fail;
@@ -972,7 +970,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         vk = MapVirtualKeyEmulation(scank);
         flag = st_VkFlagMap[scank];
 
-        if(vk == 0)
+        if(vk == VK_NULL)
         {
             ret = ERROR_INVALID_PARAMETER;
             ERROR_INFO("<0x%p> code 0x%08x:%d up vk error\n",pDevEvent,scank,scank);
@@ -1211,7 +1209,6 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         ret = LAST_ERROR_CODE();
         goto fail;
     }
-    PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
 
     return 0;
 fail:
