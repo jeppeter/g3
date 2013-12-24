@@ -479,6 +479,232 @@ static unsigned int st_ScanNumNoLockvk[256]=
     VK_NULL          ,
 };
 
+static unsigned char st_VkFlagMap[256]=
+{
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*005*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*010*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*015*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*020*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*025*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*030*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*035*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*040*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*045*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*050*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*055*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*060*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*065*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*070*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*075*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*080*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*085*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*090*/
+    RI_KEY_MAKE    ,RI_KEY_E0      ,RI_KEY_E0      ,RI_KEY_E0      ,RI_KEY_MAKE    ,     /*095*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*100*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*105*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*110*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*115*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*120*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*125*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*130*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*135*/
+    RI_KEY_E0      ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*140*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*145*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*150*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*155*/
+    RI_KEY_MAKE    ,RI_KEY_E0      ,RI_KEY_E0      ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*160*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*165*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*170*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*175*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*180*/
+    RI_KEY_MAKE    ,RI_KEY_E0      ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_E0      ,     /*185*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*190*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*195*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_E0      ,     /*200*/
+    RI_KEY_E0      ,RI_KEY_E0      ,RI_KEY_MAKE    ,RI_KEY_E0      ,RI_KEY_MAKE    ,     /*205*/
+    RI_KEY_E0      ,RI_KEY_MAKE    ,RI_KEY_E0      ,RI_KEY_E0      ,RI_KEY_E0      ,     /*210*/
+    RI_KEY_E0      ,RI_KEY_E0      ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*215*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*220*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*225*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*230*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*235*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*240*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*245*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*250*/
+    RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,RI_KEY_MAKE    ,     /*255*/
+    RI_KEY_MAKE    ,
+};
+
+static unsigned char st_VkMsgMap[256]=
+{
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*005*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*010*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*015*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*020*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*025*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*030*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*035*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*040*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*045*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*050*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*055*/
+    0x100    ,0x104    ,0x100    ,0x100    ,0x100    ,     /*060*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*065*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*070*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*075*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*080*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*085*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*090*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*095*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*100*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*105*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*110*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*115*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*120*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*125*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*130*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*135*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*140*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*145*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*150*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*155*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*160*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*165*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*170*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*175*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*180*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x104    ,     /*185*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*190*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*195*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*200*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*205*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*210*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*215*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*220*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*225*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*230*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*235*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*240*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*245*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*250*/
+    0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*255*/
+    0x100    ,
+};
+
+static unsigned char st_VkExtMap[256]=
+{
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*005*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*010*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*015*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*020*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*025*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*030*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*035*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*040*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*045*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*050*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*055*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*060*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*065*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*070*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*075*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*080*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*085*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*090*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*095*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*100*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*105*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*110*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*115*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*120*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*125*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*130*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*135*/
+    0x2a    ,0x0     ,0x0     ,0x0     ,0x0     ,     /*140*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*145*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*150*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*155*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*160*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*165*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*170*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*175*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*180*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*185*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*190*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*195*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x2a    ,     /*200*/
+    0x2a    ,0x2a    ,0x0     ,0x2a    ,0x0     ,     /*205*/
+    0x2a    ,0x0     ,0x2a    ,0x2a    ,0x2a    ,     /*210*/
+    0x2a    ,0x2a    ,0x0     ,0x0     ,0x0     ,     /*215*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*220*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*225*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*230*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*235*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*240*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*245*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*250*/
+    0x0     ,0x0     ,0x0     ,0x0     ,0x0     ,     /*255*/
+    0x0     ,
+};
+
+static unsigned char st_VkScancodeMap[256]=
+{
+    0x00    ,0x01    ,0x02    ,0x03    ,0x04    ,     /*005*/
+    0x05    ,0x06    ,0x07    ,0x08    ,0x09    ,     /*010*/
+    0x0a    ,0x0b    ,0x0c    ,0x0d    ,0x0e    ,     /*015*/
+    0x0f    ,0x10    ,0x11    ,0x12    ,0x13    ,     /*020*/
+    0x14    ,0x15    ,0x16    ,0x17    ,0x18    ,     /*025*/
+    0x19    ,0x1a    ,0x1b    ,0x1c    ,0x1d    ,     /*030*/
+    0x1e    ,0x1f    ,0x20    ,0x21    ,0x22    ,     /*035*/
+    0x23    ,0x24    ,0x25    ,0x26    ,0x27    ,     /*040*/
+    0x28    ,0x29    ,0x2a    ,0x2b    ,0x2c    ,     /*045*/
+    0x2d    ,0x2e    ,0x2f    ,0x30    ,0x31    ,     /*050*/
+    0x32    ,0x33    ,0x34    ,0x35    ,0x36    ,     /*055*/
+    0x37    ,0x38    ,0x39    ,0x3a    ,0x3b    ,     /*060*/
+    0x3c    ,0x3d    ,0x3e    ,0x3f    ,0x40    ,     /*065*/
+    0x41    ,0x42    ,0x43    ,0x44    ,0x45    ,     /*070*/
+    0x46    ,0x47    ,0x48    ,0x49    ,0x4a    ,     /*075*/
+    0x4b    ,0x4c    ,0x4d    ,0x4e    ,0x4f    ,     /*080*/
+    0x50    ,0x51    ,0x52    ,0x53    ,0x54    ,     /*085*/
+    0x55    ,0x56    ,0x57    ,0x58    ,0x59    ,     /*090*/
+    0x5a    ,0x5b    ,0x5c    ,0x5d    ,0x5e    ,     /*095*/
+    0x5f    ,0x60    ,0x61    ,0x62    ,0x63    ,     /*100*/
+    0x64    ,0x65    ,0x66    ,0x67    ,0x68    ,     /*105*/
+    0x69    ,0x6a    ,0x6b    ,0x6c    ,0x6d    ,     /*110*/
+    0x6e    ,0x6f    ,0x70    ,0x71    ,0x72    ,     /*115*/
+    0x73    ,0x74    ,0x75    ,0x76    ,0x77    ,     /*120*/
+    0x78    ,0x79    ,0x7a    ,0x7b    ,0x7c    ,     /*125*/
+    0x7d    ,0x7e    ,0x7f    ,0x80    ,0x81    ,     /*130*/
+    0x82    ,0x83    ,0x84    ,0x85    ,0x86    ,     /*135*/
+    0x37    ,0x88    ,0x89    ,0x8a    ,0x8b    ,     /*140*/
+    0x8c    ,0x8d    ,0x8e    ,0x8f    ,0x90    ,     /*145*/
+    0x91    ,0x92    ,0x93    ,0x94    ,0x95    ,     /*150*/
+    0x96    ,0x97    ,0x98    ,0x99    ,0x9a    ,     /*155*/
+    0x9b    ,0x1c    ,0x1d    ,0x9e    ,0x9f    ,     /*160*/
+    0xa0    ,0xa1    ,0xa2    ,0xa3    ,0xa4    ,     /*165*/
+    0xa5    ,0xa6    ,0xa7    ,0xa8    ,0xa9    ,     /*170*/
+    0xaa    ,0xab    ,0xac    ,0xad    ,0xae    ,     /*175*/
+    0xaf    ,0xb0    ,0xb1    ,0xb2    ,0xb3    ,     /*180*/
+    0xb4    ,0x35    ,0xb6    ,0xb7    ,0x38    ,     /*185*/
+    0xb9    ,0xba    ,0xbb    ,0xbc    ,0xbd    ,     /*190*/
+    0xbe    ,0xbf    ,0xc0    ,0xc1    ,0xc2    ,     /*195*/
+    0xc3    ,0xc4    ,0xc5    ,0xc6    ,0x47    ,     /*200*/
+    0x48    ,0x49    ,0xca    ,0x4b    ,0xcc    ,     /*205*/
+    0x4d    ,0xce    ,0x4f    ,0x50    ,0x51    ,     /*210*/
+    0x52    ,0x53    ,0xd4    ,0xd5    ,0xd6    ,     /*215*/
+    0xd7    ,0xd8    ,0xd9    ,0xda    ,0xdb    ,     /*220*/
+    0xdc    ,0xdd    ,0xde    ,0xdf    ,0xe0    ,     /*225*/
+    0xe1    ,0xe2    ,0xe3    ,0xe4    ,0xe5    ,     /*230*/
+    0xe6    ,0xe7    ,0xe8    ,0xe9    ,0xea    ,     /*235*/
+    0xeb    ,0xec    ,0xed    ,0xee    ,0xef    ,     /*240*/
+    0xf0    ,0xf1    ,0xf2    ,0xf3    ,0xf4    ,     /*245*/
+    0xf5    ,0xf6    ,0xf7    ,0xf8    ,0xf9    ,     /*250*/
+    0xfa    ,0xfb    ,0xfc    ,0xfd    ,0xfe    ,     /*255*/
+    0xff    ,
+};
+
+
+
 static int  __MapVirtualKeyNoLock(int scancode)
 {
     uint16_t numlock;
@@ -544,6 +770,192 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput,HWND* pHwnd)
     }
     pRemove = NULL;
     return lret;
+}
+
+int __RawInputInsertKeyStruct(RAWINPUT* pKeyInput,int scank,int vk,int flag,int msg,int down,HWND *pHwnd)
+{
+    pKeyInput->data.keyboard.MakeCode = scank;
+    if(down)
+    {
+        pKeyInput->data.keyboard.Flags = flag;
+    }
+    else
+    {
+        pKeyInput->data.keyboard.Flag = (flag | 1);
+    }
+    pKeyInput->data.keyboard.Message = msg;
+
+    pKeyInput->data.keyboard.Reserved = 0;
+    pKeyInput->data.keyboard.VKey = vk;
+    pKeyInput->data.keyboard.ExtraInformation = 0;
+
+    return __InsertKeyboardInput(pKeyInput,pHwnd);
+}
+
+int __Scan4cCodeInput(int down)
+{
+    RAWINPUT* pKeyInput=NULL;
+    MSG InputMsg= {0};
+    HWND hwnd = NULL;
+    DWORD lparam;
+    int ret;
+
+
+    if(down)
+    {
+        pKeyInput = calloc(1,sizeof(*pKeyInput));
+        if(pKeyInput == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+
+        ret = __RawInputInsertKeyStruct(pKeyInput,0x1d,0x13,0x4,WM_KEYDOWN,down,&hwnd);
+        if(ret == 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Keyboard Not Exist\n");
+            goto fail;
+        }
+
+        /*this will input to the list */
+        pKeyInput = NULL;
+
+        lparam = ret;
+        InputMsg.hwnd = hwnd;
+        InputMsg.message = WM_INPUT;
+        InputMsg.wParam = RIM_INPUT;
+        InputMsg.lParam = lparam;
+        InputMsg.time = GetTickCount();
+        InputMsg.pt.x = 0;
+        InputMsg.pt.y = 0;
+
+        ret = InsertEmulationMessageQueue(&InputMsg,1);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+        PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
+
+        pKeyInput = calloc(1,sizeof(*pKeyInput));
+        if(pKeyInput == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+
+        ret = __RawInputInsertKeyStruct(pKeyInput,0x45,0xff,0x0,WM_KEYDOWN,down,&hwnd);
+        if(ret == 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Keyboard Not Exist\n");
+            goto fail;
+        }
+
+        /*this will input to the list */
+        pKeyInput = NULL;
+
+        lparam = ret;
+        InputMsg.hwnd = hwnd;
+        InputMsg.message = WM_INPUT;
+        InputMsg.wParam = RIM_INPUT;
+        InputMsg.lParam = lparam;
+        InputMsg.time = GetTickCount();
+        InputMsg.pt.x = 0;
+        InputMsg.pt.y = 0;
+
+        ret = InsertEmulationMessageQueue(&InputMsg,1);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+        PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
+    }
+    else
+    {
+        pKeyInput = calloc(1,sizeof(*pKeyInput));
+        if(pKeyInput == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+
+        ret = __RawInputInsertKeyStruct(pKeyInput,0x1d,0x13,0x4,WM_KEYUP,down,&hwnd);
+        if(ret == 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Keyboard Not Exist\n");
+            goto fail;
+        }
+
+        /*this will input to the list */
+        pKeyInput = NULL;
+
+        lparam = ret;
+        InputMsg.hwnd = hwnd;
+        InputMsg.message = WM_INPUT;
+        InputMsg.wParam = RIM_INPUT;
+        InputMsg.lParam = lparam;
+        InputMsg.time = GetTickCount();
+        InputMsg.pt.x = 0;
+        InputMsg.pt.y = 0;
+
+        ret = InsertEmulationMessageQueue(&InputMsg,1);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+        PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
+
+        pKeyInput = calloc(1,sizeof(*pKeyInput));
+        if(pKeyInput == NULL)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+
+        ret = __RawInputInsertKeyStruct(pKeyInput,0x45,0xff,0x0,WM_KEYUP,down,&hwnd);
+        if(ret == 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Keyboard Not Exist\n");
+            goto fail;
+        }
+
+        /*this will input to the list */
+        pKeyInput = NULL;
+
+        lparam = ret;
+        InputMsg.hwnd = hwnd;
+        InputMsg.message = WM_INPUT;
+        InputMsg.wParam = RIM_INPUT;
+        InputMsg.lParam = lparam;
+        InputMsg.time = GetTickCount();
+        InputMsg.pt.x = 0;
+        InputMsg.pt.y = 0;
+
+        ret = InsertEmulationMessageQueue(&InputMsg,1);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+        PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
+    }
+
+	return 0;
+
+fail:
+    if(pKeyInput)
+    {
+        free(pKeyInput);
+    }
+    pKeyInput= NULL;
+    SetLastError(ret);
+    return -ret;
 }
 
 
