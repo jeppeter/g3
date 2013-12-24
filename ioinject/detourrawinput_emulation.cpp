@@ -487,11 +487,11 @@ static int  __MapVirtualKeyNoLock(int scancode)
 
     if(numlock & KEY_TOGGLE_STATE)
     {
-        vk = st_NumLockScanToVk[scancode];
+        vk = st_ScanNumLockVk[scancode];
     }
     else
     {
-        vk = st_NumNoLockScanToVk[scancode];
+        vk = st_ScanNumNoLockvk[scancode];
     }
     return vk;
 }
