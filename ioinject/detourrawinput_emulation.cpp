@@ -1198,10 +1198,10 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     InputMsg.time = GetTickCount();
     InputMsg.pt.x = 0;
     InputMsg.pt.y = 0;
-    DEBUG_INFO("Message (0x%08x:%d) wparam (0x%08x:%d) lparam (0x%08x:%d)\n",
-               InputMsg.message,
-               InputMsg.wParam,InputMsg.wParam,
-               InputMsg.lParam,InputMsg.lParam);
+    //DEBUG_INFO("Message (0x%08x:%d) wparam (0x%08x:%d) lparam (0x%08x:%d)\n",
+    //           InputMsg.message,
+    //           InputMsg.wParam,InputMsg.wParam,
+    //           InputMsg.lParam,InputMsg.lParam);
 
     ret = InsertEmulationMessageQueue(&InputMsg,1);
     if(ret < 0)
@@ -2489,7 +2489,6 @@ UINT WINAPI GetRawInputDataCallBack(
         SetLastError(ret);
         return (UINT)-1;
     }
-    DEBUG_INFO("\n");
 
     EnterCriticalSection(&st_EmulationRawinputCS);
     uret = __GetRawInputDataNoLock(hRawInput,uiCommand,pData,pcbSize,cbSizeHeader);

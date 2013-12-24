@@ -159,7 +159,8 @@ int __ReCalculateMaxWindowRectNoLock()
     for(i=0; i<st_hWndVecs.size() ; i++)
     {
         if(((st_hWndRectVecs[i].right - st_hWndRectVecs[i].left) > (st_hWndRectVecs[pickidx].right - st_hWndRectVecs[pickidx].left)) &&
-                ((st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top) > (st_hWndRectVecs[pickidx].bottom - st_hWndRectVecs[pickidx].top)))
+                ((st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top) > (st_hWndRectVecs[pickidx].bottom - st_hWndRectVecs[pickidx].top))
+)
         {
             DEBUG_INFO("picked %d\n",i);
             pickidx = i;
@@ -175,6 +176,10 @@ int __ReCalculateMaxWindowRectNoLock()
 
 int __ReCalculateMousePointNoLock(int check)
 {
+    //DEBUG_INFO("st_MousePoint (%d-%d) maxrect (%d-%d:%d-%d)\n",
+    //           st_MousePoint.x,st_MousePoint.y,
+    //           st_MaxRect.left,st_MaxRect.top,
+    //           st_MaxRect.right,st_MaxRect.bottom);
     if(st_MousePoint.x <= st_MaxRect.left)
     {
         st_MousePoint.x = st_MaxRect.left + 1;
@@ -183,14 +188,28 @@ int __ReCalculateMousePointNoLock(int check)
     {
         st_MousePoint.x = st_MaxRect.right - 1;
     }
+
     if(st_MousePoint.y  <= st_MaxRect.top)
     {
+        DEBUG_INFO("reset y (%d + 1)\n",st_MaxRect.top);
         st_MousePoint.y = st_MaxRect.top + 1;
     }
     else if(st_MousePoint.y >= st_MaxRect.bottom)
     {
+        DEBUG_INFO("reset y (%d - 1)\n",st_MaxRect.bottom);
         st_MousePoint.y = st_MaxRect.bottom - 1;
     }
+
+    if(st_MousePoint.x < 1)
+    {
+        st_MousePoint.x = 1;
+    }
+
+    if(st_MousePoint.y < 1)
+    {
+        st_MousePoint.y = 1;
+    }
+
     if(check && (st_MousePoint.x != st_MouseLastPoint.x ||
                  st_MousePoint.y != st_MouseLastPoint.y))
     {
@@ -367,7 +386,9 @@ int Dinput8SetWindowRectState(HWND hwnd)
     UINT i;
     int refreshed = 0;
     BOOL bret;
-    RECT rRect;
+    RECT rRect,wRect;
+    POINT pt;
+    int ret;
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
 
     for(i=0; i<st_hWndVecs.size() ; i++)
@@ -384,12 +405,37 @@ int Dinput8SetWindowRectState(HWND hwnd)
         bret = ::GetClientRect(hwnd,&rRect);
         if(bret)
         {
-            if(st_hWndRectVecs[findidx].top != rRect.top  ||
-                    st_hWndRectVecs[findidx].left != rRect.left ||
-                    st_hWndRectVecs[findidx].right != rRect.right ||
-                    st_hWndRectVecs[findidx].bottom != rRect.bottom)
+            pt.x = rRect.left;
+            pt.y = rRect.top;
+            bret = ::ClientToScreen(hwnd,&pt);
+            if(!bret)
             {
-                DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d)\n",
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("ClientToScreen(%d-%d) Error(%d)\n",pt.x,pt.y,ret);
+                goto unlock;
+            }
+
+            wRect.left = pt.x;
+            wRect.top = pt.y;
+
+            pt.x = rRect.right;
+            pt.y = rRect.bottom;
+            bret = ::ClientToScreen(hwnd,&pt);
+            if(!bret)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("ClientToScreen(%d-%d) Error(%d)\n",pt.x,pt.y,ret);
+                goto unlock;
+            }
+
+            wRect.right = pt.x;
+            wRect.bottom = pt.y;
+            if(st_hWndRectVecs[findidx].top != wRect.top  ||
+                    st_hWndRectVecs[findidx].left != wRect.left ||
+                    st_hWndRectVecs[findidx].right != wRect.right ||
+                    st_hWndRectVecs[findidx].bottom != wRect.bottom)
+            {
+                DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d) wRect(%d:%d)=>(%d:%d)\n",
                            st_hWndVecs[findidx],
                            st_hWndRectVecs[findidx].left,
                            st_hWndRectVecs[findidx].top,
@@ -398,8 +444,12 @@ int Dinput8SetWindowRectState(HWND hwnd)
                            rRect.left,
                            rRect.top,
                            rRect.right,
-                           rRect.bottom);
-                st_hWndRectVecs[findidx] = rRect;
+                           rRect.bottom,
+                           wRect.left,
+                           wRect.top,
+                           wRect.right,
+                           wRect.bottom);
+                st_hWndRectVecs[findidx] = wRect;
                 refreshed ++;
             }
         }
@@ -411,12 +461,37 @@ int Dinput8SetWindowRectState(HWND hwnd)
             bret = ::GetClientRect(st_hWndVecs[i],&rRect);
             if(bret)
             {
-                if(st_hWndRectVecs[i].top != rRect.top  ||
-                        st_hWndRectVecs[i].left != rRect.left ||
-                        st_hWndRectVecs[i].right != rRect.right ||
-                        st_hWndRectVecs[i].bottom != rRect.bottom)
+                pt.x = rRect.left;
+                pt.y = rRect.top;
+                bret = ::ClientToScreen(st_hWndVecs[i],&pt);
+                if(!bret)
                 {
-                    DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d)\n",
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("ClientToScreen(%d-%d) Error(%d)\n",pt.x,pt.y,ret);
+                    continue;
+                }
+
+                wRect.left = pt.x;
+                wRect.top = pt.y;
+
+                pt.x = rRect.right;
+                pt.y = rRect.bottom;
+                bret = ::ClientToScreen(st_hWndVecs[i],&pt);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("ClientToScreen(%d-%d) Error(%d)\n",pt.x,pt.y,ret);
+                    continue;
+                }
+
+                wRect.right = pt.x;
+                wRect.bottom = pt.y;
+                if(st_hWndRectVecs[i].top != wRect.top  ||
+                        st_hWndRectVecs[i].left != wRect.left ||
+                        st_hWndRectVecs[i].right != wRect.right ||
+                        st_hWndRectVecs[i].bottom != wRect.bottom)
+                {
+                    DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d)  wRect(%d:%d)=>(%d:%d)\n",
                                st_hWndVecs[i],
                                st_hWndRectVecs[i].left,
                                st_hWndRectVecs[i].top,
@@ -425,14 +500,25 @@ int Dinput8SetWindowRectState(HWND hwnd)
                                rRect.left,
                                rRect.top,
                                rRect.right,
-                               rRect.bottom);
-                    st_hWndRectVecs[i] = rRect;
+                               rRect.bottom,
+                               wRect.left,
+                               wRect.top,
+                               wRect.right,
+                               wRect.bottom);
+                    st_hWndRectVecs[i] = wRect;
+                    GetWindowRect(st_hWndVecs[i],&wRect);
+                    DEBUG_INFO("hwnd(0x%08x) wRect(%d:%d)=>(%d:%d)\n",
+                               st_hWndVecs[i],
+                               wRect.left,
+                               wRect.top,
+                               wRect.right,
+                               wRect.bottom);
                     refreshed ++;
                 }
             }
         }
     }
-
+unlock:
     if(refreshed > 0)
     {
         /*we have refreshed window ,so recalculate the window*/
@@ -535,7 +621,7 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
             /*this is relative one*/
             __MoveMouseRelativeNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
             //DEBUG_INFO("x %d y %d mousepoint(%d:%d)\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y,
-            //	st_MousePoint.x,st_MousePoint.y);
+            //           st_MousePoint.x,st_MousePoint.y);
         }
         else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
         {

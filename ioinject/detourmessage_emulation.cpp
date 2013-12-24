@@ -524,9 +524,8 @@ fail:
 int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
 {
     LPDEVICEEVENT pDevEvent = (LPDEVICEEVENT)pInput;
-    int ret,res;
+    int ret;
     HWND hwnd= NULL;
-    BOOL bret;
     /*now to test for the dev event*/
     /*we post message ,for it will give the thread to get message ok*/
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
@@ -873,8 +872,9 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
     {
-        //if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
-        if(lpMsg->message == WM_INPUT)
+    	if (0)
+        //if(lpMsg->message == WM_LBUTTONDOWN || lpMsg->message == WM_LBUTTONUP)
+        //if(lpMsg->message == WM_INPUT)
         {
             DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                              lpMsg->hwnd,lpMsg->message,lpMsg->message,
@@ -891,13 +891,13 @@ try_again:
     bret = GetMessageWNext(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax);
     if(bret)
     {
-        DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
-                         lpMsg->hwnd,lpMsg->message,lpMsg->message,
-                         lpMsg->wParam,lpMsg->wParam,
-                         lpMsg->lParam,lpMsg->lParam,
-                         lpMsg->time,lpMsg->time,
-                         lpMsg->pt.x,lpMsg->pt.x,
-                         lpMsg->pt.y,lpMsg->pt.y);
+        //DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
+        //                 lpMsg->hwnd,lpMsg->message,lpMsg->message,
+        //                 lpMsg->wParam,lpMsg->wParam,
+        //                 lpMsg->lParam,lpMsg->lParam,
+        //                 lpMsg->time,lpMsg->time,
+        //                 lpMsg->pt.x,lpMsg->pt.x,
+        //                 lpMsg->pt.y,lpMsg->pt.y);
         if((lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST) ||
                 (lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST) ||
                 lpMsg->message == WM_INPUT)
