@@ -903,8 +903,8 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     int flag;
     int msg;
 
-    scank = pDevEvent->event.keyboard.code;
-    if(scank >= 256)
+    scank = st_CodeMapDik[pDevEvent->event.keyboard.code];
+    if(scank >= DIK_NULL)
     {
         ret = ERROR_INVALID_PARAMETER;
         ERROR_INFO("<0x%p> code (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.code);
