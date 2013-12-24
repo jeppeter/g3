@@ -145,6 +145,7 @@ int __ReCalculateMaxWindowRectNoLock()
 {
     UINT i;
     int pickidx=0;
+    LONG hw,hh,mw,mh;
 
     if(st_hWndVecs.size() == 0)
     {
@@ -158,9 +159,12 @@ int __ReCalculateMaxWindowRectNoLock()
     assert(st_hWndVecs.size() > 0);
     for(i=0; i<st_hWndVecs.size() ; i++)
     {
-        if(((st_hWndRectVecs[i].right - st_hWndRectVecs[i].left) > (st_hWndRectVecs[pickidx].right - st_hWndRectVecs[pickidx].left)) &&
-                ((st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top) > (st_hWndRectVecs[pickidx].bottom - st_hWndRectVecs[pickidx].top))
-)
+        hw = (st_hWndRectVecs[i].right - st_hWndRectVecs[i].left);
+        hh = (st_hWndRectVecs[i].bottom - st_hWndRectVecs[i].top);
+        mw = (st_hWndRectVecs[pickidx].right - st_hWndRectVecs[pickidx].left);
+        mh = (st_hWndRectVecs[pickidx].bottom - st_hWndRectVecs[pickidx].top);
+        if((hw > mw) &&
+                (hh > mh))
         {
             DEBUG_INFO("picked %d\n",i);
             pickidx = i;
@@ -169,6 +173,26 @@ int __ReCalculateMaxWindowRectNoLock()
 
     /*now max window size is rect*/
     CopyMemory(&st_MaxRect,&(st_hWndRectVecs[pickidx]),sizeof(st_MaxRect));
+
+    if(st_MaxRect.left < 0)
+    {
+        st_MaxRect.left = 0;
+    }
+
+    if(st_MaxRect.right < 0 || st_MaxRect.right <= st_MaxRect.left)
+    {
+        st_MaxRect.right = st_MaxRect.left + 1;
+    }
+
+    if(st_MaxRect.top < 0)
+    {
+        st_MaxRect.top = 0;
+    }
+
+    if(st_MaxRect.bottom < 0 || st_MaxRect.bottom <= st_MaxRect.top)
+    {
+        st_MaxRect.bottom = st_MaxRect.top + 1;
+    }
 
 
     return pickidx;
