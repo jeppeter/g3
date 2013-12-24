@@ -772,8 +772,21 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput,HWND* pHwnd)
     return lret;
 }
 
-int __RawInputInsertKeyStruct(RAWINPUT* pKeyInput,int scank,int vk,int flag,int msg,int down,HWND *pHwnd)
+int __RawInputInsertKeyStruct(int scank,int vk,int flag,int msg,int down)
 {
+    int ret;
+    MSG InputMsg;
+    HWND hwnd;
+    DWORD lparam;
+    RAWINPUT *pKeyInput=NULL;
+    pKeyInput = calloc(1,sizeof(*pKeyInput));
+    if(pKeyInput == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    pKeyInput->header.dwType = RIM_TYPEKEYBOARD;
+    pKeyInput->header.dwSize = sizeof(pKeyInput->header) + sizeof(pKeyInput->data.keyboard);
     pKeyInput->data.keyboard.MakeCode = scank;
     if(down)
     {
@@ -789,258 +802,17 @@ int __RawInputInsertKeyStruct(RAWINPUT* pKeyInput,int scank,int vk,int flag,int 
     pKeyInput->data.keyboard.VKey = vk;
     pKeyInput->data.keyboard.ExtraInformation = 0;
 
-    return __InsertKeyboardInput(pKeyInput,pHwnd);
-}
-
-int __Scan4cCodeInput(int down)
-{
-    RAWINPUT* pKeyInput=NULL;
-    MSG InputMsg= {0};
-    HWND hwnd = NULL;
-    DWORD lparam;
-    int ret;
-
-
-    if(down)
-    {
-        pKeyInput = calloc(1,sizeof(*pKeyInput));
-        if(pKeyInput == NULL)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-
-        ret = __RawInputInsertKeyStruct(pKeyInput,0x1d,0x13,0x4,WM_KEYDOWN,down,&hwnd);
-        if(ret == 0)
-        {
-            ret = LAST_ERROR_CODE();
-            ERROR_INFO("Keyboard Not Exist\n");
-            goto fail;
-        }
-
-        /*this will input to the list */
-        pKeyInput = NULL;
-
-        lparam = ret;
-        InputMsg.hwnd = hwnd;
-        InputMsg.message = WM_INPUT;
-        InputMsg.wParam = RIM_INPUT;
-        InputMsg.lParam = lparam;
-        InputMsg.time = GetTickCount();
-        InputMsg.pt.x = 0;
-        InputMsg.pt.y = 0;
-
-        ret = InsertEmulationMessageQueue(&InputMsg,1);
-        if(ret < 0)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-        PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
-
-        pKeyInput = calloc(1,sizeof(*pKeyInput));
-        if(pKeyInput == NULL)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-
-        ret = __RawInputInsertKeyStruct(pKeyInput,0x45,0xff,0x0,WM_KEYDOWN,down,&hwnd);
-        if(ret == 0)
-        {
-            ret = LAST_ERROR_CODE();
-            ERROR_INFO("Keyboard Not Exist\n");
-            goto fail;
-        }
-
-        /*this will input to the list */
-        pKeyInput = NULL;
-
-        lparam = ret;
-        InputMsg.hwnd = hwnd;
-        InputMsg.message = WM_INPUT;
-        InputMsg.wParam = RIM_INPUT;
-        InputMsg.lParam = lparam;
-        InputMsg.time = GetTickCount();
-        InputMsg.pt.x = 0;
-        InputMsg.pt.y = 0;
-
-        ret = InsertEmulationMessageQueue(&InputMsg,1);
-        if(ret < 0)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-        PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
-    }
-    else
-    {
-        pKeyInput = calloc(1,sizeof(*pKeyInput));
-        if(pKeyInput == NULL)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-
-        ret = __RawInputInsertKeyStruct(pKeyInput,0x1d,0x13,0x4,WM_KEYUP,down,&hwnd);
-        if(ret == 0)
-        {
-            ret = LAST_ERROR_CODE();
-            ERROR_INFO("Keyboard Not Exist\n");
-            goto fail;
-        }
-
-        /*this will input to the list */
-        pKeyInput = NULL;
-
-        lparam = ret;
-        InputMsg.hwnd = hwnd;
-        InputMsg.message = WM_INPUT;
-        InputMsg.wParam = RIM_INPUT;
-        InputMsg.lParam = lparam;
-        InputMsg.time = GetTickCount();
-        InputMsg.pt.x = 0;
-        InputMsg.pt.y = 0;
-
-        ret = InsertEmulationMessageQueue(&InputMsg,1);
-        if(ret < 0)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-        PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
-
-        pKeyInput = calloc(1,sizeof(*pKeyInput));
-        if(pKeyInput == NULL)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-
-        ret = __RawInputInsertKeyStruct(pKeyInput,0x45,0xff,0x0,WM_KEYUP,down,&hwnd);
-        if(ret == 0)
-        {
-            ret = LAST_ERROR_CODE();
-            ERROR_INFO("Keyboard Not Exist\n");
-            goto fail;
-        }
-
-        /*this will input to the list */
-        pKeyInput = NULL;
-
-        lparam = ret;
-        InputMsg.hwnd = hwnd;
-        InputMsg.message = WM_INPUT;
-        InputMsg.wParam = RIM_INPUT;
-        InputMsg.lParam = lparam;
-        InputMsg.time = GetTickCount();
-        InputMsg.pt.x = 0;
-        InputMsg.pt.y = 0;
-
-        ret = InsertEmulationMessageQueue(&InputMsg,1);
-        if(ret < 0)
-        {
-            ret = LAST_ERROR_CODE();
-            goto fail;
-        }
-        PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
-    }
-
-	return 0;
-
-fail:
-    if(pKeyInput)
-    {
-        free(pKeyInput);
-    }
-    pKeyInput= NULL;
-    SetLastError(ret);
-    return -ret;
-}
-
-
-int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
-{
-    RAWINPUT* pKeyInput=NULL;
-    int ret;
-    int scank;
-    int vk;
-    LONG lparam;
-    MSG InputMsg= {0};
-    HWND hwnd=NULL;
-
-    if(pDevEvent->event.keyboard.code >= 256)
-    {
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p> code (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.code);
-        goto fail;
-    }
-
-    pKeyInput = (RAWINPUT*)calloc(1,sizeof(*pKeyInput));
-    if(pKeyInput == NULL)
+    ret =  __InsertKeyboardInput(pKeyInput,&hwnd);
+    if(ret == 0)
     {
         ret = LAST_ERROR_CODE();
-        goto fail;
+        SetLastError(ret);
+        return -ret;
     }
-
-    pKeyInput->header.dwType = RIM_TYPEKEYBOARD;
-    pKeyInput->header.dwSize = sizeof(pKeyInput->header) + sizeof(pKeyInput->data.keyboard);
-
-    scank = st_CodeMapDik[pDevEvent->event.keyboard.code];
-    if(scank == DIK_NULL)
-    {
-        /*it is not valid ,so we do not insert into it*/
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p> code (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.code);
-        goto fail;
-    }
-
-    SetLastError(0);
-    vk = MapVirtualKeyEmulation(scank);
-    if(vk == 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("<0x%p> code (%d) => scank (%d) => vk not valid Error(%d)\n",pDevEvent,pDevEvent->event.keyboard.code,scank,ret);
-        goto fail;
-    }
-
-    /*now we put the key into the keyboard*/
-    pKeyInput->data.keyboard.MakeCode = scank;
-    if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
-    {
-        pKeyInput->data.keyboard.Flags = RI_KEY_MAKE;
-        pKeyInput->data.keyboard.Message = WM_KEYDOWN ;
-    }
-    else if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_UP)
-    {
-        pKeyInput->data.keyboard.Flags = RI_KEY_BREAK;
-        pKeyInput->data.keyboard.Message = WM_KEYUP ;
-    }
-    else
-    {
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p> event (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.event);
-        goto fail;
-    }
-    /*if we are not successful in the insertkeyboardinput ,we can record the keydown or keyup event*/
-    SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
-
-    pKeyInput->data.keyboard.Reserved = 0;
-    pKeyInput->data.keyboard.VKey = vk;
-    pKeyInput->data.keyboard.ExtraInformation = 0;
-
-    lparam = __InsertKeyboardInput(pKeyInput,&hwnd);
-    if(lparam == 0)
-    {
-        ret = ERROR_DEV_NOT_EXIST;
-        ERROR_INFO("Insert Keyboard Not Exist\n");
-        goto fail;
-    }
-
-    /*now to input key state*/
-
     pKeyInput = NULL;
-    InputMsg.hwnd = hwnd ;
+
+    lparam = ret;
+    InputMsg.hwnd = hwnd;
     InputMsg.message = WM_INPUT;
     InputMsg.wParam = RIM_INPUT;
     InputMsg.lParam = lparam;
@@ -1054,21 +826,187 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         ret = LAST_ERROR_CODE();
         goto fail;
     }
-    PostMessage(InputMsg.hwnd,InputMsg.message,InputMsg.wParam,InputMsg.lParam);
-
-    DEBUG_INFO("Keyboard InputMsg hwnd(0x%08x) message(0x%08x:%d) lParam(0x%08x:%d)\n",
-               InputMsg.hwnd,
-               InputMsg.message,InputMsg.message,
-               InputMsg.lParam,InputMsg.lParam);
 
     return 0;
 fail:
-    assert(ret > 0);
     if(pKeyInput)
     {
         free(pKeyInput);
     }
     pKeyInput = NULL;
+    SetLastError(ret);
+    return -ret;
+}
+
+int __Scan4cCodeInput(int down)
+{
+    int ret;
+    int vk;
+
+    if(down)
+    {
+        ret = __RawInputInsertKeyStruct(0x1d,0x13,0x4,WM_KEYDOWN,down);
+        if(ret == 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Keyboard Not Exist\n");
+            goto fail;
+        }
+
+
+        ret = __RawInputInsertKeyStruct(0x45,0xff,0x0,WM_KEYDOWN,down);
+        if(ret == 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Keyboard Not Exist\n");
+            goto fail;
+        }
+    }
+    else
+    {
+
+        ret = __RawInputInsertKeyStruct(0x1d,0x13,0x4,WM_KEYUP,down);
+        if(ret == 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Keyboard Not Exist\n");
+            goto fail;
+        }
+
+
+        ret = __RawInputInsertKeyStruct(0x45,0xff,0x0,WM_KEYUP,down);
+        if(ret == 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Keyboard Not Exist\n");
+            goto fail;
+        }
+    }
+
+
+    SetKeyState(0x2a,down);
+
+    return 0;
+
+fail:
+    SetLastError(ret);
+    return -ret;
+}
+
+
+int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
+{
+    int ret;
+    int scank;
+    int vk;
+    LONG lparam;
+    int down;
+    int hasext;
+    int putscank;
+    int flag;
+    int msg;
+
+    scank = pDevEvent->event.keyboard.code;
+    if(scank >= 256)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p> code (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.code);
+        goto fail;
+    }
+
+    if(pDevEvent->event.keyboard.event != KEYBOARD_EVENT_DOWN &&
+            pDevEvent->event.keyboard.event != KEYBOARD_EVENT_UP)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p> event (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.event);
+        goto fail;
+    }
+
+    down = pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0;
+    if(scank == 0x4c)
+    {
+        return __Scan4cCodeInput(down);
+    }
+
+
+    /*now we should first check whether we should send for */
+    if(down)
+    {
+        hasext = st_VkExtMap[scank];
+        if(hasext)
+        {
+            /*now first to send the extend code*/
+            ret = __RawInputInsertKeyStruct(0x2a,0xff,0x2,WM_KEYDOWN,down);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("<0x%p> Insert Extend Error(%d)\n",pDevEvent,ret);
+                goto fail;
+            }
+        }
+
+        putscank = st_VkScancodeMap[scank];
+        vk = MapVirtualKeyEmulation(scank);
+        msg = st_VkMsgMap[scank];
+        flag = st_VkFlagMap[scank];
+
+        if(vk == 0)
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> code 0x%08x:%d down vk error\n",pDevEvent,scank,scank);
+            goto fail;
+        }
+
+        ret= __RawInputInsertKeyStruct(putscank,vk,flag,msg,down);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("<0x%p> Insert key Error(%d)\n",pDevEvent,ret);
+            goto fail;
+        }
+
+    }
+    else
+    {
+        putscank = st_VkScancodeMap[scank];
+        vk = MapVirtualKeyEmulation(scank);
+        flag = st_VkFlagMap[scank];
+
+        if(vk == 0)
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p> code 0x%08x:%d up vk error\n",pDevEvent,scank,scank);
+            goto fail;
+        }
+
+        ret= __RawInputInsertKeyStruct(putscank,vk,flag,WM_KEYUP,down);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("<0x%p> Insert key Error(%d)\n",pDevEvent,ret);
+            goto fail;
+        }
+
+        hasext = st_VkExtMap[scank];
+        if(hasext)
+        {
+            ret = __RawInputInsertKeyStruct(0x2a,0xff,0x2,WM_KEYUP,down);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("<0x%p> Insert Extend Error(%d)\n",pDevEvent,ret);
+                goto fail;
+            }
+        }
+    }
+
+    /*if we are not successful in the insertkeyboardinput ,we can record the keydown or keyup event*/
+    SetKeyState(vk,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0);
+
+
+    return 0;
+fail:
+    assert(ret > 0);
     SetLastError(ret);
     return -ret;
 }
