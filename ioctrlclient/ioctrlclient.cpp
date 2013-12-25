@@ -47,6 +47,7 @@ LONG              g_AbsPosX = 0;
 LONG              g_AbsPosY = 0;
 LONG              g_AbsPosXHex = 0;
 LONG              g_AbsPosYHex = 0;
+LONG              g_AbsLastSend =0;
 
 
 int InsertDevEvent(DEVICEEVENT *pDevEvent,int back);
@@ -295,11 +296,6 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
     {
         if(i == g_EscapeKey)
         {
-            if(pCurBuffer[i])
-            {
-				SetAbsPos(g_hWnd);
-            }
-			pCurBuffer[i]=0;
             continue;
         }
 
@@ -329,6 +325,8 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
 BOOL CompareMouseBuffer(DIMOUSESTATE* pCurState,DIMOUSESTATE* pLastState,std::vector<DEVICEEVENT>& event)
 {
     DEVICEEVENT evt;
+
+
     if(pCurState->lX != 0 || pCurState->lY != 0)
     {
         evt.devtype = DEVICE_TYPE_MOUSE;
@@ -433,6 +431,17 @@ BOOL UpdateCodeMessage()
     if(g_KeyStateBuffer[g_EscapeKey])
     {
         /*it is the escape key pressed ,so we do not handle any more*/
+        SetAbsPos(g_hWnd);
+        g_KeyStateBuffer[g_EscapeKey] = 0;
+        g_AbsLastSend = 1;
+        return TRUE;
+    }
+
+	
+    if(g_AbsLastSend)
+    {
+        /*we do not send the last send mouse move*/
+        g_AbsLastSend = 0;
         return TRUE;
     }
 
@@ -1616,29 +1625,29 @@ BOOL CALLBACK SetAbsolutePosDlgProc(HWND hwndDlg,
 
 BOOL InsertAbsPos(HWND hwnd)
 {
-	DEVICEEVENT evt;
+    DEVICEEVENT evt;
 
-	evt.devtype = DEVICE_TYPE_MOUSE;
-	evt.devid = 0;
-	evt.event.mouse.code = MOUSE_CODE_MOUSE;
-	evt.event.mouse.event = MOUSE_EVENT_ABS_MOVING;
-	evt.event.mouse.x = g_AbsPosX;
-	evt.event.mouse.y = g_AbsPosY;
-	InsertDevEvent(&evt,1);
-	return TRUE;
+    evt.devtype = DEVICE_TYPE_MOUSE;
+    evt.devid = 0;
+    evt.event.mouse.code = MOUSE_CODE_MOUSE;
+    evt.event.mouse.event = MOUSE_EVENT_ABS_MOVING;
+    evt.event.mouse.x = g_AbsPosX;
+    evt.event.mouse.y = g_AbsPosY;
+    InsertDevEvent(&evt,1);
+    return TRUE;
 }
 
 
 BOOL SetAbsPos(HWND hwnd)
 {
-	UINT nRet;
+    UINT nRet;
     nRet = DialogBox(hInst,MAKEINTRESOURCE(IDD_DLG_ABSPOS),hwnd,SetAbsolutePosDlgProc);
     if(nRet == IDOK)
     {
         return InsertAbsPos(hwnd);
     }
 
-	return FALSE;
+    return FALSE;
 }
 
 
