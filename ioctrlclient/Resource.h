@@ -12,10 +12,16 @@
 #define IDC_IOCTRLCLIENT                109
 #define IDR_MAINFRAME                   128
 #define IDD_DLG_CONNECT                 129
+#define IDD_DLG_ABSPOS                  130
 #define IDC_EDT_HOST                    1001
 #define IDC_EDT_HOST2                   1002
 #define IDC_EDT_PORT                    1002
+#define IDC_CHK_YPOS                    1002
 #define IDC_COMBO_ESCAPE                1003
+#define IDC_CHK_XPOS                    1003
+#define IDC_EDT_XPOS                    1004
+#define IDC_EDT_XPOS2                   1005
+#define IDC_EDT_YPOS                    1005
 #define ID_CONTROL_CONNECT              32771
 #define ID_CONTROL_DISCONNECT           32772
 #define ID_CONTROL_EXIT                 32773
@@ -26,9 +32,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        130
+#define _APS_NEXT_RESOURCE_VALUE        131
 #define _APS_NEXT_COMMAND_VALUE         32774
-#define _APS_NEXT_CONTROL_VALUE         1002
+#define _APS_NEXT_CONTROL_VALUE         1005
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

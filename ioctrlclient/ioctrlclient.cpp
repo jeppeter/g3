@@ -43,9 +43,14 @@ LPDIRECTINPUTDEVICE8    g_pKeyboardDevice   = NULL;
 int                     g_KeyboardAcquire   = 0;
 unsigned char                    g_KeyStateBuffer[256] = {0};
 unsigned char                    g_LastpKeyStateBuffer[256] = {0};
+LONG              g_AbsPosX = 0;
+LONG              g_AbsPosY = 0;
+LONG              g_AbsPosXHex = 0;
+LONG              g_AbsPosYHex = 0;
 
 
 int InsertDevEvent(DEVICEEVENT *pDevEvent,int back);
+BOOL SetAbsPos(HWND hwnd);
 
 #ifdef _UNICODE
 int SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...);
@@ -280,6 +285,8 @@ static IO_KEYBOARD_CODE_t st_DIKMapCode[256] =
     KEYBOARD_CODE_NULL
 };
 
+
+
 BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::vector<DEVICEEVENT>& event)
 {
     DEVICEEVENT evt;
@@ -288,6 +295,11 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
     {
         if(i == g_EscapeKey)
         {
+            if(pCurBuffer[i])
+            {
+				SetAbsPos(g_hWnd);
+            }
+			pCurBuffer[i]=0;
             continue;
         }
 
@@ -877,7 +889,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
-		Sleep(100);
+        Sleep(100);
         UpdateCodeMessage();
     }
     ret = 0;
@@ -1046,6 +1058,17 @@ int SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
     return ret;
 }
 
+LONG StrToUL(wchar_t* pString,wchar_t**ppEnd,int base)
+{
+
+    return  wcstoul(pString,ppEnd,base);
+}
+
+int TStrNCmp(wchar_t* pString ,wchar_t* pCmp,int num)
+{
+    return wcsncmp(pString,pCmp,num);
+}
+
 
 #else
 
@@ -1109,7 +1132,7 @@ BOOL SetDialogItemString(HWND hwndDlg,int nIDDlgItem,char *pString)
 
 
 
-void SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
+int SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
 {
     int ret;
     va_list ap;
@@ -1121,6 +1144,18 @@ void SprintfString(wchar_t* pString ,int count,const wchar_t* pfmt,...)
     DEBUG_INFO("%s\n",pString);
     return ret;
 }
+
+LONG StrToUL(char* pString,char**ppEnd,int base)
+{
+
+    return  strtoul(pString,ppEnd,base);
+}
+
+int TStrNCmp(wchar_t* pString ,wchar_t* pCmp,int num)
+{
+    return strncmp(pString,pCmp,num);
+}
+
 
 #endif /*_UNICODE*/
 
@@ -1176,6 +1211,41 @@ int GetComboSel(HWND hwndDlg,int nIDDlgItem)
     return ret;
 }
 
+int GetCheckSel(HWND hwndDlg,int nIDDlgItem)
+{
+    HWND hCtrlItem=NULL;
+    int ret=0;
+    UINT checked;
+
+    checked =  IsDlgButtonChecked(hwndDlg,nIDDlgItem);
+    if(checked == BST_CHECKED)
+    {
+        ret = 1;
+    }
+    return ret;
+}
+
+int SetCheckSel(HWND hwndDlg,int nIDDlgItem,int checked)
+{
+    BOOL bret;
+    UINT setchecked=BST_UNCHECKED;
+    int ret=0;
+
+    if(checked)
+    {
+        setchecked = BST_CHECKED;
+    }
+
+    bret = CheckDlgButton(hwndDlg,nIDDlgItem,setchecked);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("<0x%08x>:%d Set Check(%d) Error(%d)\n",hwndDlg,nIDDlgItem,checked,ret);
+        SetLastError(ret);
+        return -1;
+    }
+    return 0;
+}
 
 BOOL InitializeConnectDialog(HWND hwnd)
 {
@@ -1387,6 +1457,188 @@ BOOL CALLBACK ConnectDialogProc(HWND hwndDlg,
     }
 
     return bret;
+}
+
+
+BOOL InitialializeAbsPosDialog(HWND hwnd)
+{
+    TCHAR str[32];
+    int ret;
+    BOOL bret;
+    SetCheckSel(hwnd,IDC_CHK_XPOS,g_AbsPosXHex);
+    SetCheckSel(hwnd,IDC_CHK_YPOS,g_AbsPosYHex);
+    if(g_AbsPosXHex == 0)
+    {
+        ret = SprintfString(str,32,TEXT("%d"),g_AbsPosX);
+    }
+    else
+    {
+        ret = SprintfString(str,32,TEXT("0x%x"),g_AbsPosX);
+    }
+
+    if(ret < 0)
+    {
+        return FALSE;
+    }
+
+    bret = SetDialogItemString(hwnd,IDC_EDT_XPOS,str);
+    if(!bret)
+    {
+        return FALSE;
+    }
+
+    if(g_AbsPosYHex == 0)
+    {
+        ret = SprintfString(str,32,TEXT("%d"),g_AbsPosY);
+    }
+    else
+    {
+        ret = SprintfString(str,32,TEXT("0x%x"),g_AbsPosY);
+    }
+
+    if(ret < 0)
+    {
+        return FALSE;
+    }
+
+    bret = SetDialogItemString(hwnd,IDC_EDT_YPOS,str);
+    if(!bret)
+    {
+        return FALSE;
+    }
+
+
+    return TRUE;
+}
+
+BOOL GetAbsPosParam(HWND hwnd)
+{
+    int ret;
+    TCHAR xstr[32],ystr[32],*endstr=NULL;
+    long xpos,ypos;
+    int xhex,yhex;
+
+    ret = GetDialogItemString(hwnd,IDC_EDT_XPOS,xstr,32);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    xhex = GetCheckSel(hwnd,IDC_CHK_XPOS);
+    if(xhex)
+    {
+        if(TStrNCmp(xstr,TEXT("0x"),2)==0)
+        {
+            xpos = StrToUL(xstr+2,&endstr,16);
+        }
+        else
+        {
+            xpos = StrToUL(xstr,&endstr,16);
+        }
+    }
+    else
+    {
+        xpos = StrToUL(xstr,&endstr,10);
+    }
+
+    ret = GetDialogItemString(hwnd,IDC_EDT_YPOS,ystr,32);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    yhex = GetCheckSel(hwnd,IDC_CHK_YPOS);
+    if(yhex)
+    {
+        if(TStrNCmp(ystr,TEXT("0x"),2)==0)
+        {
+            ypos = StrToUL(ystr+2,&endstr,16);
+        }
+        else
+        {
+            ypos = StrToUL(ystr,&endstr,16);
+        }
+    }
+    else
+    {
+        ypos = StrToUL(ystr,&endstr,10);
+    }
+
+    g_AbsPosX = xpos;
+    g_AbsPosY = ypos;
+    g_AbsPosXHex = xhex;
+    g_AbsPosYHex = yhex;
+    return TRUE;
+}
+
+BOOL CALLBACK SetAbsolutePosDlgProc(HWND hwndDlg,
+                                    UINT message,
+                                    WPARAM wParam,
+                                    LPARAM lParam)
+{
+    BOOL bret=FALSE;
+    switch(message)
+    {
+    case WM_INITDIALOG:
+        bret = InitialializeAbsPosDialog(hwndDlg);
+        break;
+    case WM_CLOSE:
+        EndDialog(hwndDlg,0);
+        bret = TRUE;
+        break;
+    case WM_COMMAND:
+        switch(LOWORD(wParam))
+        {
+        case IDCANCEL:
+            EndDialog(hwndDlg,wParam);
+            bret = TRUE;
+            break;
+        case IDOK:
+            bret = GetAbsPosParam(hwndDlg);
+            if(bret)
+            {
+                EndDialog(hwndDlg,wParam);
+                bret = TRUE;
+            }
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return bret;
+}
+
+BOOL InsertAbsPos(HWND hwnd)
+{
+	DEVICEEVENT evt;
+
+	evt.devtype = DEVICE_TYPE_MOUSE;
+	evt.devid = 0;
+	evt.event.mouse.code = MOUSE_CODE_MOUSE;
+	evt.event.mouse.event = MOUSE_EVENT_ABS_MOVING;
+	evt.event.mouse.x = g_AbsPosX;
+	evt.event.mouse.y = g_AbsPosY;
+	InsertDevEvent(&evt,1);
+	return TRUE;
+}
+
+
+BOOL SetAbsPos(HWND hwnd)
+{
+	UINT nRet;
+    nRet = DialogBox(hInst,MAKEINTRESOURCE(IDD_DLG_ABSPOS),hwnd,SetAbsolutePosDlgProc);
+    if(nRet == IDOK)
+    {
+        return InsertAbsPos(hwnd);
+    }
+
+	return FALSE;
 }
 
 
