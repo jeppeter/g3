@@ -3,11 +3,13 @@
 #include <output_debug.h>
 #include <detours/detours.h>
 
+#ifdef   IOCAP_DEBUG
 #define  DETOUR_RAWINPUT_DEBUG      1
-#undef   DETOUR_RAWINPUT_DEBUG
+#endif
 
+#ifdef   IOCAP_EMULATION
 #define  DETOUR_RAWINPUT_EMULATION  1
-//#undef   DETOUR_RAWINPUT_EMULATION
+#endif
 
 typedef UINT(WINAPI *GetRawInputDataFunc_t)(
     HRAWINPUT hRawInput,

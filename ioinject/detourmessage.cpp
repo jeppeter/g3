@@ -3,12 +3,15 @@
 #include <injectbase.h>
 #include <output_debug.h>
 #include <detours/detours.h>
+#include <iocapcommon.h>
 
+#ifdef   IOCAP_DEBUG
 #define  DETOUR_MESSAGE_DEBUG   1
-#undef   DETOUR_MESSAGE_DEBUG
+#endif
 
+#ifdef   IOCAP_EMULATION
 #define  DETOUR_MESSAGE_EMULATION  1
-//#undef  DETOUR_MESSAGE_EMULATION
+#endif
 
 typedef BOOL (WINAPI *GetMessageFunc_t)(
     LPMSG lpMsg,

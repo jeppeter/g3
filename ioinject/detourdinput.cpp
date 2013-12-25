@@ -12,11 +12,14 @@
 #include "detourdinput.h"
 #include <injectbase.h>
 
+#ifdef   IOCAP_DEBUG
 #define  DETOUR_DINPUT_DEBUG       1
-#undef   DETOUR_DINPUT_DEBUG
+#endif
 
+
+#ifdef   IOCAP_EMULATION
 #define  DETOUR_DINPUT_EMULATION   1
-//#undef   DETOUR_DINPUT_EMULATION
+#endif
 
 #if defined(DETOUR_DINPUT_DEBUG) && defined(DETOUR_DINPUT_EMULATION)
 #error "could not define DETOUR_DINPUT_DEBUG and DETOUR_DINPUT_EMULATION both"

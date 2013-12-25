@@ -315,6 +315,14 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
 
             event.push_back(evt);
         }
+        else if(pCurBuffer[i])
+        {
+            evt.devtype = DEVICE_TYPE_KEYBOARD;
+            evt.devid = 0;
+            evt.event.keyboard.code = st_DIKMapCode[i];
+            evt.event.keyboard.event = KEYBOARD_EVENT_DOWN;
+            event.push_back(evt);
+        }
     }
 
     CopyMemory(pLastBuffer,pCurBuffer,256);
@@ -437,7 +445,7 @@ BOOL UpdateCodeMessage()
         return TRUE;
     }
 
-	
+
     if(g_AbsLastSend)
     {
         /*we do not send the last send mouse move*/
@@ -898,7 +906,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
-        Sleep(100);
+        Sleep(17);
         UpdateCodeMessage();
     }
     ret = 0;

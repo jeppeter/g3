@@ -9,6 +9,9 @@
 #define  MIDBUTTON_IDX       2
 
 
+#define  IOCAP_DEBUG         1
+//#define  IOCAP_EMULATION     1
+
 typedef enum IO_DEVICE_TYPE
 {
     DEVICE_TYPE_KEYBOARD = 0,
