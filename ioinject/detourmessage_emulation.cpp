@@ -150,6 +150,18 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
         if(keyrawinput > 0)
         {
             /*if keyboard is registered ,so no message for keyboard will insert*/
+			if(lpMsg->hwnd)
+			{
+				PostMessage(lpMsg->hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+			}
+			else
+			{
+				hwnd = GetCurrentProcessActiveWindow();
+				if(hwnd)
+				{
+					PostMessage(hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+				}
+			}
             return 0;
         }
     }
@@ -159,6 +171,18 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
         if(mouserawinput > 0)
         {
         	/*if mouse raw input registered ,so no message for mouse will insert*/
+			if(lpMsg->hwnd)
+			{
+				PostMessage(lpMsg->hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+			}
+			else
+			{
+				hwnd = GetCurrentProcessActiveWindow();
+				if(hwnd)
+				{
+					PostMessage(hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+				}
+			}
             return 0;
         }
     }
