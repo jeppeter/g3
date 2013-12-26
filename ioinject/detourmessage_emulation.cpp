@@ -150,18 +150,18 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
         if(keyrawinput > 0)
         {
             /*if keyboard is registered ,so no message for keyboard will insert*/
-			if(lpMsg->hwnd)
-			{
-				PostMessage(lpMsg->hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
-			}
-			else
-			{
-				hwnd = GetCurrentProcessActiveWindow();
-				if(hwnd)
-				{
-					PostMessage(hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
-				}
-			}
+            if(lpMsg->hwnd)
+            {
+                PostMessage(lpMsg->hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+            }
+            else
+            {
+                hwnd = GetCurrentProcessActiveWindow();
+                if(hwnd)
+                {
+                    PostMessage(hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+                }
+            }
             return 0;
         }
     }
@@ -170,19 +170,19 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
         mouserawinput = IsRawInputMouseRegistered();
         if(mouserawinput > 0)
         {
-        	/*if mouse raw input registered ,so no message for mouse will insert*/
-			if(lpMsg->hwnd)
-			{
-				PostMessage(lpMsg->hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
-			}
-			else
-			{
-				hwnd = GetCurrentProcessActiveWindow();
-				if(hwnd)
-				{
-					PostMessage(hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
-				}
-			}
+            /*if mouse raw input registered ,so no message for mouse will insert*/
+            if(lpMsg->hwnd)
+            {
+                PostMessage(lpMsg->hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+            }
+            else
+            {
+                hwnd = GetCurrentProcessActiveWindow();
+                if(hwnd)
+                {
+                    PostMessage(hwnd,lpMsg->message,lpMsg->wParam,lpMsg->lParam);
+                }
+            }
             return 0;
         }
     }
@@ -725,6 +725,18 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         }
         lpMsg->lParam |= (0xffff & pt.x);
         lpMsg->lParam |= ((0xffff & pt.y) << 16);
+        lpMsg->pt.x = pt.x;
+        lpMsg->pt.y = pt.y;
+    }
+    else if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST && ret > 0)
+    {
+        res = DetourDinputScreenMousePoint(hWnd,&pt);
+        if(res < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("hWnd(0x%08x) Could not GetScreen mouse point Error(%d)\n",hWnd,ret);
+            goto fail;
+        }
         lpMsg->pt.x = pt.x;
         lpMsg->pt.y = pt.y;
     }

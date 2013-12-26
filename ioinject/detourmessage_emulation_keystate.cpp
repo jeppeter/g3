@@ -557,14 +557,6 @@ int __FormatKeyDownMessageNoLock(int vk,LPMSG lpMsg)
     lpMsg->wParam = vk;
     lpMsg->lParam = ((0x10 << 16)| 0x1);
     lpMsg->time = GetTickCount();
-    ret = DetourDinputScreenMousePoint(NULL,&pt);
-    if(ret < 0)
-    {
-        return ret;
-    }
-
-    lpMsg->pt.x = pt.x;
-    lpMsg->pt.y = pt.y;
     return 1;
 }
 
@@ -578,14 +570,6 @@ int __FormatKeyUpMessageNoLock(int vk,LPMSG lpMsg)
     lpMsg->wParam = vk;
     lpMsg->lParam = ((0xc010 << 16)| 0x1);
     lpMsg->time = GetTickCount();
-    ret = DetourDinputScreenMousePoint(NULL,&pt);
-    if(ret < 0)
-    {
-        return ret;
-    }
-
-    lpMsg->pt.x = pt.x;
-    lpMsg->pt.y = pt.y;
     return 1;
 }
 
@@ -631,14 +615,6 @@ int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
     lpMsg->wParam = transvk;
     lpMsg->lParam = ((0x10 << 16)| 0x1);
     lpMsg->time = GetTickCount();
-    ret = DetourDinputScreenMousePoint(NULL,&pt);
-    if(ret < 0)
-    {
-        return ret;
-    }
-
-    lpMsg->pt.x = pt.x;
-    lpMsg->pt.y = pt.y;
     return 1;
 }
 
@@ -652,14 +628,6 @@ int __FormatSysKeyDownMessageNoLock(int vk,LPMSG lpMsg)
     lpMsg->wParam = vk;
     lpMsg->lParam = ((0x10 << 16)| 0x1);
     lpMsg->time = GetTickCount();
-    ret = DetourDinputScreenMousePoint(NULL,&pt);
-    if(ret < 0)
-    {
-        return ret;
-    }
-
-    lpMsg->pt.x = pt.x;
-    lpMsg->pt.y = pt.y;
     return 1;
 }
 
@@ -673,14 +641,6 @@ int __FormatSysKeyUpMessageNoLock(int vk,LPMSG lpMsg)
     lpMsg->wParam = vk;
     lpMsg->lParam = ((0x10 << 16)| 0x1);
     lpMsg->time = GetTickCount();
-    ret = DetourDinputScreenMousePoint(NULL,&pt);
-    if(ret < 0)
-    {
-        return ret;
-    }
-
-    lpMsg->pt.x = pt.x;
-    lpMsg->pt.y = pt.y;
     return 1;
 }
 
@@ -723,14 +683,6 @@ int __FormatWmSysCharMessageNoLock(int vk,LPMSG lpMsg)
     lpMsg->wParam  = transvk;
     lpMsg->lParam = (0x2010 << 16) | 0x1;
     lpMsg->time = GetTickCount();
-    ret = DetourDinputScreenMousePoint(NULL,&pt);
-    if(ret < 0)
-    {
-        return ret;
-    }
-
-    lpMsg->pt.x = pt.x;
-    lpMsg->pt.y = pt.y;
     return 1;
 }
 
