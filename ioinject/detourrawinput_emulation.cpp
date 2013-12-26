@@ -39,6 +39,7 @@ static CRITICAL_SECTION  st_KeyStateEmulationCS;
 static uint16_t st_KeyStateArray[KEY_STATE_SIZE]= {0};
 static int st_KeyDownStateArray[KEY_STATE_SIZE]= {0};
 static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]= {0};
+static int st_KeyLastStateArray[KEY_STATE_SIZE]= {0};
 
 RegisterRawInputDevicesFunc_t RegisterRawInputDevicesNext=RegisterRawInputDevices;
 GetRawInputDataFunc_t GetRawInputDataNext=GetRawInputData;
@@ -163,16 +164,21 @@ int SetKeyState(UINT vsk,int keydown)
             st_KeyDownStateArray[vk[i]] ++;
             st_AsyncKeyStateArray[vk[i]] |= ASYNC_KEY_PRESSED_STATE;
             st_AsyncKeyStateArray[vk[i]] |= ASYNC_KEY_TOGGLED_STATE;
-            if(st_KeyDownStateArray[vk[i]] > 1)
+            /*zero means up*/
+            if(st_KeyLastStateArray[vk[i]] == 0)
             {
-                st_KeyStateArray[vk[i]] &= KEY_UNTOGGLE_STATE;
-                st_KeyDownStateArray[vk[i]] = 0;
-            }
-            else
-            {
-                st_KeyStateArray[vk[i]] |= KEY_TOGGLE_STATE;
+                /*we change the state array for it will from up to down*/
+                if(st_KeyStateArray[vk[i]] & KEY_TOGGLE_STATE)
+                {
+                    st_KeyStateArray[vk[i]] &= KEY_UNTOGGLE_STATE;
+                }
+                else
+                {
+                    st_KeyStateArray[vk[i]] |= KEY_TOGGLE_STATE;
+                }
             }
 
+			st_KeyLastStateArray[vk[i]] = 1;
         }
     }
     else
@@ -182,6 +188,7 @@ int SetKeyState(UINT vsk,int keydown)
             st_KeyStateArray[vk[i]] &= KEY_UNPRESSED_STATE;
             st_AsyncKeyStateArray[vk[i]] &= ASYNC_KEY_UNPRESSED_STATE;
             st_AsyncKeyStateArray[vk[i]] |= ASYNC_KEY_TOGGLED_STATE;
+			st_KeyLastStateArray[vk[i]] = 0;
         }
     }
     LeaveCriticalSection(&st_KeyStateEmulationCS);
@@ -252,8 +259,6 @@ USHORT __InnerGetKeyState(UINT vk)
 USHORT __InnerGetAsynState(UINT vk)
 {
     USHORT uret;
-    UINT uvk[2];
-    UINT exvk[2];
     int expanded=0;
     if(vk >= KEY_STATE_SIZE)
     {
@@ -280,23 +285,6 @@ USHORT __InnerGetAsynState(UINT vk)
     }
 #endif
     EnterCriticalSection(&st_KeyStateEmulationCS);
-    if(expanded)
-    {
-        uvk[0] = (st_AsyncKeyStateArray[exvk[0]] & 0xffff);
-        uvk[1] = (st_AsyncKeyStateArray[exvk[1]] & 0xffff);
-        st_AsyncKeyStateArray[exvk[0]] &= ASYNC_KEY_UNTOGGLE_STATE;
-        st_AsyncKeyStateArray[exvk[1]] &= ASYNC_KEY_UNTOGGLE_STATE;
-
-        if(uvk[0] > uvk[1])
-        {
-            uret = uvk[0];
-        }
-        else
-        {
-            uret = uvk[1];
-        }
-    }
-    else
     {
         uret = st_AsyncKeyStateArray[vk];
         st_AsyncKeyStateArray[vk] &= ASYNC_KEY_UNTOGGLE_STATE;
@@ -1249,6 +1237,9 @@ int RawInputEmulationInit(LPVOID pParam,LPVOID pInput)
             free(pRawInput);
             pRawInput = NULL;
         }
+        ZeroMemory(st_KeyStateArray,sizeof(st_KeyStateArray));
+        ZeroMemory(st_KeyLastStateArray,sizeof(st_KeyLastStateArray));
+        ZeroMemory(st_AsyncKeyStateArray,sizeof(st_AsyncKeyStateArray));
         LeaveCriticalSection(&st_EmulationRawinputCS);
     }
     return ret;
