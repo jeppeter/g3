@@ -15,6 +15,8 @@ extern "C" {
     int IoInjectThreadInit(HMODULE hModule);
     void IoInjectThreadFini(HMODULE hModule);
 
+	int RegisterEventListInit(FuncCall_t pFunc,LPVOID pParam,int prior);
+	int UnRegisterEventListInit(FuncCall_t pFunc);
     int RegisterEventListHandler(FuncCall_t pFunc,LPVOID pParam,int prior);
     int UnRegisterEventListHandler(FuncCall_t pFunc);
 	int DetourIoInjectThreadControl(PIO_CAP_CONTROL_t pControl);

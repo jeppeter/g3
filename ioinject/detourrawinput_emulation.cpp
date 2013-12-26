@@ -588,7 +588,7 @@ static unsigned int st_VkMsgMap[256]=
     0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*245*/
     0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*250*/
     0x100    ,0x100    ,0x100    ,0x100    ,0x100    ,     /*255*/
-    0x100    
+    0x100
 };
 
 static unsigned char st_VkExtMap[256]=
@@ -949,7 +949,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
 
         if(vk == VK_NULL)
         {
-        	assert(hasext == 0);
+            assert(hasext == 0);
             ret = ERROR_INVALID_PARAMETER;
             ERROR_INFO("<0x%p> code 0x%08x:%d down vk error\n",pDevEvent,scank,scank);
             goto fail;
@@ -1224,13 +1224,73 @@ fail:
 }
 
 
+int RawInputEmulationInit(LPVOID pParam,LPVOID pInput)
+{
+    int ret = -1;
+    RAWINPUT *pRawInput=NULL;
+    if(st_RawinputEmulationInit)
+    {
+        ret = 0;
+        EnterCriticalSection(&st_EmulationRawinputCS);
+        while(st_MouseRawInputVecs.size() > 0)
+        {
+            assert(pRawInput == NULL);
+            pRawInput = st_MouseRawInputVecs[0];
+            st_MouseRawInputVecs.erase(st_MouseRawInputVecs.begin());
+            free(pRawInput);
+            pRawInput = NULL;
+        }
+
+        while(st_KeyRawInputVecs.size() > 0)
+        {
+            assert(pRawInput == NULL);
+            pRawInput = st_KeyRawInputVecs[0];
+            st_KeyRawInputVecs.erase(st_KeyRawInputVecs.begin());
+            free(pRawInput);
+            pRawInput = NULL;
+        }
+        LeaveCriticalSection(&st_EmulationRawinputCS);
+    }
+    return ret;
+}
+
+int IsRawInputKeyboardRegistered()
+{
+    int ret = 0;
+    if(st_RawinputEmulationInit)
+    {
+        EnterCriticalSection(&st_EmulationRawinputCS);
+        if(st_KeyRegistered > 1)
+        {
+            ret = 1;
+        }
+        LeaveCriticalSection(&st_EmulationRawinputCS);
+    }
+    return ret;
+}
+
+int IsRawInputMouseRegistered()
+{
+    int ret = 0;
+    if(st_RawinputEmulationInit)
+    {
+        EnterCriticalSection(&st_EmulationRawinputCS);
+        if(st_MouseRegistered > 1)
+        {
+            ret = 1;
+        }
+        LeaveCriticalSection(&st_EmulationRawinputCS);
+    }
+    return ret;
+}
+
 static int RawInputEmulationInsertEventList(LPVOID pParam,LPVOID pInput)
 {
     LPDEVICEEVENT pDevEvent = (LPDEVICEEVENT)pInput;
     int ret;
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
-        DEBUG_INFO("Input Keyboard Event\n");
+        //DEBUG_INFO("Input Keyboard Event\n");
         return __RawInputInsertKeyboardEvent(pDevEvent);
     }
     else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
@@ -2526,6 +2586,15 @@ int __RawInputDetour(void)
         ERROR_INFO("Register Rawinput Emulation Error(%d)\n",ret);
         return ret;
     }
+
+    ret = RegisterEventListInit(RawInputEmulationInit,NULL,RAWINPUT_EMULATION_PRIOR);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Register Rawinput Init Error(%d)\n",ret);
+        return ret;
+    }
+
 
     DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"Before RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
     DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"Before GetRawInputDataNext(0x%p)",GetRawInputDataNext);

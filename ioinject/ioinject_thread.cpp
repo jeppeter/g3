@@ -19,6 +19,7 @@ typedef struct
 } DETOUR_THREAD_STATUS_t,*PDETOUR_THREAD_STATUS_t;
 
 CFuncList st_EventHandlerFuncList;
+CFuncList st_EventInitFuncList;
 static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
 static HANDLE st_hIoInjectControlSema=NULL;
 
@@ -204,6 +205,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
     pStatus = *ppStatus;
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
+	
 
     /*now to delete all the free event*/
     __ClearEventList(pStatus);
@@ -211,6 +213,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 
     /*now to unmap memory*/
     __UnMapMemBase(pStatus);
+	st_EventInitFuncList.CallList(NULL);
 
     free(pStatus);
     *ppStatus = NULL;
@@ -421,6 +424,9 @@ int __DetourIoInjectThreadStart(PIO_CAP_CONTROL_t pControl)
         return -ret;
     }
 
+	/*to call when use to init*/
+	st_EventInitFuncList.CallList(NULL);
+
     pStatus = __AllocateDetourStatus();
     if(pStatus == NULL)
     {
@@ -621,6 +627,16 @@ fail:
     return -ret;
 
 
+}
+
+int RegisterEventListInit(FuncCall_t pFunc,LPVOID pParam,int prior)
+{
+	return st_EventInitFuncList.AddFuncList(pFunc,pParam,prior);
+}
+
+int UnRegisterEventListInit(FuncCall_t pFunc)
+{
+	return st_EventInitFuncList.RemoveFuncList(pFunc);
 }
 
 int RegisterEventListHandler(FuncCall_t pFunc,LPVOID pParam,int prior)

@@ -742,6 +742,24 @@ int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
     return 0;
 }
 
+int __DetourDinput8Init(void)
+{
+	ZeroMemory(st_Dinput8KeyState,sizeof(st_Dinput8KeyState));	
+	ZeroMemory(&st_Dinput8MouseState,sizeof(st_Dinput8MouseState));
+	ZeroMemory(st_KeyDownTimes,sizeof(st_KeyDownTimes));
+	return 0;
+}
+
+int DetourDinput8Init(LPVOID pParam,LPVOID pInput)
+{
+	int ret=0;	
+
+	EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+	ret = __DetourDinput8Init();
+	LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+	return ret;
+}
+
 int DetourDinput8SetKeyMouseState(LPVOID pParam,LPVOID pInput)
 {
     int ret;
@@ -2750,8 +2768,10 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
 
 void DetourDinputEmulationFini(HMODULE hModule)
 {
+	UnRegisterEventListInit(DetourDinput8Init);
+    UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
+    UnRegisterCreateWindowFunc(Dinput8CreateWindowNotify);
     UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
-
     return ;
 }
 
@@ -2782,10 +2802,20 @@ int DetourDinputEmulationInit(HMODULE hModule)
         goto fail;
     }
 
+	ret = RegisterEventListInit(DetourDinput8Init,NULL,DINPUT_EMULATION_PRIOR);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not register Eventlist Init Error(%d)\n",ret);
+        goto fail;
+    }
+	
+
     SetLastError(0);
     return 0;
 fail:
     assert(ret > 0);
+	UnRegisterEventListInit(DetourDinput8Init);
     UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
     UnRegisterCreateWindowFunc(Dinput8CreateWindowNotify);
     UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);

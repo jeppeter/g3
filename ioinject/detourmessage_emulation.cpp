@@ -142,6 +142,28 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
     int ret=-ERROR_NOT_SUPPORTED;
     LPMSG lcpMsg=NULL;
     HWND hwnd;
+    int keyrawinput=0,mouserawinput=0;
+
+    if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
+    {
+        keyrawinput = IsRawInputKeyboardRegistered();
+        if(keyrawinput > 0)
+        {
+            /*if keyboard is registered ,so no message for keyboard will insert*/
+            return 0;
+        }
+    }
+    else if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST)
+    {
+        mouserawinput = IsRawInputMouseRegistered();
+        if(mouserawinput > 0)
+        {
+        	/*if mouse raw input registered ,so no message for mouse will insert*/
+            return 0;
+        }
+    }
+
+
     if(st_MessageEmualtionInited)
     {
         lcpMsg = (LPMSG)calloc(sizeof(*lcpMsg),1);
@@ -520,6 +542,7 @@ fail:
     return -ret;
 }
 
+
 /*return 0 for not insert ,1 for insert ,negative for error*/
 int InsertMessageDevEvent(LPVOID pParam,LPVOID pInput)
 {
@@ -555,20 +578,6 @@ LPMSG __GetEmulationMessageQueue()
             lGetMsg = st_MessageEmulationQueue[0];
             st_MessageEmulationQueue.erase(st_MessageEmulationQueue.begin());
         }
-        else if(st_MessageQuit)
-        {
-            lGetMsg =(LPMSG) calloc(1,sizeof(*lGetMsg));
-            if(lGetMsg)
-            {
-                lGetMsg->hwnd = NULL;
-                lGetMsg->message = WM_QUIT;
-                lGetMsg->lParam = 0;
-                lGetMsg->wParam = 0;
-                lGetMsg->time = GetTickCount();
-                lGetMsg->pt.x = 0;
-                lGetMsg->pt.y = 0;
-            }
-        }
         LeaveCriticalSection(&st_MessageEmulationCS);
     }
     else
@@ -579,6 +588,24 @@ LPMSG __GetEmulationMessageQueue()
     return lGetMsg;
 
 }
+
+int DetourMessageInit(LPVOID pParam,LPVOID pInput)
+{
+    LPMSG lpMsg=NULL;
+
+    while(1)
+    {
+        lpMsg = __GetEmulationMessageQueue();
+        if(lpMsg == NULL)
+        {
+            break;
+        }
+        free(lpMsg);
+        lpMsg = NULL;
+    }
+    return 0;
+}
+
 
 int __SetMessageQuit()
 {
@@ -872,9 +899,9 @@ try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
     {
-    	if (0)
-        //if(lpMsg->message == WM_LBUTTONDOWN || lpMsg->message == WM_LBUTTONUP)
-        //if(lpMsg->message == WM_INPUT)
+        if(0)
+            //if(lpMsg->message == WM_LBUTTONDOWN || lpMsg->message == WM_LBUTTONUP)
+            //if(lpMsg->message == WM_INPUT)
         {
             DEBUG_BUFFER_FMT(lpMsg,sizeof(*lpMsg),"GetMessageW hWnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time (0x%08x:%d) pt(x:0x%08x:%d:y:0x%08x:%d)",
                              lpMsg->hwnd,lpMsg->message,lpMsg->message,
@@ -1000,6 +1027,15 @@ int __MessageDetour(void)
         ERROR_INFO("Register EventHandler Error(%d)\n",ret);
         return -ret;
     }
+
+    ret = RegisterEventListInit(DetourMessageInit,NULL,MESSAGE_EMULATION_PRIOR);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Register Event Init Error(%d)\n",ret);
+        return -ret;
+    }
+
     DEBUG_BUFFER_FMT(GetMessageANext,10,"Before GetMessageANext(0x%p)",GetMessageANext);
     DEBUG_BUFFER_FMT(PeekMessageANext,10,"Before PeekMessageANext(0x%p)",PeekMessageANext);
     DEBUG_BUFFER_FMT(GetMessageWNext,10,"Before GetMessageWNext(0x%p)",GetMessageWNext);
