@@ -35,7 +35,6 @@ static int st_MouseRegistered=0;
 static HWND st_MouseHwnd=NULL;
 
 
-static CRITICAL_SECTION  st_KeyStateEmulationCS;
 static uint16_t st_KeyStateArray[KEY_STATE_SIZE]= {0};
 static int st_KeyDownStateArray[KEY_STATE_SIZE]= {0};
 static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]= {0};
@@ -155,7 +154,7 @@ int SetKeyState(UINT vsk,int keydown)
 
 
 
-    EnterCriticalSection(&st_KeyStateEmulationCS);
+    EnterCriticalSection(&st_EmulationRawinputCS);
     if(keydown)
     {
         for(i=0; i<vknum; i++)
@@ -191,7 +190,7 @@ int SetKeyState(UINT vsk,int keydown)
 			st_KeyLastStateArray[vk[i]] = 0;
         }
     }
-    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
     return 0;
 }
 
@@ -228,7 +227,7 @@ USHORT __InnerGetKeyState(UINT vk)
     }
 #endif
 
-    EnterCriticalSection(&st_KeyStateEmulationCS);
+    EnterCriticalSection(&st_EmulationRawinputCS);
     if(expanded)
     {
         uvk[0] = st_KeyStateArray[exvk[0]];
@@ -251,7 +250,7 @@ USHORT __InnerGetKeyState(UINT vk)
     {
         uret = st_KeyStateArray[vk];
     }
-    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
     return uret;
 }
 
@@ -284,12 +283,12 @@ USHORT __InnerGetAsynState(UINT vk)
         exvk[1] = VK_RSHIFT;
     }
 #endif
-    EnterCriticalSection(&st_KeyStateEmulationCS);
+    EnterCriticalSection(&st_EmulationRawinputCS);
     {
         uret = st_AsyncKeyStateArray[vk];
         st_AsyncKeyStateArray[vk] &= ASYNC_KEY_UNTOGGLE_STATE;
     }
-    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
     return uret;
 }
 
@@ -717,9 +716,9 @@ int MapVirtualKeyEmulation(int scancode)
     {
         return vk;
     }
-    EnterCriticalSection(&st_KeyStateEmulationCS);
+    EnterCriticalSection(&st_EmulationRawinputCS);
     vk = __MapVirtualKeyNoLock(scancode);
-    LeaveCriticalSection(&st_KeyStateEmulationCS);
+    LeaveCriticalSection(&st_EmulationRawinputCS);
     return vk;
 }
 
@@ -2553,7 +2552,6 @@ int __RawInputDetour(void)
     int ret;
     HANDLE hHandle=NULL;
     InitializeCriticalSection(&st_EmulationRawinputCS);
-    InitializeCriticalSection(&st_KeyStateEmulationCS);
     hHandle = __RegisterKeyboardHandle(NULL);
     if(hHandle == NULL)
     {
