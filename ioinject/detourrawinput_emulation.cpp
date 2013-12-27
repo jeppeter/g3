@@ -198,58 +198,14 @@ int SetKeyState(UINT vsk,int keydown)
 USHORT __InnerGetKeyState(UINT vk)
 {
     USHORT uret;
-    UINT uvk[2];
-    UINT exvk[2];
-    int expanded=0;
     if(vk >= KEY_STATE_SIZE)
     {
         return 0;
     }
 
-#if 0
-    if(vk == VK_CONTROL)
-    {
-        expanded = 1;
-        exvk[0] = VK_LCONTROL;
-        exvk[1] = VK_RCONTROL;
-    }
-    else if(vk == VK_MENU)
-    {
-        expanded = 1;
-        exvk[0] = VK_LMENU;
-        exvk[1] = VK_RMENU;
-    }
-    else if(vk == VK_SHIFT)
-    {
-        expanded = 1;
-        exvk[0] = VK_LSHIFT;
-        exvk[1] = VK_RSHIFT;
-    }
-#endif
 
     EnterCriticalSection(&st_EmulationRawinputCS);
-    if(expanded)
-    {
-        uvk[0] = st_KeyStateArray[exvk[0]];
-        uvk[1] = st_KeyStateArray[exvk[1]];
-
-        /*
-        	we call the last more key value ,so it will return for more
-            */
-        if(uvk[0] > uvk[1])
-        {
-            uret = uvk[0];
-        }
-        else
-        {
-            uret = uvk[1];
-        }
-
-    }
-    else
-    {
-        uret = st_KeyStateArray[vk];
-    }
+    uret = st_KeyStateArray[vk];
     LeaveCriticalSection(&st_EmulationRawinputCS);
     return uret;
 }
@@ -300,8 +256,8 @@ SHORT WINAPI GetKeyStateCallBack(
     SHORT sret;
 
     sret = __InnerGetKeyState(nVirtKey);
-	
-	DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%08x:%d)\n",nVirtKey,nVirtKey,sret,sret);
+
+    DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%08x:%d)\n",nVirtKey,nVirtKey,sret,sret);
     return sret;
 }
 
@@ -312,8 +268,8 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
     SHORT sret;
 
     sret = __InnerGetAsynState(vKey);
-	
-	DEBUG_INFO("GetAsyncKeyState 0x%08x(%d) sret(0x%08x:%d)\n",vKey,vKey,sret,sret);
+
+    DEBUG_INFO("GetAsyncKeyState 0x%08x(%d) sret(0x%08x:%d)\n",vKey,vKey,sret,sret);
     return sret;
 }
 
