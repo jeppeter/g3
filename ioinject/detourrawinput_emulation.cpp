@@ -39,6 +39,7 @@ static uint16_t st_KeyStateArray[KEY_STATE_SIZE]= {0};
 static int st_KeyDownStateArray[KEY_STATE_SIZE]= {0};
 static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]= {0};
 static int st_KeyLastStateArray[KEY_STATE_SIZE]= {0};
+static BYTE st_UcharKeyboardStateArray[KEY_STATE_SIZE]= {0};
 
 RegisterRawInputDevicesFunc_t RegisterRawInputDevicesNext=RegisterRawInputDevices;
 GetRawInputDataFunc_t GetRawInputDataNext=GetRawInputData;
@@ -122,12 +123,18 @@ static int st_CodeMapDik[256] =
 #define  KEY_TOGGLE_STATE          0x1
 #define  KEY_UNTOGGLE_STATE        0xfffe
 
+#define  UCHAR_KEY_PRESSED_STATE   0x80
+#define  UCHAR_KEY_UNPRESSED_STATE 0x7f
+#define  UCHAR_KEY_TOGGLE_STATE    0x01
+#define  UCHAR_KEY_UNTOGGLE_STATE  0xfe
+
 int SetKeyState(UINT vsk,int keydown)
 {
     UINT vk[2];
     int vknum=1;
     int i;
     vk[0] = vsk;
+    assert(vsk >= 0 && vsk < 256);
     if(vk[0] == 0)
     {
         /*if not return ,just not set*/
@@ -161,6 +168,7 @@ int SetKeyState(UINT vsk,int keydown)
         for(i=0; i<vknum; i++)
         {
             st_KeyStateArray[vk[i]] |= KEY_PRESSED_STATE;
+            st_UcharKeyboardStateArray[vk[i]] |= UCHAR_KEY_PRESSED_STATE;
             st_KeyDownStateArray[vk[i]] ++;
             st_AsyncKeyStateArray[vk[i]] |= ASYNC_KEY_PRESSED_STATE;
             st_AsyncKeyStateArray[vk[i]] |= ASYNC_KEY_TOGGLED_STATE;
@@ -176,6 +184,15 @@ int SetKeyState(UINT vsk,int keydown)
                 {
                     st_KeyStateArray[vk[i]] |= KEY_TOGGLE_STATE;
                 }
+
+                if(st_UcharKeyboardStateArray[vk[i]] & UCHAR_KEY_TOGGLE_STATE)
+                {
+                    st_UcharKeyboardStateArray[vk[i]] &= UCHAR_KEY_UNTOGGLE_STATE;
+                }
+                else
+                {
+                    st_UcharKeyboardStateArray[vk[i]] |= UCHAR_KEY_TOGGLE_STATE;
+                }
             }
 
             st_KeyLastStateArray[vk[i]] = 1;
@@ -186,6 +203,7 @@ int SetKeyState(UINT vsk,int keydown)
         for(i=0; i<vknum; i++)
         {
             st_KeyStateArray[vk[i]] &= KEY_UNPRESSED_STATE;
+            st_UcharKeyboardStateArray[vk[i]] &= UCHAR_KEY_UNPRESSED_STATE;
             st_AsyncKeyStateArray[vk[i]] &= ASYNC_KEY_UNPRESSED_STATE;
             st_AsyncKeyStateArray[vk[i]] |= ASYNC_KEY_TOGGLED_STATE;
             st_KeyLastStateArray[vk[i]] = 0;
@@ -979,6 +997,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     MSG InputMsg= {0};
     HWND hwnd;
     POINT pt;
+    UINT vk=0;
+    int down=0;
 
 
     pMouseInput = (RAWINPUT*)calloc(1,sizeof(*pMouseInput));
@@ -1034,6 +1054,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.lLastX = pt.x;
             pMouseInput->data.mouse.lLastY = pt.y;
             pMouseInput->data.mouse.ulExtraInformation = 0;
+            vk = VK_LBUTTON;
+            down = 1;
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
@@ -1043,6 +1065,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.lLastX = pt.x;
             pMouseInput->data.mouse.lLastY = pt.y;
             pMouseInput->data.mouse.ulExtraInformation = 0;
+            vk = VK_LBUTTON;
+            down = 0;
         }
         else
         {
@@ -1062,6 +1086,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.lLastX = pt.x;
             pMouseInput->data.mouse.lLastY = pt.y;
             pMouseInput->data.mouse.ulExtraInformation = 0;
+            vk = VK_RBUTTON;
+            down = 1;
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
@@ -1071,6 +1097,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.lLastX = pt.x;
             pMouseInput->data.mouse.lLastY = pt.y;
             pMouseInput->data.mouse.ulExtraInformation = 0;
+            vk = VK_RBUTTON;
+            down = 0;
         }
         else
         {
@@ -1090,6 +1118,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.lLastX = pt.x;
             pMouseInput->data.mouse.lLastY = pt.y;
             pMouseInput->data.mouse.ulExtraInformation = 0;
+            vk = VK_MBUTTON;
+            down = 1;
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
@@ -1099,6 +1129,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.lLastX = pt.x;
             pMouseInput->data.mouse.lLastY = pt.y;
             pMouseInput->data.mouse.ulExtraInformation = 0;
+            vk = VK_MBUTTON;
+            down = 0;
         }
         else
         {
@@ -1137,6 +1169,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         ret = LAST_ERROR_CODE();
         goto fail;
     }
+
+    SetKeyState(vk,down);
 
     return 0;
 fail:
@@ -1180,6 +1214,7 @@ int RawInputEmulationInit(LPVOID pParam,LPVOID pInput)
         ZeroMemory(st_KeyStateArray,sizeof(st_KeyStateArray));
         ZeroMemory(st_KeyLastStateArray,sizeof(st_KeyLastStateArray));
         ZeroMemory(st_AsyncKeyStateArray,sizeof(st_AsyncKeyStateArray));
+        ZeroMemory(st_UcharKeyboardStateArray,sizeof(st_UcharKeyboardStateArray));
         LeaveCriticalSection(&st_EmulationRawinputCS);
     }
     return ret;
@@ -2494,8 +2529,29 @@ UINT WINAPI GetRawInputDataCallBack(
 
 BOOL WINAPI GetKeyboardStateCallBack(PBYTE pByte)
 {
-	ZeroMemory(pByte,256);
-	return TRUE;
+    UINT i;
+    static BYTE st_LastKeyState[256];
+    if(pByte == NULL)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    CopyMemory(pByte,st_UcharKeyboardStateArray,sizeof(st_UcharKeyboardStateArray));
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
+    for(i=0; i<256; i++)
+    {
+        if(st_LastKeyState[i] != pByte[i])
+        {
+            DEBUG_INFO("[%d] state(0x%02x) != laststate(0x%02x)\n",
+                       i,pByte[i],st_LastKeyState[i]);
+			st_LastKeyState[i] = pByte[i];
+        }
+    }
+
+    return TRUE;
 }
 
 
@@ -2544,7 +2600,7 @@ int __RawInputDetour(void)
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"Before GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
     DEBUG_BUFFER_FMT(GetKeyStateNext,10,"Before GetKeyStateNext(0x%p)",GetKeyStateNext);
     DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"Before GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
-	DEBUG_BUFFER_FMT(GetKeyboardStateNext,10,"Before GetKeyboardStateNext(0x%p)",GetKeyboardStateNext);
+    DEBUG_BUFFER_FMT(GetKeyboardStateNext,10,"Before GetKeyboardStateNext(0x%p)",GetKeyboardStateNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&RegisterRawInputDevicesNext,RegisterRawInputDevicesCallBack);
@@ -2554,7 +2610,7 @@ int __RawInputDetour(void)
     DetourAttach((PVOID*)&GetRawInputDeviceListNext,GetRawInputDeviceListCallBack);
     DetourAttach((PVOID*)&GetKeyStateNext,GetKeyStateCallBack);
     DetourAttach((PVOID*)&GetAsyncKeyStateNext,GetAsyncKeyStateCallBack);
-	DetourAttach((PVOID*)&GetKeyboardStateNext,GetKeyboardStateCallBack);
+    DetourAttach((PVOID*)&GetKeyboardStateNext,GetKeyboardStateCallBack);
     DetourTransactionCommit();
     DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"After RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
     DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"After GetRawInputDataNext(0x%p)",GetRawInputDataNext);
@@ -2563,7 +2619,7 @@ int __RawInputDetour(void)
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"After GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
     DEBUG_BUFFER_FMT(GetKeyStateNext,10,"After GetKeyStateNext(0x%p)",GetKeyStateNext);
     DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"After GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
-	DEBUG_BUFFER_FMT(GetKeyboardStateNext,10,"After GetKeyboardStateNext(0x%p)",GetKeyboardStateNext);
+    DEBUG_BUFFER_FMT(GetKeyboardStateNext,10,"After GetKeyboardStateNext(0x%p)",GetKeyboardStateNext);
 
     DEBUG_INFO("Rawinput Emulation\n");
     st_RawinputEmulationInit = 1;
