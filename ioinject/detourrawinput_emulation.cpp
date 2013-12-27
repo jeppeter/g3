@@ -177,7 +177,7 @@ int SetKeyState(UINT vsk,int keydown)
                 }
             }
 
-			st_KeyLastStateArray[vk[i]] = 1;
+            st_KeyLastStateArray[vk[i]] = 1;
         }
     }
     else
@@ -187,7 +187,7 @@ int SetKeyState(UINT vsk,int keydown)
             st_KeyStateArray[vk[i]] &= KEY_UNPRESSED_STATE;
             st_AsyncKeyStateArray[vk[i]] &= ASYNC_KEY_UNPRESSED_STATE;
             st_AsyncKeyStateArray[vk[i]] |= ASYNC_KEY_TOGGLED_STATE;
-			st_KeyLastStateArray[vk[i]] = 0;
+            st_KeyLastStateArray[vk[i]] = 0;
         }
     }
     LeaveCriticalSection(&st_EmulationRawinputCS);
@@ -300,6 +300,7 @@ SHORT WINAPI GetKeyStateCallBack(
     SHORT sret;
 
     sret = __InnerGetKeyState(nVirtKey);
+	DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%08x:%d)\n",nVirtKey,nVirtKey,sret,sret);
     return sret;
 }
 
@@ -310,6 +311,7 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
     SHORT sret;
 
     sret = __InnerGetAsynState(vKey);
+	DEBUG_INFO("GetAsyncKeyState 0x%08x(%d) sret(0x%08x:%d)\n",vKey,vKey,sret,sret);
     return sret;
 }
 
@@ -2543,6 +2545,11 @@ UINT WINAPI GetRawInputDataCallBack(
     EnterCriticalSection(&st_EmulationRawinputCS);
     uret = __GetRawInputDataNoLock(hRawInput,uiCommand,pData,pcbSize,cbSizeHeader);
     LeaveCriticalSection(&st_EmulationRawinputCS);
+    if(uret != (UINT) -1 && pData)
+    {
+        DEBUG_BUFFER_FMT(pData,uret,"Rawinput(0x%p) uiCommand(0x%08x) Buffer(0x%p) size(%d) sizeHeader(%d)",
+                         hRawInput,uiCommand,pData,*pcbSize,cbSizeHeader);
+    }
     return uret;
 }
 
