@@ -300,6 +300,7 @@ SHORT WINAPI GetKeyStateCallBack(
     SHORT sret;
 
     sret = __InnerGetKeyState(nVirtKey);
+	
 	DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%08x:%d)\n",nVirtKey,nVirtKey,sret,sret);
     return sret;
 }
@@ -311,6 +312,7 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
     SHORT sret;
 
     sret = __InnerGetAsynState(vKey);
+	
 	DEBUG_INFO("GetAsyncKeyState 0x%08x(%d) sret(0x%08x:%d)\n",vKey,vKey,sret,sret);
     return sret;
 }

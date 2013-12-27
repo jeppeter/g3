@@ -44,6 +44,7 @@ int                     g_KeyboardAcquire   = 0;
 unsigned char                    g_KeyStateBuffer[256] = {0};
 unsigned char                    g_LastpKeyStateBuffer[256] = {0};
 int                     g_LastPressKey = 0;
+LONG              g_LastPressedTimes=0;
 LONG              g_AbsPosX = 0;
 LONG              g_AbsPosY = 0;
 LONG              g_AbsPosXHex = 0;
@@ -308,23 +309,29 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
             if(pCurBuffer[i])
             {
                 evt.event.keyboard.event = KEYBOARD_EVENT_DOWN;
-				g_LastPressKey = i;
+                g_LastPressKey = i;
+                g_LastPressedTimes = 1;
             }
             else
             {
                 evt.event.keyboard.event = KEYBOARD_EVENT_UP;
-				g_LastPressKey = 0;
+                g_LastPressKey = 0;
+                g_LastPressedTimes = 0;
             }
 
             event.push_back(evt);
         }
-        else if(pCurBuffer[i] && i == g_LastPressKey )
+        else if(pCurBuffer[i] && i == g_LastPressKey)
         {
-            evt.devtype = DEVICE_TYPE_KEYBOARD;
-            evt.devid = 0;
-            evt.event.keyboard.code = st_DIKMapCode[i];
-            evt.event.keyboard.event = KEYBOARD_EVENT_DOWN;
-            event.push_back(evt);
+            g_LastPressedTimes ++;
+            if(g_LastPressedTimes >= 34 && (g_LastPressedTimes % 2) == 0)
+            {
+                evt.devtype = DEVICE_TYPE_KEYBOARD;
+                evt.devid = 0;
+                evt.event.keyboard.code = st_DIKMapCode[i];
+                evt.event.keyboard.event = KEYBOARD_EVENT_DOWN;
+                event.push_back(evt);
+            }
         }
     }
 
@@ -909,7 +916,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
-        Sleep(17);
+        Sleep(15);
         UpdateCodeMessage();
     }
     ret = 0;
@@ -1667,11 +1674,12 @@ void StopConnect(HWND hwnd)
 {
     StopThreadControl(&st_SockThreadCtrl);
     st_DevEvent.clear();
-	ZeroMemory(g_KeyStateBuffer,sizeof(g_KeyStateBuffer));
-	ZeroMemory(g_LastpKeyStateBuffer,sizeof(g_LastpKeyStateBuffer));
-	ZeroMemory(&g_diMouseState,sizeof(g_diMouseState));
-	ZeroMemory(&g_LastdiMouseState,sizeof(g_LastdiMouseState));
-	g_LastPressKey = 0;
+    ZeroMemory(g_KeyStateBuffer,sizeof(g_KeyStateBuffer));
+    ZeroMemory(g_LastpKeyStateBuffer,sizeof(g_LastpKeyStateBuffer));
+    ZeroMemory(&g_diMouseState,sizeof(g_diMouseState));
+    ZeroMemory(&g_LastdiMouseState,sizeof(g_LastdiMouseState));
+    g_LastPressKey = 0;
+	g_LastPressedTimes = 0;
     return ;
 }
 

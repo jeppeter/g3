@@ -144,6 +144,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
     HWND hwnd;
     int keyrawinput=0,mouserawinput=0;
 
+#if 0
     if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
     {
         keyrawinput = IsRawInputKeyboardRegistered();
@@ -186,7 +187,7 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
             return 0;
         }
     }
-
+#endif
 
     if(st_MessageEmualtionInited)
     {

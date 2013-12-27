@@ -549,8 +549,6 @@ static int __SetVirtualKeyUpNoLock(int vk)
 
 int __FormatKeyDownMessageNoLock(int vk,LPMSG lpMsg)
 {
-    int ret;
-    POINT pt;
 
     lpMsg->hwnd = NULL;
     lpMsg->message = WM_KEYDOWN;
@@ -562,8 +560,6 @@ int __FormatKeyDownMessageNoLock(int vk,LPMSG lpMsg)
 
 int __FormatKeyUpMessageNoLock(int vk,LPMSG lpMsg)
 {
-    int ret;
-    POINT pt;
 
     lpMsg->hwnd = NULL;
     lpMsg->message = WM_KEYUP;
@@ -575,8 +571,6 @@ int __FormatKeyUpMessageNoLock(int vk,LPMSG lpMsg)
 
 int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
 {
-    int ret;
-    POINT pt;
     int transvk = 0;
 
     if(__IsCtrlPressed() && __IsMenuPressed())
@@ -620,8 +614,6 @@ int __FormatWmCharMessageNoLock(int vk,LPMSG lpMsg)
 
 int __FormatSysKeyDownMessageNoLock(int vk,LPMSG lpMsg)
 {
-    int ret;
-    POINT pt;
 
     lpMsg->hwnd = NULL;
     lpMsg->message = WM_SYSKEYDOWN;
@@ -633,8 +625,6 @@ int __FormatSysKeyDownMessageNoLock(int vk,LPMSG lpMsg)
 
 int __FormatSysKeyUpMessageNoLock(int vk,LPMSG lpMsg)
 {
-    int ret;
-    POINT pt;
 
     lpMsg->hwnd = NULL;
     lpMsg->message = WM_SYSKEYUP;
@@ -648,7 +638,6 @@ int __FormatWmSysCharMessageNoLock(int vk,LPMSG lpMsg)
 {
     int ret ;
     int transvk;
-    POINT pt;
 
     if(vk >= 256)
     {
