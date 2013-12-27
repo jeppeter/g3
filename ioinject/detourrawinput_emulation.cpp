@@ -47,6 +47,7 @@ GetRawInputDeviceInfoFunc_t GetRawInputDeviceInfoWNext=GetRawInputDeviceInfoW;
 GetRawInputDeviceListFunc_t GetRawInputDeviceListNext=GetRawInputDeviceList;
 GetKeyStateFunc_t GetKeyStateNext=GetKeyState;
 GetAsyncKeyStateFunc_t GetAsyncKeyStateNext=GetAsyncKeyState;
+GetKeyboardStateFunc_t GetKeyboardStateNext=GetKeyboardState;
 
 #define  DETOURRAWINPUT_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
 #define  DETOURRAWINPUT_DEBUG_INFO      DEBUG_INFO
@@ -219,26 +220,6 @@ USHORT __InnerGetAsynState(UINT vk)
     {
         return 0;
     }
-#if 0
-    if(vk == VK_CONTROL)
-    {
-        expanded = 1;
-        exvk[0] = VK_LCONTROL;
-        exvk[1] = VK_RCONTROL;
-    }
-    else if(vk == VK_MENU)
-    {
-        expanded = 1;
-        exvk[0] = VK_LMENU;
-        exvk[1] = VK_RMENU;
-    }
-    else if(vk == VK_SHIFT)
-    {
-        expanded = 1;
-        exvk[0] = VK_LSHIFT;
-        exvk[1] = VK_RSHIFT;
-    }
-#endif
     EnterCriticalSection(&st_EmulationRawinputCS);
     {
         uret = st_AsyncKeyStateArray[vk];
@@ -2511,6 +2492,12 @@ UINT WINAPI GetRawInputDataCallBack(
     return uret;
 }
 
+BOOL WINAPI GetKeyboardStateCallBack(PBYTE pByte)
+{
+	ZeroMemory(pByte,256);
+	return TRUE;
+}
+
 
 int __RawInputDetour(void)
 {
@@ -2557,6 +2544,7 @@ int __RawInputDetour(void)
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"Before GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
     DEBUG_BUFFER_FMT(GetKeyStateNext,10,"Before GetKeyStateNext(0x%p)",GetKeyStateNext);
     DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"Before GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
+	DEBUG_BUFFER_FMT(GetKeyboardStateNext,10,"Before GetKeyboardStateNext(0x%p)",GetKeyboardStateNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&RegisterRawInputDevicesNext,RegisterRawInputDevicesCallBack);
@@ -2566,6 +2554,7 @@ int __RawInputDetour(void)
     DetourAttach((PVOID*)&GetRawInputDeviceListNext,GetRawInputDeviceListCallBack);
     DetourAttach((PVOID*)&GetKeyStateNext,GetKeyStateCallBack);
     DetourAttach((PVOID*)&GetAsyncKeyStateNext,GetAsyncKeyStateCallBack);
+	DetourAttach((PVOID*)&GetKeyboardStateNext,GetKeyboardStateCallBack);
     DetourTransactionCommit();
     DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"After RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
     DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"After GetRawInputDataNext(0x%p)",GetRawInputDataNext);
@@ -2574,6 +2563,7 @@ int __RawInputDetour(void)
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"After GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
     DEBUG_BUFFER_FMT(GetKeyStateNext,10,"After GetKeyStateNext(0x%p)",GetKeyStateNext);
     DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"After GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
+	DEBUG_BUFFER_FMT(GetKeyboardStateNext,10,"After GetKeyboardStateNext(0x%p)",GetKeyboardStateNext);
 
     DEBUG_INFO("Rawinput Emulation\n");
     st_RawinputEmulationInit = 1;
