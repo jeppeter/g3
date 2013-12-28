@@ -194,12 +194,6 @@ BOOL WINAPI PeekMessageWCallBack(
                              lpMsg->pt.y,lpMsg->pt.y);
         }
     }
-    else
-    {
-        DEBUG_INFO("PeekMessageW Return FALSE hWnd(0x%08x) wMinFilter (0x%x:%d) wMaxFilter (0x%x:%d) PeekMode (0x%08x)\n",
-			hWnd,wMsgFilterMin,wMsgFilterMin,
-			wMsgFilterMax,wMsgFilterMax,wRemoveMsg);
-    }
     return bret;
 }
 

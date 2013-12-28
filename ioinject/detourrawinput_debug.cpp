@@ -7,6 +7,7 @@ GetRawInputDeviceInfoFunc_t GetRawInputDeviceInfoWNext=GetRawInputDeviceInfoW;
 GetRawInputDeviceListFunc_t GetRawInputDeviceListNext=GetRawInputDeviceList;
 GetKeyStateFunc_t GetKeyStateNext=GetKeyState;
 GetAsyncKeyStateFunc_t GetAsyncKeyStateNext=GetAsyncKeyState;
+GetKeyboardStateFunc_t GetKeyboardStateNext=GetKeyboardState;
 
 #define  DETOURRAWINPUT_DEBUG_BUFFER_FMT  DEBUG_BUFFER_FMT
 #define  DETOURRAWINPUT_DEBUG_INFO      DEBUG_INFO
@@ -167,8 +168,8 @@ UINT WINAPI GetRawInputDeviceInfoWCallBack(
                 else if(pInfo->dwType == RIM_TYPEHID)
                 {
                     DETOURRAWINPUT_DEBUG_INFO("dwVendorId 0x%08x dwProductId 0x%08x dwVersionNumber 0x%08x usUsagePage %d usUsage %d\n",pInfo->hid.dwVendorId,
-						pInfo->hid.dwProductId,pInfo->hid.dwVersionNumber,
-						pInfo->hid.usUsagePage,pInfo->hid.usUsage);
+                                              pInfo->hid.dwProductId,pInfo->hid.dwVersionNumber,
+                                              pInfo->hid.usUsagePage,pInfo->hid.usUsage);
                 }
                 else
                 {
@@ -246,7 +247,7 @@ SHORT WINAPI GetKeyStateCallBack(
     SHORT sret;
 
     sret = GetKeyStateNext(nVirtKey);
-    DETOURRAWINPUT_DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%4x:%d)\n",
+    DETOURRAWINPUT_DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%08x:%d)\n",
                               nVirtKey,nVirtKey,sret,sret);
     return sret;
 }
@@ -258,9 +259,34 @@ SHORT WINAPI GetAsyncKeyStateCallBack(
     SHORT sret;
 
     sret = GetAsyncKeyStateNext(vKey);
-    DETOURRAWINPUT_DEBUG_INFO("GetAsyncState 0x%08x(%d) sret(0x%4x:%d)\n",
+    DETOURRAWINPUT_DEBUG_INFO("GetAsyncState 0x%08x(%d) sret(0x%08x:%d)\n",
                               vKey,vKey,sret,sret);
     return sret;
+}
+
+
+BOOL WINAPI GetKeyboardStateCallBack(PBYTE pByte)
+{
+    UINT i;
+    static BYTE st_LastKeyState[256];
+    BOOL bret;
+
+
+    bret = GetKeyboardStateNext(pByte);
+    if(bret)
+    {
+        for(i=0; i<256; i++)
+        {
+            if(st_LastKeyState[i] != pByte[i])
+            {
+                DEBUG_INFO("[%d] state(0x%02x) != laststate(0x%02x)\n",
+                           i,pByte[i],st_LastKeyState[i]);
+                st_LastKeyState[i] = pByte[i];
+            }
+        }
+    }
+
+    return bret;
 }
 
 
@@ -281,6 +307,7 @@ int __RawInputDetour(void)
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"Before GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
     DEBUG_BUFFER_FMT(GetKeyStateNext,10,"Before GetKeyStateNext(0x%p)",GetKeyStateNext);
     DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"Before GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
+    DEBUG_BUFFER_FMT(GetKeyboardStateNext,10,"Before GetKeyboardStateNext(0x%p)",GetKeyboardStateNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&RegisterRawInputDevicesNext,RegisterRawInputDevicesCallBack);
@@ -290,6 +317,7 @@ int __RawInputDetour(void)
     DetourAttach((PVOID*)&GetRawInputDeviceListNext,GetRawInputDeviceListCallBack);
     DetourAttach((PVOID*)&GetKeyStateNext,GetKeyStateCallBack);
     DetourAttach((PVOID*)&GetAsyncKeyStateNext,GetAsyncKeyStateCallBack);
+    DetourAttach((PVOID*)&GetKeyboardStateNext,GetKeyboardStateCallBack);
     DetourTransactionCommit();
     DEBUG_BUFFER_FMT(RegisterRawInputDevicesNext,10,"After RegisterRawInputDeviceNext(0x%p)",RegisterRawInputDevicesNext);
     DEBUG_BUFFER_FMT(GetRawInputDataNext,10,"After GetRawInputDataNext(0x%p)",GetRawInputDataNext);
@@ -298,6 +326,7 @@ int __RawInputDetour(void)
     DEBUG_BUFFER_FMT(GetRawInputDeviceListNext,10,"After GetRawInputDeviceListNext(0x%p)",GetRawInputDeviceListNext);
     DEBUG_BUFFER_FMT(GetKeyStateNext,10,"After GetKeyStateNext(0x%p)",GetKeyStateNext);
     DEBUG_BUFFER_FMT(GetAsyncKeyStateNext,10,"After GetAsyncKeyStateNext(0x%p)",GetAsyncKeyStateNext);
+    DEBUG_BUFFER_FMT(GetKeyboardStateNext,10,"After GetKeyboardStateNext(0x%p)",GetKeyboardStateNext);
     return 0;
 }
 
