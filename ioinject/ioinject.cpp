@@ -29,7 +29,7 @@ BOOL InitIoInject(HMODULE hModule)
     BOOL bret;
     int ret;
 
-    DEBUG_INFO("st_IoInjectInited = %d\n",st_IoInjectInited);
+    DEBUG_INFO("%s-%s: st_IoInjectInited = %d\n",__DATE__,__TIME__,st_IoInjectInited);
 
     ret = IoInjectThreadInit(hModule);
     if(ret < 0)

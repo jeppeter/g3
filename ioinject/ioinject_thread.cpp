@@ -23,6 +23,8 @@ CFuncList st_EventInitFuncList;
 static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
 static HANDLE st_hIoInjectControlSema=NULL;
 
+static int st_UnPressedLastKey=0;
+
 
 int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 {
@@ -36,6 +38,23 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     pEventList = &(pStatus->m_pEventListArray[idx]);
     //DEBUG_INFO("[%d]Base 0x%x offset 0x%x\n",idx,pEventList->m_BaseAddr,pEventList->m_Offset);
     pDevEvent = (LPDEVICEEVENT)((ptr_t)pEventList->m_BaseAddr + (ptr_t)pEventList->m_Offset);
+
+    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD && pDevEvent->devid == 0)
+    {
+        if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
+        {
+            st_UnPressedLastKey = 0;
+        }
+        else if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_UP)
+        {
+            if(st_UnPressedLastKey == pDevEvent->event.keyboard.code)
+            {
+                DEBUG_INFO("<0x%p>UnPressed key double(0x%08x:%d)\n",pDevEvent,st_UnPressedLastKey,st_UnPressedLastKey);
+            }
+			st_UnPressedLastKey = pDevEvent->event.keyboard.code;
+        }
+    }
+
     totalret = st_EventHandlerFuncList.CallList(pDevEvent);
     bret = SetEvent(pEventList->m_hFillEvt);
     if(!bret)
@@ -205,7 +224,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
     pStatus = *ppStatus;
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
-	
+
 
     /*now to delete all the free event*/
     __ClearEventList(pStatus);
@@ -213,7 +232,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 
     /*now to unmap memory*/
     __UnMapMemBase(pStatus);
-	st_EventInitFuncList.CallList(NULL);
+    st_EventInitFuncList.CallList(NULL);
 
     free(pStatus);
     *ppStatus = NULL;
@@ -225,6 +244,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 int __DetourIoInjectThreadStop(PIO_CAP_CONTROL_t pControl)
 {
     __FreeIoInjectThreadStatus(&st_pDetourStatus);
+    st_UnPressedLastKey = 0;
     SetLastError(0);
     return 0;
 }
@@ -294,7 +314,7 @@ int __AllocateFreeEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pFreeEvtBaseNa
     uint8_t fullname[IO_NAME_MAX_SIZE];
     int ret;
     uint32_t i;
-	assert(pStatus->m_Bufnumm > 0);
+    assert(pStatus->m_Bufnumm > 0);
     /*now we should allocate size*/
     pStatus->m_pFreeEvts = (HANDLE*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pFreeEvts[0]));
     if(pStatus->m_pFreeEvts == NULL)
@@ -330,7 +350,7 @@ int __AllocateEventList(PDETOUR_THREAD_STATUS_t pStatus)
 {
     int ret;
     uint32_t i;
-	assert(pStatus->m_Bufnumm);
+    assert(pStatus->m_Bufnumm);
     /*now first to allocate event list array*/
     pStatus->m_pEventListArray = (EVENT_LIST_t*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pEventListArray[0]));
     if(pStatus->m_pEventListArray == NULL)
@@ -365,7 +385,7 @@ int __AllocateInputEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pInputEvtBase
     uint8_t fullname[IO_NAME_MAX_SIZE];
     int ret;
     uint32_t i;
-	assert(pStatus->m_Bufnumm > 0);
+    assert(pStatus->m_Bufnumm > 0);
     /*now we should allocate size*/
     pStatus->m_pInputEvts = (HANDLE*)calloc(pStatus->m_Bufnumm,sizeof(pStatus->m_pInputEvts[0]));
     if(pStatus->m_pInputEvts == NULL)
@@ -424,8 +444,8 @@ int __DetourIoInjectThreadStart(PIO_CAP_CONTROL_t pControl)
         return -ret;
     }
 
-	/*to call when use to init*/
-	st_EventInitFuncList.CallList(NULL);
+    /*to call when use to init*/
+    st_EventInitFuncList.CallList(NULL);
 
     pStatus = __AllocateDetourStatus();
     if(pStatus == NULL)
@@ -631,12 +651,12 @@ fail:
 
 int RegisterEventListInit(FuncCall_t pFunc,LPVOID pParam,int prior)
 {
-	return st_EventInitFuncList.AddFuncList(pFunc,pParam,prior);
+    return st_EventInitFuncList.AddFuncList(pFunc,pParam,prior);
 }
 
 int UnRegisterEventListInit(FuncCall_t pFunc)
 {
-	return st_EventInitFuncList.RemoveFuncList(pFunc);
+    return st_EventInitFuncList.RemoveFuncList(pFunc);
 }
 
 int RegisterEventListHandler(FuncCall_t pFunc,LPVOID pParam,int prior)
