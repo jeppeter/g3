@@ -40,6 +40,7 @@ static int st_KeyDownStateArray[KEY_STATE_SIZE]= {0};
 static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]= {0};
 static int st_KeyLastStateArray[KEY_STATE_SIZE]= {0};
 static BYTE st_UcharKeyboardStateArray[KEY_STATE_SIZE]= {0};
+static BYTE st_UcharLastKeyDown=0;
 
 RegisterRawInputDevicesFunc_t RegisterRawInputDevicesNext=RegisterRawInputDevices;
 GetRawInputDataFunc_t GetRawInputDataNext=GetRawInputData;
@@ -197,6 +198,11 @@ int SetKeyState(UINT vsk,int keydown)
 
             st_KeyLastStateArray[vk[i]] = 1;
         }
+
+        if(vsk >= VK_BACK)
+        {
+            st_UcharLastKeyDown = vsk;
+        }
     }
     else
     {
@@ -208,6 +214,7 @@ int SetKeyState(UINT vsk,int keydown)
             st_AsyncKeyStateArray[vk[i]] |= ASYNC_KEY_TOGGLED_STATE;
             st_KeyLastStateArray[vk[i]] = 0;
         }
+        st_UcharLastKeyDown = 0;
     }
     LeaveCriticalSection(&st_EmulationRawinputCS);
     return 0;
@@ -710,10 +717,13 @@ int IsExtendedKey(int vk,int down)
     }
     else
     {
-    	/*if it is the up state ,so we should test whether it is the extended key ,if so ,we just*/
+        /*if it is the up state ,so we should test whether it is the extended key ,if so ,we just*/
         if(st_VkExtMap[vk])
         {
-            ret = 1;
+            if(st_UcharLastKeyDown == vk)
+            {
+                ret = 1;
+            }
         }
     }
 
@@ -1270,6 +1280,7 @@ int RawInputEmulationInit(LPVOID pParam,LPVOID pInput)
         ZeroMemory(st_KeyLastStateArray,sizeof(st_KeyLastStateArray));
         ZeroMemory(st_AsyncKeyStateArray,sizeof(st_AsyncKeyStateArray));
         ZeroMemory(st_UcharKeyboardStateArray,sizeof(st_UcharKeyboardStateArray));
+        st_UcharLastKeyDown = 0;
         LeaveCriticalSection(&st_EmulationRawinputCS);
     }
     return ret;
