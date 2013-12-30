@@ -696,7 +696,6 @@ int MapVirtualKeyEmulation(int scancode)
 int IsExtendedKey(int vk,int down)
 {
     int ret =NO_EXTENDED_KEY;
-    int i;
     EnterCriticalSection(&st_EmulationRawinputCS);
     if(down)
     {
@@ -707,14 +706,10 @@ int IsExtendedKey(int vk,int down)
         }
         else if(st_VkExtMap[vk] == 0 && (!(st_KeyStateArray[vk] & KEY_PRESSED_STATE)))
         {
-            /*not the extended key ,and it is the first time to press down ,so test if the extended key pressed ,so we return 1*/
-            for(i=0; i<256; i++)
+            /*not the extended key ,and it is the first time to press down ,so test if the last key is extended key ,so we do this*/
+            if(st_VkExtMap[st_UcharLastKeyDown])
             {
-                if(st_VkExtMap[i] && (st_KeyStateArray[i] & KEY_PRESSED_STATE))
-                {
-                    ret = EXTENDED_KEY_UP;
-                    break;
-                }
+                ret = EXTENDED_KEY_UP;
             }
 
         }
@@ -1004,7 +999,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         }
 
         hasext = IsExtendedKey(vk,down);
-        if(hasext == EXTENDED_KEY_UP )
+        if(hasext == EXTENDED_KEY_UP)
         {
             ret = __RawInputInsertKeyStruct(0x2a,0xff,0x2,WM_KEYUP,down);
             if(ret < 0)
