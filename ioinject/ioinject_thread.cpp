@@ -23,7 +23,7 @@ CFuncList st_EventInitFuncList;
 static DETOUR_THREAD_STATUS_t *st_pDetourStatus=NULL;
 static HANDLE st_hIoInjectControlSema=NULL;
 
-static int st_UnPressedLastKey=0;
+static int st_UnPressedLastKey=-1;
 
 
 int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
@@ -41,17 +41,25 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD && pDevEvent->devid == 0)
     {
+    	DEBUG_INFO("Keyboard Input Events[%d]\n",idx);
         if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
         {
-            st_UnPressedLastKey = 0;
+            st_UnPressedLastKey = -1;
         }
         else if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_UP)
         {
             if(st_UnPressedLastKey == pDevEvent->event.keyboard.code)
             {
-                DEBUG_INFO("<0x%p>UnPressed key double(0x%08x:%d)\n",pDevEvent,st_UnPressedLastKey,st_UnPressedLastKey);
+                DEBUG_INFO("[%d]<0x%p>UnPressed key double(0x%08x:%d)\n",idx,pDevEvent,st_UnPressedLastKey,st_UnPressedLastKey);
+				bret = SetEvent(pEventList->m_hFillEvt);
+				if(!bret)
+				{
+					ret = LAST_ERROR_CODE();
+					ERROR_INFO("<0x%p>SetEvent(0x%08x) Error(%d)\n",pEventList,pEventList->m_hFillEvt,ret);
+				}
+				return 0;
             }
-			st_UnPressedLastKey = pDevEvent->event.keyboard.code;
+            st_UnPressedLastKey = pDevEvent->event.keyboard.code;
         }
     }
 
@@ -244,7 +252,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 int __DetourIoInjectThreadStop(PIO_CAP_CONTROL_t pControl)
 {
     __FreeIoInjectThreadStatus(&st_pDetourStatus);
-    st_UnPressedLastKey = 0;
+    st_UnPressedLastKey = -1;
     SetLastError(0);
     return 0;
 }
@@ -333,6 +341,7 @@ int __AllocateFreeEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pFreeEvtBaseNa
             ERROR_INFO("GetFreeEvent (%s) Error(%d)\n",fullname,ret);
             goto fail;
         }
+        DEBUG_INFO("[%d] GetFreeEvts (%s)\n",i,fullname);
     }
     strncpy_s((char*)pStatus->m_FreeEvtBaseName,sizeof(pStatus->m_FreeEvtBaseName),(const char*)pFreeEvtBaseName,_TRUNCATE);
 
@@ -404,6 +413,7 @@ int __AllocateInputEvents(PDETOUR_THREAD_STATUS_t pStatus,uint8_t* pInputEvtBase
             ERROR_INFO("GetInputEvent (%s) Error(%d)\n",fullname,ret);
             goto fail;
         }
+        DEBUG_INFO("[%d] GetInput Evts(%s)\n",i,fullname);
     }
 
     strncpy_s((char*)pStatus->m_InputEvtBaseName,sizeof(pStatus->m_InputEvtBaseName),(const char*)pInputEvtBaseName,_TRUNCATE);

@@ -46,6 +46,7 @@ private:
 	int __CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout);
 	PIO_CAP_EVENTS_t __GetFreeEvent();
 	BOOL __InsertInputEvent(PIO_CAP_EVENTS_t pIoCapEvt);
+	BOOL __InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt);
 
 private:
 	HANDLE m_hProc;
@@ -68,6 +69,7 @@ private:
 	std::vector<PIO_CAP_EVENTS_t> m_InputEvts;
 	std::vector<PIO_CAP_EVENTS_t> m_FreeEvts;
 	int m_InsertEvts;
+	int m_UnPressedKey;
 };
 
 
