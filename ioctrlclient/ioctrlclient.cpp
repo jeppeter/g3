@@ -44,6 +44,7 @@ int                     g_KeyboardAcquire   = 0;
 unsigned char                    g_KeyStateBuffer[256] = {0};
 unsigned char                    g_LastpKeyStateBuffer[256] = {0};
 int                     g_LastPressKey = 0;
+int                     g_LastUnPressKey = 0;
 LONG              g_LastPressedTimes=0;
 LONG              g_AbsPosX = 0;
 LONG              g_AbsPosY = 0;
@@ -294,6 +295,7 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
 {
     DEVICEEVENT evt;
     unsigned int i;
+	TCHAR errstr[256];
     for(i=0; i<256; i++)
     {
         if(i == g_EscapeKey)
@@ -311,13 +313,21 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
                 evt.event.keyboard.event = KEYBOARD_EVENT_DOWN;
                 g_LastPressKey = i;
                 g_LastPressedTimes = 1;
+                g_LastUnPressKey = 0;
             }
             else
             {
+                if(g_LastUnPressKey == i)
+                {
+					SprintfString(errstr,256,TEXT("Double up Key (0x%02x:%d)"),g_LastUnPressKey,g_LastUnPressKey);
+					::MessageBox(g_hWnd,errstr,TEXT("Notice"),MB_OK);
+                }
                 evt.event.keyboard.event = KEYBOARD_EVENT_UP;
                 g_LastPressKey = 0;
                 g_LastPressedTimes = 0;
+                g_LastUnPressKey = i;
             }
+            pLastBuffer[i] = pCurBuffer[i];
 
             event.push_back(evt);
         }
@@ -335,7 +345,6 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
         }
     }
 
-    CopyMemory(pLastBuffer,pCurBuffer,256);
 
     return TRUE;
 }
@@ -1679,7 +1688,7 @@ void StopConnect(HWND hwnd)
     ZeroMemory(&g_diMouseState,sizeof(g_diMouseState));
     ZeroMemory(&g_LastdiMouseState,sizeof(g_LastdiMouseState));
     g_LastPressKey = 0;
-	g_LastPressedTimes = 0;
+    g_LastPressedTimes = 0;
     return ;
 }
 

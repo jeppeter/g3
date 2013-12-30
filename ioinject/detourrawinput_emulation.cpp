@@ -14,7 +14,7 @@
 
 #define  KEY_STATE_SIZE   256
 
-#define  RAW_INPUT_MAX_INPUT_SIZE  20
+#define  RAW_INPUT_MAX_INPUT_SIZE  100
 
 static int st_RawinputEmulationInit=0;
 
@@ -738,12 +738,12 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput,HWND* pHwnd)
     RAWKEYBOARD *pKeyboard=NULL;
 
     pKeyboard = &(pInput->data.keyboard);
-    //ERROR_INFO("Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
-    //           pKeyboard->MakeCode,pKeyboard->MakeCode,
-    //           pKeyboard->Flags,
-    //           pKeyboard->VKey,
-    //           pKeyboard->Message,pKeyboard->Message,
-    //           pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
+    ERROR_INFO("Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
+               pKeyboard->MakeCode,pKeyboard->MakeCode,
+               pKeyboard->Flags,
+               pKeyboard->VKey,
+               pKeyboard->Message,pKeyboard->Message,
+               pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
 
     EnterCriticalSection(&st_EmulationRawinputCS);
     if(st_KeyRawInputHandle && st_KeyRegistered > 1)

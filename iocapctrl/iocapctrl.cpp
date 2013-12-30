@@ -499,7 +499,7 @@ int CIOController::__AllocateMapMem()
         return -ret;
     }
 
-	DEBUG_INFO("Memsahre(%s)0x%p bufnum %d bufsectsize %d\n",this->m_MemShareName,this->m_pMemShareBase,this->m_BufferNum,this->m_BufferSectSize);
+    DEBUG_INFO("Memsahre(%s)0x%p bufnum %d bufsectsize %d\n",this->m_MemShareName,this->m_pMemShareBase,this->m_BufferNum,this->m_BufferSectSize);
 
     SetLastError(0);
     return 0;
@@ -868,6 +868,7 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
 {
     int ret;
     PIO_CAP_EVENTS_t pIoCapEvt=NULL;
+    unsigned long stime,etime,ctime;
 
     if(this->m_Started == 0)
     {
@@ -877,14 +878,27 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
         return FALSE;
     }
 
-    /*now check for the device*/
-    pIoCapEvt = this->__GetFreeEvent();
-    if(pIoCapEvt == NULL)
+	stime = GetTickCount();
+	etime = stime + 100;
+	ctime = stime;
+
+    while(1)
     {
-        ret = ERROR_NO_DATA;
-        //ERROR_INFO("Could not Get FreeEvent\n");
-        SetLastError(ret);
-        return FALSE;
+        /*now check for the device*/
+        pIoCapEvt = this->__GetFreeEvent();
+        if(pIoCapEvt)
+        {
+            break;
+        }
+		ctime = GetTickCount();
+        if(etime <= ctime || (etime >= 0xffffff00 && ctime <= 0xff))
+        {
+            ret = ERROR_NO_DATA;
+            ERROR_INFO("Could not Get FreeEvent\n");
+            SetLastError(ret);
+            return FALSE;
+        }
+		SchedOut();	
     }
     CopyMemory(pIoCapEvt->pEvent,pDevEvt,sizeof(*pDevEvt));
     //DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);

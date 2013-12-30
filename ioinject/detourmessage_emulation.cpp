@@ -18,7 +18,7 @@ static PeekMessageFunc_t PeekMessageWNext=PeekMessageW;
 static CRITICAL_SECTION st_MessageEmulationCS;
 static std::vector<LPMSG> st_MessageEmulationQueue;
 static int st_MessageQuit=0;
-static UINT st_MaxMessageEmulationQueue=20;
+static UINT st_MaxMessageEmulationQueue=100;
 
 
 
