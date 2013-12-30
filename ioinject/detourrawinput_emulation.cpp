@@ -689,9 +689,13 @@ int MapVirtualKeyEmulation(int scancode)
     return vk;
 }
 
+#define   NO_EXTENDED_KEY     0
+#define   EXTENDED_KEY_DOWN   1
+#define   EXTENDED_KEY_UP     2
+
 int IsExtendedKey(int vk,int down)
 {
-    int ret =0;
+    int ret =NO_EXTENDED_KEY;
     int i;
     EnterCriticalSection(&st_EmulationRawinputCS);
     if(down)
@@ -699,7 +703,7 @@ int IsExtendedKey(int vk,int down)
         /*now to test whether it is extended key ,if so ,and it is the first time to press down ,so send the key*/
         if(st_VkExtMap[vk] && (!(st_KeyStateArray[vk] & KEY_PRESSED_STATE)))
         {
-            ret = 1;
+            ret = EXTENDED_KEY_DOWN;
         }
         else if(st_VkExtMap[vk] == 0 && (!(st_KeyStateArray[vk] & KEY_PRESSED_STATE)))
         {
@@ -708,7 +712,7 @@ int IsExtendedKey(int vk,int down)
             {
                 if(st_VkExtMap[i] && (st_KeyStateArray[i] & KEY_PRESSED_STATE))
                 {
-                    ret = 1;
+                    ret = EXTENDED_KEY_UP;
                     break;
                 }
             }
@@ -722,7 +726,7 @@ int IsExtendedKey(int vk,int down)
         {
             if(st_UcharLastKeyDown == vk)
             {
-                ret = 1;
+                ret = EXTENDED_KEY_UP;
             }
         }
     }
@@ -935,14 +939,24 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     if(down)
     {
         hasext = IsExtendedKey(vk,down);
-        if(hasext)
+        if(hasext == EXTENDED_KEY_DOWN)
         {
             /*now first to send the extend code*/
             ret = __RawInputInsertKeyStruct(0x2a,0xff,0x2,WM_KEYDOWN,down);
             if(ret < 0)
             {
                 ret = LAST_ERROR_CODE();
-                ERROR_INFO("<0x%p> Insert Extend Error(%d)\n",pDevEvent,ret);
+                ERROR_INFO("<0x%p> Insert Extended down Error(%d)\n",pDevEvent,ret);
+                goto fail;
+            }
+        }
+        else if(hasext == EXTENDED_KEY_UP)
+        {
+            ret = __RawInputInsertKeyStruct(0x2a,0xff,0x2,WM_KEYUP,0);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("<0x%p> Insert Extended up Error(%d)\n",pDevEvent,ret);
                 goto fail;
             }
         }
@@ -990,7 +1004,7 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         }
 
         hasext = IsExtendedKey(vk,down);
-        if(hasext)
+        if(hasext == EXTENDED_KEY_UP )
         {
             ret = __RawInputInsertKeyStruct(0x2a,0xff,0x2,WM_KEYUP,down);
             if(ret < 0)
