@@ -737,6 +737,14 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput,HWND* pHwnd)
     RAWINPUT *pRemove=NULL;
     RAWKEYBOARD *pKeyboard=NULL;
 
+    pKeyboard = &(pInput->data.keyboard);
+    ERROR_INFO("Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
+               pKeyboard->MakeCode,pKeyboard->MakeCode,
+               pKeyboard->Flags,
+               pKeyboard->VKey,
+               pKeyboard->Message,pKeyboard->Message,
+               pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
+
     EnterCriticalSection(&st_EmulationRawinputCS);
     if(st_KeyRawInputHandle && st_KeyRegistered > 1)
     {
@@ -917,6 +925,8 @@ int __RawInputInsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
         ERROR_INFO("<0x%p> event (%d) not valid\n",pDevEvent,pDevEvent->event.keyboard.event);
         goto fail;
     }
+
+    DEBUG_INFO("EventCode(0x%02x) scancode 0x%02x %s\n",pDevEvent->event.keyboard.code,scank,pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? "down" : "up");
 
     down = pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN ? 1 : 0;
     if(scank == 0x4c)
@@ -2576,6 +2586,8 @@ UINT WINAPI GetRawInputDataCallBack(
 {
     UINT uret;
     int ret;
+    RAWINPUT *pRawinput=NULL;
+
 
     if(pcbSize == NULL || hRawInput == NULL)
     {
@@ -2596,8 +2608,19 @@ UINT WINAPI GetRawInputDataCallBack(
     LeaveCriticalSection(&st_EmulationRawinputCS);
     if(uret != (UINT) -1 && pData)
     {
-        DEBUG_BUFFER_FMT(pData,uret,"Rawinput(0x%p) uiCommand(0x%08x) Buffer(0x%p) size(%d) sizeHeader(%d)",
-                         hRawInput,uiCommand,pData,*pcbSize,cbSizeHeader);
+        pRawinput = (RAWINPUT*)pData;
+        if(uiCommand == RID_INPUT && pRawinput->header.dwType == RIM_TYPEKEYBOARD)
+        {
+            RAWKEYBOARD *pKeyboard=NULL;
+
+            pKeyboard = &(pRawinput->data.keyboard);
+            ERROR_INFO("GetRawinputData Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
+                       pKeyboard->MakeCode,pKeyboard->MakeCode,
+                       pKeyboard->Flags,
+                       pKeyboard->VKey,
+                       pKeyboard->Message,pKeyboard->Message,
+                       pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
+        }
     }
     return uret;
 }
