@@ -64,16 +64,23 @@ UINT WINAPI GetRawInputDataCallBack(
     {
         if(pData)
         {
+			RAWKEYBOARD *pKeyboard=NULL;
             pRaw = (RAWINPUT*)pData;
             if(pRaw->header.dwType == RIM_TYPEKEYBOARD)
             {
-                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"KeyBoard rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
+				pKeyboard = &(pRaw->data.keyboard);
+				DEBUG_INFO("Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
+						   pKeyboard->MakeCode,pKeyboard->MakeCode,
+						   pKeyboard->Flags,
+						   pKeyboard->VKey,
+						   pKeyboard->Message,pKeyboard->Message,
+						   pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
+            
             }
             else if(pRaw->header.dwType == RIM_TYPEMOUSE)
             {
-                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"Mouse rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
+                //DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"Mouse rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
+                //                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
             }
             else
             {

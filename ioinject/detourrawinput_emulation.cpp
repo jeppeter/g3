@@ -696,6 +696,7 @@ int MapVirtualKeyEmulation(int scancode)
 int IsExtendedKey(int vk,int down)
 {
     int ret =NO_EXTENDED_KEY;
+	return ret;
     EnterCriticalSection(&st_EmulationRawinputCS);
     if(down)
     {
