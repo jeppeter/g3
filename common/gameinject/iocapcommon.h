@@ -224,6 +224,12 @@ typedef struct
 	} event;
 } DEVICEEVENT, *LPDEVICEEVENT;
 
+typedef struct
+{
+	unsigned long long seqid;
+	DEVICEEVENT devevent;
+} SEQ_DEVICEEVENT,*LPSEQ_DEVICEEVENT;
+
 #define  IO_INJECT_STOP            0
 #define  IO_INJECT_START           1
 #define  IO_INJECT_ADD_DEVICE      2

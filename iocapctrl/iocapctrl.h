@@ -9,7 +9,7 @@ typedef struct
 {
 	HANDLE hEvent;
 	DWORD Idx;
-	LPDEVICEEVENT pEvent;
+	LPSEQ_DEVICEEVENT pEvent;
 } IO_CAP_EVENTS_t,*PIO_CAP_EVENTS_t;
 
 class CIOController
@@ -70,6 +70,7 @@ private:
 	std::vector<PIO_CAP_EVENTS_t> m_FreeEvts;
 	int m_InsertEvts;
 	int m_UnPressedKey;
+	unsigned long long m_SeqId;
 };
 
 

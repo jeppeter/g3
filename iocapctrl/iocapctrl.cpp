@@ -42,6 +42,7 @@ CIOController::CIOController()
     assert(m_FreeEvts.size() == 0);
     m_InsertEvts = 0;
     m_UnPressedKey = -1;
+	m_SeqId = 0;
 }
 
 
@@ -493,7 +494,7 @@ int CIOController::__AllocateCapEvents()
     {
         this->m_pIoCapEvents[i].hEvent = this->m_pInputTotalEvts[i];
         this->m_pIoCapEvents[i].Idx = i;
-        this->m_pIoCapEvents[i].pEvent = (LPDEVICEEVENT)(this->m_pMemShareBase + this->m_BufferSectSize * i);
+        this->m_pIoCapEvents[i].pEvent = (LPSEQ_DEVICEEVENT)(this->m_pMemShareBase + this->m_BufferSectSize * i);
         this->m_FreeEvts.push_back(&(this->m_pIoCapEvents[i]));
     }
 
@@ -612,6 +613,7 @@ VOID CIOController::Stop()
     this->m_hProc = NULL;
     this->m_Pid = 0;
     this->m_UnPressedKey = -1;
+	this->m_SeqId = 0;
 
     return ;
 }
@@ -894,6 +896,8 @@ BOOL CIOController::__InsertInputEvent(PIO_CAP_EVENTS_t pIoCapEvt)
     int ret = 0;
 
     EnterCriticalSection(&(this->m_EvtCS));
+	this->m_SeqId ++;
+	pIoCapEvt->pEvent->seqid = this->m_SeqId;
     this->m_InputEvts.push_back(pIoCapEvt);
     LeaveCriticalSection(&(this->m_EvtCS));
 
@@ -964,7 +968,7 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
         }
     }
 
-    CopyMemory(pIoCapEvt->pEvent,pDevEvt,sizeof(*pDevEvt));
+    CopyMemory((&(pIoCapEvt->pEvent->devevent)),pDevEvt,sizeof(*pDevEvt));
     //DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);
     return this->__InsertInputEvent(pIoCapEvt);
 }

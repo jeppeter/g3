@@ -16,6 +16,9 @@ typedef struct
     uint8_t m_InputEvtBaseName[IO_NAME_MAX_SIZE];
     HANDLE *m_pInputEvts;
     EVENT_LIST_t* m_pEventListArray;
+    unsigned long long m_CurSeqId;
+    std::vector<DWORD>* m_pBufIdxVecs;
+    std::vector<unsigned long long> m_pSeqIdVecs;
 } DETOUR_THREAD_STATUS_t,*PDETOUR_THREAD_STATUS_t;
 
 CFuncList st_EventHandlerFuncList;
@@ -41,7 +44,7 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD && pDevEvent->devid == 0)
     {
-    	DEBUG_INFO("Keyboard Input Events[%d]\n",idx);
+        DEBUG_INFO("Keyboard Input Events[%d]\n",idx);
         if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
         {
             st_UnPressedLastKey = -1;
@@ -51,13 +54,13 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
             if(st_UnPressedLastKey == pDevEvent->event.keyboard.code)
             {
                 DEBUG_INFO("[%d]<0x%p>UnPressed key double(0x%08x:%d)\n",idx,pDevEvent,st_UnPressedLastKey,st_UnPressedLastKey);
-				bret = SetEvent(pEventList->m_hFillEvt);
-				if(!bret)
-				{
-					ret = LAST_ERROR_CODE();
-					ERROR_INFO("<0x%p>SetEvent(0x%08x) Error(%d)\n",pEventList,pEventList->m_hFillEvt,ret);
-				}
-				return 0;
+                bret = SetEvent(pEventList->m_hFillEvt);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("<0x%p>SetEvent(0x%08x) Error(%d)\n",pEventList,pEventList->m_hFillEvt,ret);
+                }
+                return 0;
             }
             st_UnPressedLastKey = pDevEvent->event.keyboard.code;
         }
@@ -147,6 +150,25 @@ void __ClearEventList(PDETOUR_THREAD_STATUS_t pStatus)
     pStatus->m_pEventListArray = NULL;
 
 
+    return ;
+}
+
+void __ClearSeqId(PDETOUR_THREAD_STATUS_t pStatus)
+{
+    if(pStatus->m_pBufIdxVecs)
+    {
+        pStatus->m_pBufIdxVecs->clear();
+        delete pStatus->m_pBufIdxVecs;
+    }
+    pStatus->m_pBufIdxVecs = NULL;
+
+    if(pStatus->m_pSeqIdVecs)
+    {
+        pStatus->m_pSeqIdVecs->clear();
+        delete pStatus->m_pSeqIdVecs;
+    }
+    pStatus->m_pSeqIdVecs = NULL;
+    pStatus->m_CurSeqId = 0;
     return ;
 }
 
