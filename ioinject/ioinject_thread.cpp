@@ -18,7 +18,7 @@ typedef struct
     EVENT_LIST_t* m_pEventListArray;
     unsigned long long m_CurSeqId;
     std::vector<DWORD>* m_pBufIdxVecs;
-    std::vector<unsigned long long> m_pSeqIdVecs;
+    std::vector<unsigned long long>* m_pSeqIdVecs;
 } DETOUR_THREAD_STATUS_t,*PDETOUR_THREAD_STATUS_t;
 
 CFuncList st_EventHandlerFuncList;
@@ -29,18 +29,19 @@ static HANDLE st_hIoInjectControlSema=NULL;
 static int st_UnPressedLastKey=-1;
 
 
-int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
+int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 {
+    int totalret=0;
+    LPDEVICEEVENT pDevEvent=NULL;
+    LPSEQ_DEVICEEVENT pSeqEvent=NULL;
+	int ret;
     /*now we should handle this function*/
     EVENT_LIST_t* pEventList=NULL;
-    int totalret=0;
-    int ret;
-    LPDEVICEEVENT pDevEvent=NULL;
     BOOL bret;
-    assert(idx < pStatus->m_Bufnumm);
     pEventList = &(pStatus->m_pEventListArray[idx]);
     //DEBUG_INFO("[%d]Base 0x%x offset 0x%x\n",idx,pEventList->m_BaseAddr,pEventList->m_Offset);
-    pDevEvent = (LPDEVICEEVENT)((ptr_t)pEventList->m_BaseAddr + (ptr_t)pEventList->m_Offset);
+    pSeqEvent= (LPSEQ_DEVICEEVENT)((ptr_t)pEventList->m_BaseAddr + (ptr_t)pEventList->m_Offset);
+    pDevEvent = &(pSeqEvent->devevent);
 
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD && pDevEvent->devid == 0)
     {
@@ -74,6 +75,102 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
         ERROR_INFO("<0x%p>SetEvent(0x%08x) Error(%d)\n",pEventList,pEventList->m_hFillEvt,ret);
     }
     return totalret;
+}
+
+int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
+{
+    int ret;
+    LPSEQ_DEVICEEVENT pSeqEvent=NULL;
+    int findidx=-1;
+    UINT i;
+    int cnt = 0;
+    DWORD curidx=idx;
+    BOOL bret;
+    EVENT_LIST_t* pEventList=NULL;
+    assert(idx < pStatus->m_Bufnumm);
+    pEventList = &(pStatus->m_pEventListArray[idx]);
+    //DEBUG_INFO("[%d]Base 0x%x offset 0x%x\n",idx,pEventList->m_BaseAddr,pEventList->m_Offset);
+    pSeqEvent= (LPSEQ_DEVICEEVENT)((ptr_t)pEventList->m_BaseAddr + (ptr_t)pEventList->m_Offset);
+
+    if(pSeqEvent->seqid == (pStatus->m_CurSeqId + 1))
+    {
+        ret = __HandleStatusEventReal(pStatus,curidx);
+        if(ret < 0)
+        {
+            ERROR_INFO("Handle[%d] Error(%d)\n",curidx,ret);
+        }
+        pStatus->m_CurSeqId += 1;
+        cnt ++;
+
+        while(1)
+        {
+            assert(pStatus->m_pSeqIdVecs->size() == pStatus->m_pBufIdxVecs->size());
+            if(pStatus->m_pSeqIdVecs->size() == 0)
+            {
+                break;
+            }
+
+            if(pStatus->m_pSeqIdVecs->at(0) != (pStatus->m_CurSeqId + 1))
+            {
+                break;
+            }
+
+            curidx = pStatus->m_pBufIdxVecs->at(0);
+            ret = __HandleStatusEventReal(pStatus,curidx);
+            if(ret < 0)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("Handle[%d] Error(%d)\n",curidx,ret);
+            }
+
+            pStatus->m_pBufIdxVecs->erase(pStatus->m_pBufIdxVecs->begin());
+            pStatus->m_pSeqIdVecs->erase(pStatus->m_pSeqIdVecs->begin());
+            pStatus->m_CurSeqId += 1;
+            cnt ++;
+        }
+    }
+    else if((pStatus->m_CurSeqId) < (pSeqEvent->seqid))
+    {
+
+        if(pStatus->m_pSeqIdVecs->size() >= pStatus->m_Bufnumm)
+        {
+            ERROR_INFO("wait seqids %d\n",pStatus->m_pSeqIdVecs->size());
+        }
+        /*now to push find the index*/
+        for(i=0; i<pStatus->m_pSeqIdVecs->size(); i++)
+        {
+            if(pStatus->m_pSeqIdVecs->at(i) > pSeqEvent->seqid)
+            {
+                findidx = i;
+                break;
+            }
+        }
+
+        if(findidx >= 0)
+        {
+            pStatus->m_pSeqIdVecs->insert(pStatus->m_pSeqIdVecs->begin() + findidx,pSeqEvent->seqid);
+            pStatus->m_pBufIdxVecs->insert(pStatus->m_pBufIdxVecs->begin() + findidx,idx);
+        }
+        else
+        {
+            pStatus->m_pSeqIdVecs->push_back(pSeqEvent->seqid);
+            pStatus->m_pBufIdxVecs->push_back(idx);
+        }
+        assert(pStatus->m_pSeqIdVecs->size() == pStatus->m_pBufIdxVecs->size());
+    }
+    else
+    {
+        ERROR_INFO("[%d] seqid %lld but curseqid (%lld)\n",idx,pSeqEvent->seqid,pStatus->m_CurSeqId);
+        cnt ++;
+        bret = SetEvent(pEventList->m_hFillEvt);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("<0x%p>SetEvent(0x%08x) Error(%d)\n",pEventList,pEventList->m_hFillEvt,ret);
+        }
+    }
+
+    return cnt;
 }
 
 
@@ -255,10 +352,12 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
     /*now first to stop thread */
     StopThreadControl(&(pStatus->m_ThreadControl));
 
+    __ClearSeqId(pStatus);
 
     /*now to delete all the free event*/
     __ClearEventList(pStatus);
     __FreeDetourEvents(pStatus);
+
 
     /*now to unmap memory*/
     __UnMapMemBase(pStatus);
@@ -336,6 +435,16 @@ fail:
     __UnMapMemBase(pStatus);
     SetLastError(ret);
     return -ret;
+}
+
+int __AllocateSeqId(PDETOUR_THREAD_STATUS_t pStatus)
+{
+    __ClearSeqId(pStatus);
+    pStatus->m_CurSeqId = 0;
+    pStatus->m_pBufIdxVecs = new std::vector<DWORD>();
+    pStatus->m_pSeqIdVecs = new std::vector<unsigned long long>();
+
+    return 0;
 }
 
 
@@ -511,6 +620,13 @@ int __DetourIoInjectThreadStart(PIO_CAP_CONTROL_t pControl)
 
 
     ret = __AllocateEventList(pStatus);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    ret = __AllocateSeqId(pStatus);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
