@@ -739,12 +739,12 @@ LONG __InsertKeyboardInput(RAWINPUT* pInput,HWND* pHwnd)
     RAWKEYBOARD *pKeyboard=NULL;
 
     pKeyboard = &(pInput->data.keyboard);
-    ERROR_INFO("Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
-               pKeyboard->MakeCode,pKeyboard->MakeCode,
-               pKeyboard->Flags,
-               pKeyboard->VKey,
-               pKeyboard->Message,pKeyboard->Message,
-               pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
+    //ERROR_INFO("(0x%08x)Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",GetTickCount(),
+    //           pKeyboard->MakeCode,pKeyboard->MakeCode,
+    //           pKeyboard->Flags,
+    //           pKeyboard->VKey,
+    //           pKeyboard->Message,pKeyboard->Message,
+    //           pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
 
     EnterCriticalSection(&st_EmulationRawinputCS);
     if(st_KeyRawInputHandle && st_KeyRegistered > 1)
@@ -2615,12 +2615,12 @@ UINT WINAPI GetRawInputDataCallBack(
             RAWKEYBOARD *pKeyboard=NULL;
 
             pKeyboard = &(pRawinput->data.keyboard);
-            //ERROR_INFO("GetRawinputData Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
-            //           pKeyboard->MakeCode,pKeyboard->MakeCode,
-            //           pKeyboard->Flags,
-            //           pKeyboard->VKey,
-            //           pKeyboard->Message,pKeyboard->Message,
-            //           pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
+			ERROR_INFO("(0x%08x)Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",GetTickCount(),
+					   pKeyboard->MakeCode,pKeyboard->MakeCode,
+					   pKeyboard->Flags,
+					   pKeyboard->VKey,
+					   pKeyboard->Message,pKeyboard->Message,
+					   pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
         }
     }
     return uret;

@@ -939,6 +939,7 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
             break;
         }
         ctime = GetTickCount();
+		DEBUG_INFO("(0x%08x) Waitfor IoCapEvt\n",ctime);
         if(etime <= ctime || (etime >= 0xffffff00 && ctime <= 0xff))
         {
             ret = ERROR_NO_DATA;

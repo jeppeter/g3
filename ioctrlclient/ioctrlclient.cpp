@@ -334,7 +334,7 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
         else if(pCurBuffer[i] && i == g_LastPressKey)
         {
             g_LastPressedTimes ++;
-            if(g_LastPressedTimes >= 34 && (g_LastPressedTimes % 2) == 0)
+            if(g_LastPressedTimes >= 17 )
             {
                 evt.devtype = DEVICE_TYPE_KEYBOARD;
                 evt.devid = 0;
@@ -925,7 +925,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
-        Sleep(15);
+        Sleep(30);
         UpdateCodeMessage();
     }
     ret = 0;

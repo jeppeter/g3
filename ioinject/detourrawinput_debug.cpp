@@ -69,7 +69,7 @@ UINT WINAPI GetRawInputDataCallBack(
             if(pRaw->header.dwType == RIM_TYPEKEYBOARD)
             {
 				pKeyboard = &(pRaw->data.keyboard);
-				DEBUG_INFO("Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",
+				DEBUG_INFO("(0x%08x)Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",GetTickCount(),
 						   pKeyboard->MakeCode,pKeyboard->MakeCode,
 						   pKeyboard->Flags,
 						   pKeyboard->VKey,

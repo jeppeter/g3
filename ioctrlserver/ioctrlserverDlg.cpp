@@ -80,7 +80,7 @@ BOOL CioctrlserverDlg::OnInitDialog()
 
     // TODO: Add extra initialization here
     pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_BUFNUM);
-    fmtstr.Format(TEXT("10"));
+    fmtstr.Format(TEXT("20"));
     pEdt->SetWindowText(fmtstr);
     pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_BUFSIZE);
     fmtstr.Format(TEXT("400"));
