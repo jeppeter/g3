@@ -42,7 +42,7 @@ CIOController::CIOController()
     assert(m_FreeEvts.size() == 0);
     m_InsertEvts = 0;
     m_UnPressedKey = -1;
-	m_SeqId = 0;
+    m_SeqId = 0;
 }
 
 
@@ -98,7 +98,7 @@ BOOL CIOController::__InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt)
 {
     int findidx=-1;
     UINT i;
-	BOOL bret=FALSE;
+    BOOL bret=FALSE;
     EnterCriticalSection(&(this->m_EvtCS));
 
     for(i=0; i<this->m_FreeEvts.size(); i++)
@@ -106,7 +106,7 @@ BOOL CIOController::__InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt)
         if(this->m_FreeEvts[i] == pIoCapEvt)
         {
             findidx = i;
-			ERROR_INFO("<0x%p> In FreeEvts[%d]\n",pIoCapEvt,i);
+            ERROR_INFO("<0x%p> In FreeEvts[%d]\n",pIoCapEvt,i);
             break;
         }
     }
@@ -118,7 +118,7 @@ BOOL CIOController::__InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt)
             if(this->m_InputEvts[i] == pIoCapEvt)
             {
                 findidx = i;
-				ERROR_INFO("<0x%p> In InputEvts[%d]\n",pIoCapEvt,i);
+                ERROR_INFO("<0x%p> In InputEvts[%d]\n",pIoCapEvt,i);
                 break;
             }
         }
@@ -127,7 +127,7 @@ BOOL CIOController::__InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt)
     if(findidx < 0)
     {
         this->m_FreeEvts.push_back(pIoCapEvt);
-		bret = TRUE;
+        bret = TRUE;
     }
     LeaveCriticalSection(&(this->m_EvtCS));
     return bret;
@@ -296,7 +296,7 @@ int CIOController::__AllocateAllEvents()
             SetLastError(ret);
             return -ret;
         }
-		DEBUG_INFO("[%d] FreeEvts name(%s)\n",i,fullname);
+        DEBUG_INFO("[%d] FreeEvts name(%s)\n",i,fullname);
     }
 
     strncpy_s((char*)this->m_FreeEvtBaseName,sizeof(this->m_FreeEvtBaseName),(const char*)curbasename,_TRUNCATE);
@@ -324,7 +324,7 @@ int CIOController::__AllocateAllEvents()
             SetLastError(ret);
             return -ret;
         }
-		DEBUG_INFO("[%d] InputEvts (%s)\n",i,fullname);
+        DEBUG_INFO("[%d] InputEvts (%s)\n",i,fullname);
     }
     strncpy_s((char*)this->m_InputEvtBaseName,sizeof(this->m_InputEvtBaseName),(const char*)curbasename,_TRUNCATE);
     return 0;
@@ -613,7 +613,7 @@ VOID CIOController::Stop()
     this->m_hProc = NULL;
     this->m_Pid = 0;
     this->m_UnPressedKey = -1;
-	this->m_SeqId = 0;
+    this->m_SeqId = 0;
 
     return ;
 }
@@ -896,8 +896,8 @@ BOOL CIOController::__InsertInputEvent(PIO_CAP_EVENTS_t pIoCapEvt)
     int ret = 0;
 
     EnterCriticalSection(&(this->m_EvtCS));
-	this->m_SeqId ++;
-	pIoCapEvt->pEvent->seqid = this->m_SeqId;
+    this->m_SeqId ++;
+    pIoCapEvt->pEvent->seqid = this->m_SeqId;
     this->m_InputEvts.push_back(pIoCapEvt);
     LeaveCriticalSection(&(this->m_EvtCS));
 
@@ -939,7 +939,7 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
             break;
         }
         ctime = GetTickCount();
-		DEBUG_INFO("(0x%08x) Waitfor IoCapEvt\n",ctime);
+        DEBUG_INFO("(0x%08x) Waitfor IoCapEvt\n",ctime);
         if(etime <= ctime || (etime >= 0xffffff00 && ctime <= 0xff))
         {
             ret = ERROR_NO_DATA;
@@ -951,7 +951,7 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
     }
     if(pDevEvt->devtype == DEVICE_TYPE_KEYBOARD && pDevEvt->devid == 0)
     {
-    	DEBUG_INFO("Keyboard Input Events[%d]\n",pIoCapEvt->Idx);
+        DEBUG_INFO("Keyboard Input Events[%d]\n",pIoCapEvt->Idx);
         if(pDevEvt->event.keyboard.event == KEYBOARD_EVENT_DOWN)
         {
             this->m_UnPressedKey = -1;
@@ -970,6 +970,10 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
     }
 
     CopyMemory((&(pIoCapEvt->pEvent->devevent)),pDevEvt,sizeof(*pDevEvt));
+    if(pDevEvt->devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        DEBUG_INFO("PushEvent(0x%08x) keyevent(0x%08x:%d) keycode (0x%08x:%d)\n",GetTickCount(),pDevEvt->event.keyboard.event,pDevEvt->event.keyboard.code);
+    }
     //DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);
     return this->__InsertInputEvent(pIoCapEvt);
 }

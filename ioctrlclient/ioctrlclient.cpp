@@ -740,7 +740,7 @@ DWORD WINAPI SocketThreadImpl(LPVOID lparam)
     while(pThreadControl->running)
     {
         /*we wait for the time*/
-        dret = WaitForMultipleObjects(waitnum,pWaitHandle,FALSE,20);
+        dret = WaitForMultipleObjects(waitnum,pWaitHandle,FALSE,5);
         if(dret == WAIT_OBJECT_0)
         {
             ERROR_INFO("exit notify\n");
