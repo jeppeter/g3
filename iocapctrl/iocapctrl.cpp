@@ -972,7 +972,7 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
     CopyMemory((&(pIoCapEvt->pEvent->devevent)),pDevEvt,sizeof(*pDevEvt));
     if(pDevEvt->devtype == DEVICE_TYPE_KEYBOARD)
     {
-        DEBUG_INFO("PushEvent(0x%08x) keyevent(0x%08x:%d) keycode (0x%08x:%d)\n",GetTickCount(),pDevEvt->event.keyboard.event,pDevEvt->event.keyboard.code);
+        DEBUG_INFO("PushEvent(0x%08x) keyevent(0x%08x:%d) keycode (0x%08x:%d)\n",GetTickCount(),pDevEvt->event.keyboard.event,pDevEvt->event.keyboard.event,pDevEvt->event.keyboard.code,pDevEvt->event.keyboard.code);
     }
     //DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);
     return this->__InsertInputEvent(pIoCapEvt);

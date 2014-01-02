@@ -295,7 +295,7 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
 {
     DEVICEEVENT evt;
     unsigned int i;
-	TCHAR errstr[256];
+    TCHAR errstr[256];
     for(i=0; i<256; i++)
     {
         if(i == g_EscapeKey)
@@ -319,8 +319,8 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
             {
                 if(g_LastUnPressKey == i)
                 {
-					SprintfString(errstr,256,TEXT("Double up Key (0x%02x:%d)"),g_LastUnPressKey,g_LastUnPressKey);
-					::MessageBox(g_hWnd,errstr,TEXT("Notice"),MB_OK);
+                    SprintfString(errstr,256,TEXT("Double up Key (0x%02x:%d)"),g_LastUnPressKey,g_LastUnPressKey);
+                    ::MessageBox(g_hWnd,errstr,TEXT("Notice"),MB_OK);
                 }
                 evt.event.keyboard.event = KEYBOARD_EVENT_UP;
                 g_LastPressKey = 0;
@@ -334,7 +334,7 @@ BOOL CompareKeyBuffer(unsigned char* pCurBuffer,unsigned char* pLastBuffer,std::
         else if(pCurBuffer[i] && i == g_LastPressKey)
         {
             g_LastPressedTimes ++;
-            if(g_LastPressedTimes >= 17 )
+            if(g_LastPressedTimes >= 17)
             {
                 evt.devtype = DEVICE_TYPE_KEYBOARD;
                 evt.devid = 0;
@@ -504,6 +504,7 @@ SOCKET ConnectSocket(char* pIp,int port,int *pConnected)
     SOCKET sock=INVALID_SOCKET;
     int ret;
     u_long nonblock;
+    char nodelay;
     struct sockaddr_in saddr;
     sock = socket(AF_INET,SOCK_STREAM,0);
     if(sock == INVALID_SOCKET)
@@ -520,6 +521,16 @@ SOCKET ConnectSocket(char* pIp,int port,int *pConnected)
         ERROR_INFO("ioctl nonblock Error(%d)\n",ret);
         goto fail;
     }
+
+    nodelay = 1;
+    ret = setsockopt(sock,IPPROTO_TCP,   TCP_NODELAY,  &nodelay,sizeof(nodelay));
+    if(ret == SOCKET_ERROR)
+    {
+        ret = WSAGetLastError() ? WSAGetLastError() : 1;
+        ERROR_INFO("set no delay Error(%d)\n",ret);
+        goto fail;
+    }
+	DEBUG_INFO("Set Nodelay\n");
 
     ZeroMemory(&saddr,sizeof(saddr));
     saddr.sin_family = AF_INET;
@@ -634,6 +645,10 @@ int HandleSendDevEvent(SOCKET sock,int& haswrite,int& blocked)
         {
             cnt ++;
             curwrite = 0;
+            if(devevent.devtype == DEVICE_TYPE_KEYBOARD)
+            {
+                DEBUG_INFO("HandleEvent(0x%08x) keyevent(0x%08x:%d) keycode (0x%08x:%d)\n",GetTickCount(),devevent.event.keyboard.event,devevent.event.keyboard.event,devevent.event.keyboard.code,devevent.event.keyboard.code);
+            }
         }
         else
         {
@@ -791,6 +806,7 @@ DWORD WINAPI SocketThreadImpl(LPVOID lparam)
                     ::MessageBox(g_hWnd,pChar,TEXT("Error"),MB_OK);
                     goto out;
                 }
+
             }
             else
             {
