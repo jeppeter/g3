@@ -38,8 +38,8 @@ private:
 	SOCKET m_Readsock;
 	CString m_strDll;
 	CString m_strExe;
-	CString m_strParam;
-	HANDLE m_hProc;
+	CString m_strParam;	
+	HANDLE m_hProc;	
 	thread_control_t m_ThreadControl;
 // Implementation
 protected:
@@ -54,6 +54,7 @@ protected:
 	afx_msg void OnStart();
 	afx_msg void OnClose();
 	afx_msg void OnCancel();
+	afx_msg void OnAttach();
 	afx_msg LRESULT OnSocket(WPARAM WParam, LPARAM lParam)  ;
 	DECLARE_MESSAGE_MAP()
 };

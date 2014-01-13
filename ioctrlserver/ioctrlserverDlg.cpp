@@ -60,6 +60,7 @@ BEGIN_MESSAGE_MAP(CioctrlserverDlg, CDialogEx)
     ON_COMMAND(IDC_BTN_EXE,OnSelExe)
     ON_COMMAND(IDC_BTN_DLL,OnSelDll)
     ON_COMMAND(IDC_BTN_START,OnStart)
+    ON_COMMAND(IDC_BTN_ATTACH,OnAttach)
     ON_COMMAND(IDCANCEL,OnCancel)
     ON_MESSAGE(WM_SOCKET,OnSocket)
 END_MESSAGE_MAP()
@@ -90,6 +91,9 @@ BOOL CioctrlserverDlg::OnInitDialog()
     pEdt->SetWindowText(fmtstr);
     pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_PORT);
     fmtstr.Format(TEXT("3391"));
+    pEdt->SetWindowText(fmtstr);
+    pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_ATTACHPID);
+    fmtstr.Format(TEXT("0"));
     pEdt->SetWindowText(fmtstr);
 
     return TRUE;  // return TRUE  unless you set the focus to a control
@@ -508,6 +512,106 @@ LRESULT CioctrlserverDlg::OnSocket(WPARAM WParam,LPARAM lParam)
     return 0;
 }
 
+void CioctrlserverDlg::OnAttach()
+{
+    CString errstr;
+    int ret;
+    unsigned long bufsectsize,bufnum,listenport,pid;
+    BOOL bret;
+
+
+    bufnum = this->__ItemAtoi(IDC_EDT_BUFNUM,10);
+    pid = this->__ItemAtoi(IDC_EDT_ATTACHPID,10);
+    bufsectsize = this->__ItemAtoi(IDC_EDT_BUFSIZE,16);
+    listenport = this->__ItemAtoi(IDC_EDT_PORT,10);
+
+
+
+    if(pid == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        errstr.Format(TEXT("Pid == 0"));
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+
+
+    if(bufnum == 0)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        errstr.Format(TEXT("bufnum == 0"));
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    if(bufsectsize < 256)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        errstr.Format(TEXT("bufsectsize(%d) < 256"),bufsectsize);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    if(listenport == 0 || listenport >= (1 << 16))
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        errstr.Format(TEXT("listen port(%d) not valid"),listenport);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    /*to stop  the control for the next control*/
+    this->__StopControl();
+
+    /*now we should start for the command*/
+	
+    this->m_hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD, FALSE, pid);
+    if(this->m_hProc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could not open processid(%d) Error(%d)"),pid,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    this->m_pIoController = new CIOController();
+    bret = this->m_pIoController->Start(this->m_hProc,bufnum,bufsectsize);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could Start(%d:%d) Error(%d)"),bufnum,bufsectsize,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    ret = this->__StartAccSocket(listenport);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Could Listen(%d) Error(%d)"),listenport,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    ret = StartThreadControl(&(this->m_ThreadControl),CioctrlserverDlg::HandleSocketThread,this,1);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Start Thread Error(%d)"),ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    /*all is ok*/
+    SetLastError(0);
+    return ;
+fail:
+    this->__StopControl();
+    SetLastError(ret);
+    return ;
+}
+
 
 DWORD CioctrlserverDlg::__SocketThread()
 {
@@ -553,7 +657,7 @@ DWORD CioctrlserverDlg::__SocketThread()
 
     while(this->m_ThreadControl.running)
     {
-    	//DEBUG_INFO("waitnum %d\n",waitnum);
+        //DEBUG_INFO("waitnum %d\n",waitnum);
         dret = WaitForMultipleObjects(waitnum,pWaitHandle,FALSE,INFINITE);
         //DEBUG_INFO("wait return %d waitnum %d\n",dret,waitnum);
         if(dret == WAIT_OBJECT_0)
