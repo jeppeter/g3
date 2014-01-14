@@ -3,6 +3,7 @@
 #define __PCMCAPCTRL_H__
 
 #include "pcmcapcommon.h"
+#include <vector>
 
 #define PCMITEM_MAX_SIZE 10240
 
@@ -45,6 +46,7 @@ private:
 	void __DestroyMap();
 	int __CreateEvent();
 	void __DestroyEvent();
+	void __DestroyPcmIds();
 
 	int __StartThread();
 	void __StopThread();
@@ -64,6 +66,10 @@ private:
 	unsigned int m_iBufBlockSize;
 	
 	thread_control_t m_tThreadControl;
+	CRITICAL_SECTION m_PcmCS;
+	std::vector<int> m_PcmIdx;
+	std::vector<uint64_t> m_PcmIds;
+	uint64_t m_CurPcmIds;
 
 	HANDLE m_hMapFile;
 	unsigned char * m_pMapBuffer;

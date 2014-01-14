@@ -28,6 +28,7 @@ typedef struct
 
 typedef struct
 {
+	uint64_t pcmid;
 	pcmcap_format_t format;
 	pcmcap_data_t data;
 } pcmcap_buffer_t;

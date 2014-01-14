@@ -47,6 +47,10 @@ CPcmCapController::CPcmCapController()
     memset(&(m_strFillEvtBaseName),0,sizeof(m_strFillEvtBaseName));
     memset(&(m_strStartEvtBaseName),0,sizeof(m_strStartEvtBaseName));
     memset(&(m_strStopEvtBaseName),0,sizeof(m_strStopEvtBaseName));
+    InitializeCriticalSection(&(m_PcmCS));
+    assert(m_PcmIds.size() == 0);
+    assert(m_PcmIdx.size() == 0);
+    m_CurPcmIds = 0;
     m_hStartEvt = NULL;
     m_hStopEvt = NULL;
     m_pFreeEvt = NULL;
@@ -282,6 +286,23 @@ BOOL CPcmCapController::Stop()
     return this->__StopOperation(PCMCAPPER_OPERATION_NONE);
 }
 
+#define PCM_IDS_EQUAL()  \
+do\
+{\
+	assert(this->m_PcmIds.size() == this->m_PcmIdx.size());\
+}while(0)
+
+void CPcmCapController::__DestroyPcmIds()
+{
+    EnterCriticalSection(&(this->m_PcmCS));
+    PCM_IDS_EQUAL();
+    this->m_CurPcmIds = 0;
+    this->m_PcmIds.clear();
+    this->m_PcmIdx.clear();
+    LeaveCriticalSection(&(this->m_PcmCS));
+    return ;
+}
+
 BOOL CPcmCapController::__StopOperation(int iOperation)
 {
     int lasterr = 0;
@@ -312,7 +333,7 @@ BOOL CPcmCapController::__StopOperation(int iOperation)
     this->__StopThread();
     this->__DestroyEvent();
 
-
+    this->__DestroyPcmIds();
     this->__DestroyMap();
     SetLastError(lasterr);
     return totalbret;
@@ -327,6 +348,7 @@ CPcmCapController::~CPcmCapController()
     this->m_iBufBlockSize = 0;
     this->m_pPcmCapperCb = NULL;
     this->m_lpParam = NULL;
+    DeleteCriticalSection(&(this->m_PcmCS));
 }
 
 void CPcmCapController::__DestroyMap()
@@ -733,27 +755,108 @@ void CPcmCapController::__AudioRenderBuffer(int idx)
     pcmcap_buffer_t* pItem;
     BOOL bret;
     int ret;
+    int cont = 0;
+    int curidx;
+    int findidx = -1;
+    UINT i;
     assert(this->m_pMapBuffer);
     assert(idx >= 0 && idx < (int)this->m_iBufNum);
 
     pItem = (pcmcap_buffer_t*)((ptr_t)this->m_pMapBuffer + (idx)*this->m_iBufBlockSize);
 
-    if(this->m_pPcmCapperCb)
+    cont = 0;
+    EnterCriticalSection(&(this->m_PcmCS));
+    if((this->m_CurPcmIds +1) == pItem->pcmid)
     {
-        this->m_pPcmCapperCb->WaveInCb(pItem,this->m_lpParam);
+        cont = 1;
+        this->m_CurPcmIds ++;
+        curidx = idx;
+    }
+    else
+    {
+        /*now to find the pcmid*/
+        PCM_IDS_EQUAL();
+        findidx = -1;
+        for(i=0; i<this->m_PcmIds.size(); i++)
+        {
+            if(this->m_PcmIds[i] > pItem->pcmid)
+            {
+                findidx = i;
+                break;
+            }
+        }
+        if(findidx >= 0)
+        {
+            this->m_PcmIds.insert(this->m_PcmIds.begin() + findidx,pItem->pcmid);
+            this->m_PcmIdx.insert(this->m_PcmIdx.begin() + findidx,idx);
+        }
+        else
+        {
+            this->m_PcmIds.push_back(pItem->pcmid);
+            this->m_PcmIdx.push_back(idx);
+        }
+    }
+    LeaveCriticalSection(&(this->m_PcmCS));
+
+    if(cont)
+    {
+
+        if(this->m_pPcmCapperCb)
+        {
+            this->m_pPcmCapperCb->WaveInCb(pItem,this->m_lpParam);
+        }
+        assert(this->m_pFreeEvt);
+        assert(this->m_pFreeEvt[curidx]);
+        bret = SetEvent(this->m_pFreeEvt[curidx]);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("setevent %d error(%d)\n",
+                       curidx,ret);
+
+        }
+
+        do
+        {
+            cont = 0;
+            EnterCriticalSection(&(this->m_PcmCS));
+            PCM_IDS_EQUAL();
+            if(this->m_PcmIds.size() > 0)
+            {
+                if((this->m_CurPcmIds + 1) == this->m_PcmIds[0])
+                {
+                    curidx = this->m_PcmIdx[0];
+                    pItem = (pcmcap_buffer_t*)((ptr_t)this->m_pMapBuffer + (curidx)*this->m_iBufBlockSize);
+                    this->m_CurPcmIds ++;
+                    this->m_PcmIds.erase(this->m_PcmIds.begin());
+                    this->m_PcmIdx.erase(this->m_PcmIdx.begin());
+                    cont = 1;
+                }
+            }
+            LeaveCriticalSection(&(this->m_PcmCS));
+
+            if(cont)
+            {
+                if(this->m_pPcmCapperCb)
+                {
+                    this->m_pPcmCapperCb->WaveInCb(pItem,this->m_lpParam);
+                }
+                assert(this->m_pFreeEvt);
+                assert(this->m_pFreeEvt[curidx]);
+                bret = SetEvent(this->m_pFreeEvt[curidx]);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("setevent %d error(%d)\n",
+                               curidx,ret);
+
+                }
+            }
+        }
+        while(cont);
     }
 
     /*now to set the event*/
-    assert(this->m_pFreeEvt);
-    assert(this->m_pFreeEvt[idx]);
-    bret = SetEvent(this->m_pFreeEvt[idx]);
-    if(!bret)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("setevent %d error(%d)\n",
-                   idx,ret);
-
-    }
 
     return ;
 

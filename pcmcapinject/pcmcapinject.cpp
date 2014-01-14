@@ -39,6 +39,31 @@ static CRITICAL_SECTION st_StateCS;
 static pcmcap_format_t st_AudioFormat ;
 static int st_PcmCapInited=0;
 static int st_Operation=PCMCAPPER_OPERATION_NONE;
+static uint64_t st_PcmId=0;
+
+static void __ClearPCMId(void)
+{
+    EnterCriticalSection(&st_StateCS);
+    st_PcmId = 0;
+    LeaveCriticalSection(&st_StateCS);
+    return ;
+}
+
+static int __IncPcmId(pcmcap_buffer_t* pPcmBuffer)
+{
+    int ret;
+    uint64_t curid;
+
+    EnterCriticalSection(&st_StateCS);
+    curid = st_PcmId + 1;
+    ret = WriteShareMem((unsigned char*)(&(pPcmBuffer->pcmid)),0,(unsigned char*)&curid,sizeof(curid));
+    if(ret >= 0)
+    {
+        st_PcmId ++;
+    }
+    LeaveCriticalSection(&st_StateCS);
+    return ret;
+}
 
 
 /*****************************************************
@@ -97,19 +122,19 @@ static WAVEFORMATEX* GetCopiedFormat()
     WAVEFORMATEX* pFormatEx=NULL;
     WAVEFORMATEX* pPtrFormatEx=NULL;
 
-	DEBUG_INFO("size %d\n",size);
+    DEBUG_INFO("size %d\n",size);
     pFormatEx = (WAVEFORMATEX*)malloc(size);
     if(pFormatEx == NULL)
     {
         return NULL;
     }
     memset(pFormatEx,0,size);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     EnterCriticalSection(&st_StateCS);
     cpysize = sizeof(*pPtrFormatEx);
     pPtrFormatEx = (WAVEFORMATEX*) st_AudioFormat.format;
     cpysize += pPtrFormatEx->cbSize;
-	DEBUG_INFO("cpsize %d\n",cpysize);
+    DEBUG_INFO("cpsize %d\n",cpysize);
     if(cpysize < size)
     {
         memcpy(pFormatEx,pPtrFormatEx,cpysize);
@@ -830,6 +855,14 @@ int WriteSendBuffer(IAudioRenderClient *pClient,unsigned char* pBuffer,int numpa
         return 0;
     }
 
+    ret = __IncPcmId(pAudioBuffer);
+    if(ret < 0)
+    {
+        ERROR_INFO("IncPcmId Error(%d)\n",ret);
+        PutFreeList(pEventList);
+        return 0;
+    }
+
     /*now ok ,so we notify the other of the */
     bret = SetEvent(pEventList->m_hFillEvt);
     if(!bret)
@@ -1011,7 +1044,7 @@ int __HandleAudioRecordStart(pcmcap_control_t *pControl)
         return -ERROR_ALREADY_EXISTS;
     }
 
-
+	__ClearPCMId();
 
     /*now it is time to give the mem*/
     ret = InitializeWholeList(pControl->packnum,pControl->packsize ,
@@ -1038,6 +1071,7 @@ int __HandleAudioRecordStop(pcmcap_control_t *pControl)
 {
     DeInitializeWholeList();
     SetOperation(pControl->operation);
+	__ClearPCMId();
     return 0;
 }
 
@@ -1431,13 +1465,13 @@ static int InitializeRenderFormat(IAudioRenderClient* pRender)
     int findidx=-1;
     unsigned int i;
 
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     pFormatEx = GetCopiedFormat();
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     EnterCriticalSection(&st_RenderCS);
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     RENDER_BUFFER_ASSERT();
-	DEBUG_INFO("\n");
+    DEBUG_INFO("\n");
     for(i=0; i < st_RenderArrays.size(); i++)
     {
         if(pRender == st_RenderArrays[i])
@@ -1446,18 +1480,18 @@ static int InitializeRenderFormat(IAudioRenderClient* pRender)
             break;
         }
     }
-	DEBUG_INFO("findidx %d\n",findidx);
+    DEBUG_INFO("findidx %d\n",findidx);
 
     if(findidx < 0)
     {
-		DEBUG_INFO("\n");
+        DEBUG_INFO("\n");
         st_RenderArrays.push_back(pRender);
         st_RenderBufferArrays.push_back(NULL);
         st_RenderFormatArrays.push_back(pFormatEx);
         ret = 1;
     }
     LeaveCriticalSection(&st_RenderCS);
-	DEBUG_INFO("ret = %d\n",ret);
+    DEBUG_INFO("ret = %d\n",ret);
 
     if(ret == 0)
     {
