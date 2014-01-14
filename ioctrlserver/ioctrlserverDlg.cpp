@@ -12,6 +12,7 @@
 #include <uniansi.h>
 #include <dllinsert.h>
 #include <injectctrl.h>
+#include <procex.h>
 
 #define  WM_SOCKET   (WM_USER+1)
 
@@ -565,14 +566,34 @@ void CioctrlserverDlg::OnAttach()
     this->__StopControl();
 
     /*now we should start for the command*/
-	
+
     this->m_hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD, FALSE, pid);
     if(this->m_hProc == NULL)
     {
         ret = LAST_ERROR_CODE();
-        errstr.Format(TEXT("Could not open processid(%d) Error(%d)"),pid,ret);
-        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
-        goto fail;
+        if(ret != ERROR_ACCESS_DENIED)
+        {
+            errstr.Format(TEXT("Could not open processid(%d) Error(%d)"),pid,ret);
+            this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+            goto fail;
+        }
+
+        /*now we try again ,so do the debug privilege promotion*/
+        ret = EnableCurrentDebugPriv();
+        if(ret < 0)
+        {
+            errstr.Format(TEXT("Can not Enable Debug Privilege Error(%d)"),ret);
+            this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+            goto fail;
+        }
+        this->m_hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD, FALSE, pid);
+        if(this->m_hProc == NULL)
+        {
+			ret = LAST_ERROR_CODE();
+            errstr.Format(TEXT("Could not open processid(%d) On Debug Privilege Error(%d)"),pid,ret);
+            this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+            goto fail;
+        }
     }
 
     this->m_pIoController = new CIOController();
