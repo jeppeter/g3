@@ -238,4 +238,119 @@ fail:
 
 }
 
+int EnableCurrentDebugPriv()
+{
+    LUID luid;
+    TOKEN_PRIVILEGES tp;
+    int ret;
+    BOOL bret;
+    HANDLE hToken=INVALID_HANDLE_VALUE;
+
+    bret = LookupPrivilegeValue(NULL,SE_DEBUG_NAME,&luid);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Lookup Privilege Value Error(%d)\n",ret);
+        goto fail;
+    }
+
+    bret = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        hToken = INVALID_HANDLE_VALUE;
+        ERROR_INFO("OpenProcess For Enable DebugPriv Error(%d)\n",ret);
+        goto fail;
+    }
+
+
+
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = luid;
+    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+    bret =  AdjustTokenPrivileges(hToken,FALSE,&tp,sizeof(tp),NULL,NULL);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Enable DebugPriv Error(%d)\n",ret);
+        goto fail;
+    }
+
+    if(hToken != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hToken);
+    }
+    hToken = INVALID_HANDLE_VALUE;
+
+    return 0;
+fail:
+    assert(ret > 0);
+    if(hToken != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hToken);
+    }
+    hToken = INVALID_HANDLE_VALUE;
+
+    return -ret;
+}
+
+int DisableCurrentDebugPriv()
+{
+    LUID luid;
+    TOKEN_PRIVILEGES tp;
+    int ret;
+    BOOL bret;
+    HANDLE hToken=INVALID_HANDLE_VALUE;
+
+    bret = LookupPrivilegeValue(NULL,SE_DEBUG_NAME,&luid);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Lookup Privilege Value Error(%d)\n",ret);
+        goto fail;
+    }
+
+    bret = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        hToken = INVALID_HANDLE_VALUE;
+        ERROR_INFO("OpenProcess For Disable DebugPriv Error(%d)\n",ret);
+        goto fail;
+    }
+
+
+
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = luid;
+    tp.Privileges[0].Attributes = 0;
+
+    bret =  AdjustTokenPrivileges(hToken,FALSE,&tp,sizeof(tp),NULL,NULL);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Disable DebugPriv Error(%d)\n",ret);
+        goto fail;
+    }
+
+    if(hToken != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hToken);
+    }
+    hToken = INVALID_HANDLE_VALUE;
+
+    return 0;
+fail:
+    assert(ret > 0);
+    if(hToken != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hToken);
+    }
+    hToken = INVALID_HANDLE_VALUE;
+
+    return -ret;
+}
+
+
 

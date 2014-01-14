@@ -16,6 +16,10 @@
 
 
 INJECTBASE_API int GetModuleInsertedProcess(const char* pPartDll,unsigned int **ppPids,int *pPidsSize);
+/*0 for success negative for error code*/
+INJECTBASE_API int EnableCurrentDebugPriv();
+/*0 for success  negative for error code*/
+INJECTBASE_API int DisableCurrentDebugPriv();
 
 
 #endif /*__PROC_EX_H__*/

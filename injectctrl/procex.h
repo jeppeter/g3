@@ -9,6 +9,12 @@ extern "C" {
 
 int GetModuleInsertedProcess(const char* pPartDll,unsigned int **ppPids,int *pPidsSize);
 
+/*0 for success negative for error code*/
+int EnableCurrentDebugPriv();
+/*0 for success  negative for error code*/
+int DisableCurrentDebugPriv();
+
+
 #ifdef __cplusplus
 };
 #endif
