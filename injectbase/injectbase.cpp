@@ -314,6 +314,191 @@ fail:
     return FALSE;
 }
 
+#define   SHOWCURSOR_HIDE_REQ      -1
+#define   SHOWCURSOR_NORMAL_REQ     1
+
+static CRITICAL_SECTION st_ShowCursorCS;
+static int st_ShowCursorCount=0;
+static int st_ShowCursorInit=0;
+static int st_ShowCursorHideMode=0;
+static int st_ShowCursorRequest=0;
+
+
+typedef int (WINAPI *ShowCursorFunc_t)(BOOL bShow);
+
+ShowCursorFunc_t ShowCursorNext=ShowCursor;
+
+int ShowCursorHandle()
+{
+    int count,handle=0,curcount;
+
+    if(st_ShowCursorInit)
+    {
+        EnterCriticalSection(&st_ShowCursorCS);
+        if(st_ShowCursorRequest == SHOWCURSOR_HIDE_REQ)
+        {
+            st_ShowCursorHideMode = 1;
+            count = ShowCursorNext(FALSE);
+            if(count > -1)
+            {
+                while(1)
+                {
+                    count = ShowCursorNext(FALSE);
+                    if(count < 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            else if(count < -1)
+            {
+                while(1)
+                {
+                    count = ShowCursorNext(TRUE);
+                    if(count == -1)
+                    {
+                        break;
+                    }
+                }
+            }
+			DEBUG_INFO("Hide CurSor\n");
+            handle = 1;
+        }
+        else if(st_ShowCursorRequest == SHOWCURSOR_NORMAL_REQ)
+        {
+            curcount = ShowCursorNext(TRUE);
+            if(curcount > st_ShowCursorCount)
+            {
+                while(1)
+                {
+                    curcount = ShowCursorNext(FALSE);
+                    if(curcount == st_ShowCursorCount)
+                    {
+                        break;
+                    }
+                }
+            }
+            else if(curcount < st_ShowCursorCount)
+            {
+                while(1)
+                {
+                    curcount = ShowCursorNext(TRUE);
+                    if(curcount == st_ShowCursorCount)
+                    {
+                        break;
+                    }
+                }
+            }
+            count = st_ShowCursorCount;
+            st_ShowCursorHideMode = 0;
+			DEBUG_INFO("Normal Cursor\n");
+            handle = 1;
+        }
+        st_ShowCursorRequest = 0;
+        LeaveCriticalSection(&st_ShowCursorCS);
+    }
+    return handle;
+}
+
+int SetShowCursorHide()
+{
+    int ret=0,wait;
+
+    if(st_ShowCursorInit)
+    {
+        do
+        {
+            wait = 1;
+            EnterCriticalSection(&st_ShowCursorCS);
+            if(st_ShowCursorRequest == 0)
+            {
+                st_ShowCursorRequest = SHOWCURSOR_HIDE_REQ;
+                wait = 0;
+            }
+            LeaveCriticalSection(&st_ShowCursorCS);
+            if(wait)
+            {
+                SchedOut();
+            }
+        }
+        while(wait);
+        ret = 1;
+    }
+    return ret;
+}
+
+int SetShowCursorNormal()
+{
+    int ret=0,wait=0;
+
+    if(st_ShowCursorInit)
+    {
+        do
+        {
+            wait = 1;
+            EnterCriticalSection(&st_ShowCursorCS);
+            if(st_ShowCursorRequest == 0)
+            {
+                st_ShowCursorRequest = SHOWCURSOR_NORMAL_REQ;
+                wait = 0;
+            }
+            LeaveCriticalSection(&st_ShowCursorCS);
+            if(wait)
+            {
+                SchedOut();
+            }
+        }
+        while(wait);
+        ret = 1;
+    }
+    return ret;
+}
+
+
+int WINAPI ShowCursorCallBack(BOOL bShow)
+{
+    int count=0;
+    if(st_ShowCursorInit)
+    {
+        EnterCriticalSection(&st_ShowCursorCS);
+        if(st_ShowCursorHideMode)
+        {
+            if(bShow)
+            {
+                st_ShowCursorCount ++ ;
+
+            }
+            else
+            {
+                st_ShowCursorCount --;
+            }
+        }
+        else
+        {
+            st_ShowCursorCount = ShowCursorNext(bShow);
+        }
+        count = st_ShowCursorCount;
+        LeaveCriticalSection(&st_ShowCursorCS);
+    }
+    else
+    {
+        count = ShowCursorNext(bShow);
+    }
+    return count;
+}
+
+int DetourShowCursorFunction(void)
+{
+    InitializeCriticalSection(&st_ShowCursorCS);
+    DEBUG_BUFFER_FMT(ShowCursorNext,10,"Before ShowCursorNext (0x%p)",ShowCursorNext);
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DetourAttach((PVOID*)&ShowCursorNext,ShowCursorCallBack);
+    DetourTransactionCommit();
+    DEBUG_BUFFER_FMT(ShowCursorNext,10,"After ShowCursorNext (0x%p)",ShowCursorNext);
+    st_ShowCursorInit = 1;
+    return 0;
+}
 
 
 typedef BOOL(WINAPI *CreateProcessWFunc_t)(LPCWSTR lpApplicationName,LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes,LPSECURITY_ATTRIBUTES lpThreadAttributes,BOOL bInheritHandles,DWORD dwCreationFlags,LPVOID lpEnvironment,LPCWSTR lpCurrentDirectory,LPSTARTUPINFO lpStartupInfo,LPPROCESS_INFORMATION lpProcessInformation);
@@ -640,6 +825,13 @@ int InjectBaseModuleInit(HMODULE hModule)
     InitializeCriticalSection(&st_DllNameCS);
 
     DEBUG_INFO("\n");
+
+    ret = DetourShowCursorFunction();
+    if(ret < 0)
+    {
+        return 0;
+    }
+
     ret = DetourCreateProcessFunctions();
     if(ret < 0)
     {

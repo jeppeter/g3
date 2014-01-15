@@ -803,6 +803,7 @@ BOOL WINAPI GetMessageACallBack(
     }
 
     __SetWindowRect(hWnd);
+	ShowCursorHandle();
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -864,6 +865,7 @@ BOOL WINAPI PeekMessageACallBack(
         return FALSE;
     }
     __SetWindowRect(hWnd);
+	ShowCursorHandle();
 
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
@@ -932,6 +934,7 @@ BOOL WINAPI GetMessageWCallBack(
     }
 
     __SetWindowRect(hWnd);
+	ShowCursorHandle();
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -993,6 +996,7 @@ BOOL WINAPI PeekMessageWCallBack(
     }
 
     __SetWindowRect(hWnd);
+	ShowCursorHandle();
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)

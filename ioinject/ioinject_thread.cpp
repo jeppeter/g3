@@ -34,7 +34,7 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     int totalret=0;
     LPDEVICEEVENT pDevEvent=NULL;
     LPSEQ_DEVICEEVENT pSeqEvent=NULL;
-	int ret;
+    int ret;
     /*now we should handle this function*/
     EVENT_LIST_t* pEventList=NULL;
     BOOL bret;
@@ -372,6 +372,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 
 int __DetourIoInjectThreadStop(PIO_CAP_CONTROL_t pControl)
 {
+	SetShowCursorNormal();
     __FreeIoInjectThreadStatus(&st_pDetourStatus);
     st_UnPressedLastKey = -1;
     SetLastError(0);
@@ -633,6 +634,7 @@ int __DetourIoInjectThreadStart(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
+    ret = SetShowCursorHide();
     ret = StartThreadControl(&(pStatus->m_ThreadControl),DetourIoInjectThreadThreadImpl,pStatus,1);
     if(ret < 0)
     {
@@ -641,6 +643,8 @@ int __DetourIoInjectThreadStart(PIO_CAP_CONTROL_t pControl)
     }
 
     st_pDetourStatus = pStatus;
+
+
 
     SetLastError(0);
     return 0;

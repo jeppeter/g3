@@ -263,7 +263,7 @@ SHORT WINAPI GetKeyStateCallBack(
 
     sret = __InnerGetKeyState(nVirtKey);
 
-    DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%08x:%d)\n",nVirtKey,nVirtKey,sret,sret);
+    //DEBUG_INFO("GetKeyState 0x%08x(%d) sret(0x%08x:%d)\n",nVirtKey,nVirtKey,sret,sret);
     return sret;
 }
 

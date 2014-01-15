@@ -47,6 +47,10 @@ INJECTBASE_API int RegisterCreateWindowFunc(FuncCall_t pFunc,LPVOID pParam,int p
 INJECTBASE_API int UnRegisterCreateWindowFunc(FuncCall_t pFunc);
 INJECTBASE_API int RegisterDestroyWindowFunc(FuncCall_t pFunc,LPVOID pParam,int prior);
 INJECTBASE_API int UnRegisterDestroyWindowFunc(FuncCall_t pFunc);
+INJECTBASE_API int ShowCursorHandle();
+INJECTBASE_API int SetShowCursorHide();
+INJECTBASE_API int SetShowCursorNormal();
+
 
 
 
