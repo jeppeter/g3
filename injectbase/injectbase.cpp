@@ -318,6 +318,7 @@ fail:
 #define   SHOWCURSOR_NORMAL_REQ     1
 
 static CRITICAL_SECTION st_ShowCursorCS;
+static HCURSOR st_hCursor=NULL;
 static int st_ShowCursorCount=0;
 static int st_ShowCursorInit=0;
 static int st_ShowCursorHideMode=0;
@@ -325,19 +326,43 @@ static int st_ShowCursorRequest=0;
 
 
 typedef int (WINAPI *ShowCursorFunc_t)(BOOL bShow);
+typedef HCURSOR(WINAPI *SetCursorFunc_t)(HCURSOR hCursor);
 
 ShowCursorFunc_t ShowCursorNext=ShowCursor;
+SetCursorFunc_t SetCursorNext=SetCursor;
 
 int ShowCursorHandle()
 {
     int count,handle=0,curcount;
+    HCURSOR hCursor=NULL;
+    CURSORINFO cursorinfo;
+    BOOL bret;
+    static int st_Handlecount =0;
 
     if(st_ShowCursorInit)
     {
+        st_Handlecount ++;
+        if((st_Handlecount % 500) == 0)
+        {
+            cursorinfo.cbSize = sizeof(cursorinfo);
+            bret = GetCursorInfo(&cursorinfo);
+            if(bret)
+            {
+                DEBUG_INFO("cursor flag(0x%08x) hCursor(0x%08x) point(x:%d:y:%d)\n",
+                           cursorinfo.flags,cursorinfo.hCursor,cursorinfo.ptScreenPos.x,
+                           cursorinfo.ptScreenPos.y);
+            }
+            else
+            {
+                ERROR_INFO("Can not get cursorinfo Error(%d)\n",LAST_ERROR_CODE());
+            }
+        }
         EnterCriticalSection(&st_ShowCursorCS);
         if(st_ShowCursorRequest == SHOWCURSOR_HIDE_REQ)
         {
             st_ShowCursorHideMode = 1;
+            hCursor = SetCursorNext(NULL);
+#if 1
             count = ShowCursorNext(FALSE);
             if(count > -1)
             {
@@ -361,11 +386,14 @@ int ShowCursorHandle()
                     }
                 }
             }
-			DEBUG_INFO("Hide CurSor\n");
+#endif
+            DEBUG_INFO("Hide CurSor (st_hCursor:0x%08x:hCursor:0x%08x)\n",st_hCursor,hCursor);
             handle = 1;
         }
         else if(st_ShowCursorRequest == SHOWCURSOR_NORMAL_REQ)
         {
+            hCursor = SetCursorNext(st_hCursor);
+#if 1
             curcount = ShowCursorNext(TRUE);
             if(curcount > st_ShowCursorCount)
             {
@@ -389,10 +417,41 @@ int ShowCursorHandle()
                     }
                 }
             }
+#endif
             count = st_ShowCursorCount;
             st_ShowCursorHideMode = 0;
-			DEBUG_INFO("Normal Cursor\n");
+            DEBUG_INFO("Normal Cursor (st_hCursor:0x%08x:hCursor:0x%08x)\n",st_hCursor,hCursor);
             handle = 1;
+        }
+        else
+        {
+            if(st_ShowCursorHideMode)
+            {
+                hCursor = SetCursorNext(NULL);
+                count = ShowCursorNext(FALSE);
+                if(count > -1)
+                {
+                    while(1)
+                    {
+                        count = ShowCursorNext(FALSE);
+                        if(count < 0)
+                        {
+                            break;
+                        }
+                    }
+                }
+                else if(count < -1)
+                {
+                    while(1)
+                    {
+                        count = ShowCursorNext(TRUE);
+                        if(count == -1)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
         }
         st_ShowCursorRequest = 0;
         LeaveCriticalSection(&st_ShowCursorCS);
@@ -487,15 +546,52 @@ int WINAPI ShowCursorCallBack(BOOL bShow)
     return count;
 }
 
+HCURSOR WINAPI SetCursorCallBack(HCURSOR hCursor)
+{
+    HCURSOR hRetCursor=NULL;
+
+    if(st_ShowCursorCount)
+    {
+        EnterCriticalSection(&st_ShowCursorCS);
+        if(st_ShowCursorHideMode)
+        {
+            hRetCursor = st_hCursor;
+            st_hCursor = hCursor;
+        }
+        else
+        {
+            st_hCursor = hCursor;
+            hRetCursor = SetCursorNext(hCursor);
+        }
+        LeaveCriticalSection(&st_ShowCursorCS);
+    }
+    else
+    {
+        hRetCursor = SetCursorNext(hCursor);
+    }
+
+    return hRetCursor;
+}
+
 int DetourShowCursorFunction(void)
 {
     InitializeCriticalSection(&st_ShowCursorCS);
     DEBUG_BUFFER_FMT(ShowCursorNext,10,"Before ShowCursorNext (0x%p)",ShowCursorNext);
+    DEBUG_BUFFER_FMT(SetCursorNext,10,"Before SetCursorNext (0x%p)",SetCursorNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&ShowCursorNext,ShowCursorCallBack);
+    DetourAttach((PVOID*)&SetCursorNext,SetCursorCallBack);
     DetourTransactionCommit();
     DEBUG_BUFFER_FMT(ShowCursorNext,10,"After ShowCursorNext (0x%p)",ShowCursorNext);
+    DEBUG_BUFFER_FMT(SetCursorNext,10,"After SetCursorNext (0x%p)",SetCursorNext);
+
+    EnterCriticalSection(&st_ShowCursorCS);
+    /*to get the cursor current now*/
+    st_hCursor = SetCursorNext(NULL);
+    SetCursorNext(st_hCursor);
+    LeaveCriticalSection(&st_ShowCursorCS);
+
     st_ShowCursorInit = 1;
     return 0;
 }
