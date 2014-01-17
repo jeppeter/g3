@@ -37,7 +37,7 @@ typedef struct
 } EVENT_LIST_t,*PEVENT_LIST_t;
 
 
-
+INJECTBASE_API HWND GetCurrentProcessActiveWindow();
 INJECTBASE_API int InsertModuleFileName(HMODULE hModule);
 INJECTBASE_API void SetUnHandlerExceptionDetour();
 INJECTBASE_API void StopThreadControl(thread_control_t *pThrControl);

@@ -355,54 +355,6 @@ static int Dinput8DestroyWindowNotify(LPVOID pParam,LPVOID pInput)
     return ret;
 }
 
-HWND GetCurrentProcessActiveWindow()
-{
-    HWND hwnd=NULL;
-    LONG style,exstyle;
-    UINT i;
-    int findidx=-1;
-    //BOOL bret;
-    //RECT rRect;
-    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    if(st_hWndVecs.size() > 0)
-    {
-        for(i=0; i<st_hWndVecs.size(); i++)
-        {
-            style = GetWindowLong(st_hWndVecs[i],GWL_STYLE);
-            exstyle = GetWindowLong(st_hWndVecs[i],GWL_EXSTYLE);
-            if(0)
-            {
-                DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndVecs[i],
-                           style,exstyle);
-            }
-            if(style & WS_VISIBLE)
-            {
-                findidx = i;
-#if 0
-                bret = GetClientRect(st_hWndVecs[i],&rRect);
-                if(bret)
-                {
-                    DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d)\n",
-                               st_hWndVecs[i],
-                               rRect.left,rRect.top,
-                               rRect.right,rRect.bottom);
-                    DEBUG_INFO("MaxRect (%d:%d)=>(%d:%d) MousePoint (%d:%d)\n",
-                               st_MaxRect.left,
-                               st_MaxRect.top,st_MaxRect.right,st_MaxRect.bottom,
-                               st_MousePoint.x,st_MousePoint.y);
-                }
-#endif
-                break;
-            }
-        }
-        if(findidx >= 0)
-        {
-            hwnd = st_hWndVecs[findidx];
-        }
-    }
-    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-    return hwnd;
-}
 
 int Dinput8SetWindowRectState(HWND hwnd)
 {

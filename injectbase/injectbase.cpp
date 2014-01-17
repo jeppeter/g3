@@ -21,6 +21,10 @@ static std::vector<char*> st_InsertDllPartNames;
 static CRITICAL_SECTION st_DllNameCS;
 static int st_InjectModuleInited=0;
 
+static CRITICAL_SECTION st_hWndCS;
+static std::vector<HWND> st_hWndBaseVecs;
+
+
 #define INSERT_DLL_NAME_ASSERT() \
 do\
 {\
@@ -319,6 +323,7 @@ fail:
 
 static CRITICAL_SECTION st_ShowCursorCS;
 static HCURSOR st_hCursor=NULL;
+static HCURSOR st_hNoMouseCursor=NULL;
 static int st_ShowCursorCount=0;
 static int st_ShowCursorInit=0;
 static int st_ShowCursorHideMode=0;
@@ -338,6 +343,9 @@ int ShowCursorHandle()
     CURSORINFO cursorinfo;
     BOOL bret;
     static int st_Handlecount =0;
+    BYTE CursorMaskAND[] = { 0xFF };
+    BYTE CursorMaskXOR[] = { 0x00 };
+    HWND hwnd=NULL;
 
     if(st_ShowCursorInit)
     {
@@ -360,8 +368,21 @@ int ShowCursorHandle()
         EnterCriticalSection(&st_ShowCursorCS);
         if(st_ShowCursorRequest == SHOWCURSOR_HIDE_REQ)
         {
-            st_ShowCursorHideMode = 1;
-            hCursor = SetCursorNext(NULL);
+
+            if(st_NoMouseCursor == NULL)
+            {
+                st_NoMouseCursor= CreateCursor(NULL, 0,0,1,1, CursorMaskAND, CursorMaskXOR);
+            }
+
+            if(st_NoMouseCursor)
+            {
+                (HCURSOR)SetClassLongPtr(hwnd,GCLP_HCURSOR,(LONG)st_NoMouseCursor);
+            }
+            else
+            {
+                goto outunlock;
+            }
+
 #if 1
             count = ShowCursorNext(FALSE);
             if(count > -1)
@@ -387,6 +408,7 @@ int ShowCursorHandle()
                 }
             }
 #endif
+            st_ShowCursorHideMode = 1;
             DEBUG_INFO("Hide CurSor (st_hCursor:0x%08x:hCursor:0x%08x)\n",st_hCursor,hCursor);
             handle = 1;
         }
@@ -453,6 +475,7 @@ int ShowCursorHandle()
                 }
             }
         }
+outunlock:
         st_ShowCursorRequest = 0;
         LeaveCriticalSection(&st_ShowCursorCS);
     }
@@ -934,6 +957,8 @@ int InjectBaseModuleInit(HMODULE hModule)
         return 0;
     }
 
+    InitializeCriticalSection(&st_hWndCS);
+
     ret = DetourDestroyWindow();
     if(ret < 0)
     {
@@ -1088,6 +1113,80 @@ typedef BOOL (WINAPI *DestroyWindowFunc_t)(HWND hWnd);
 
 static DestroyWindowFunc_t DestroyWindowNext=DestroyWindow;
 
+static BOOL InsertHwnd(HWND hwnd)
+{
+    BOOL bret=FALSE;
+    int findidx=-1;
+    UINT i;
+    if(st_InjectModuleInited)
+    {
+        EnterCriticalSection(&st_hWndCS);
+        for(i=0; i<st_hWndBaseVecs.size() ; i++)
+        {
+            if(st_hWndBaseVecs[i] == hwnd)
+            {
+                findidx = i;
+                break;
+            }
+        }
+
+        if(findidx < 0)
+        {
+            bret = TRUE;
+            st_hWndBaseVecs.push_back(hwnd);
+        }
+        LeaveCriticalSection(&st_hWndCS);
+
+        if(!bret)
+        {
+            SetLastError(ERROR_DUP_NAME);
+        }
+    }
+    else
+    {
+        SetLastError(ERROR_BAD_ENVIRONMENT);
+    }
+
+    return bret;
+}
+
+static BOOL RemoveHwnd(HWND hwnd)
+{
+	BOOL bret=FALSE;
+    int findidx=-1;
+    UINT i;
+    if(st_InjectModuleInited)
+    {
+        EnterCriticalSection(&st_hWndCS);
+        for(i=0; i<st_hWndBaseVecs.size() ; i++)
+        {
+            if(st_hWndBaseVecs[i] == hwnd)
+            {
+                findidx = i;
+                break;
+            }
+        }
+
+        if(findidx >= 0)
+        {
+            bret = TRUE;
+            st_hWndBaseVecs.erase(st_hWndBaseVecs.begin() + findidx);
+        }
+        LeaveCriticalSection(&st_hWndCS);
+
+        if(!bret)
+        {
+            SetLastError(ERROR_NO_DATA);
+        }
+    }
+    else
+    {
+        SetLastError(ERROR_BAD_ENVIRONMENT);
+    }
+
+    return bret;
+}
+
 BOOL WINAPI DestroyWindowCallBack(HWND hwnd)
 {
     BOOL bret;
@@ -1096,6 +1195,7 @@ BOOL WINAPI DestroyWindowCallBack(HWND hwnd)
     if(bret)
     {
         st_DestroyFuncList.CallList(hwnd);
+		RemoveHwnd(hwnd);
     }
     return bret;
 }
@@ -1166,6 +1266,7 @@ HWND WINAPI CreateWindowExACallBack(
         DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
                    dwStyle,dwExStyle);
         /*only visible window ,we put it when call*/
+		InsertHwnd(hWnd);
         st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
@@ -1206,6 +1307,7 @@ HWND WINAPI CreateWindowExWCallBack(
         DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
                    dwStyle,dwExStyle);
         /*only visible window, we put it ok*/
+		InsertHwnd(hWnd);
         st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
@@ -1238,6 +1340,59 @@ static int DetourCreateWindow()
     DEBUG_BUFFER_FMT(CreateWindowExWNext,10,"After CreateWindowExWNext (0x%p)",CreateWindowExWNext);
     return 0;
 }
+
+
+
+HWND GetCurrentProcessActiveWindow()
+{
+    HWND hwnd=NULL;
+    LONG style,exstyle;
+    UINT i;
+    int findidx=-1;
+    if(st_InjectModuleInited)
+    {
+        EnterCriticalSection(&st_hWndCS);
+        if(st_hWndBaseVecs.size() > 0)
+        {
+            for(i=0; i<st_hWndBaseVecs.size(); i++)
+            {
+                style = GetWindowLong(st_hWndBaseVecs[i],GWL_STYLE);
+                exstyle = GetWindowLong(st_hWndBaseVecs[i],GWL_EXSTYLE);
+                if(0)
+                {
+                    DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndBaseVecs[i],
+                               style,exstyle);
+                }
+                if(style & WS_VISIBLE)
+                {
+                    findidx = i;
+#if 0
+                    bret = GetClientRect(st_hWndBaseVecs[i],&rRect);
+                    if(bret)
+                    {
+                        DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d)\n",
+                                   st_hWndBaseVecs[i],
+                                   rRect.left,rRect.top,
+                                   rRect.right,rRect.bottom);
+                        DEBUG_INFO("MaxRect (%d:%d)=>(%d:%d) MousePoint (%d:%d)\n",
+                                   st_MaxRect.left,
+                                   st_MaxRect.top,st_MaxRect.right,st_MaxRect.bottom,
+                                   st_MousePoint.x,st_MousePoint.y);
+                    }
+#endif
+                    break;
+                }
+            }
+            if(findidx >= 0)
+            {
+                hwnd = st_hWndBaseVecs[findidx];
+            }
+        }
+        LeaveCriticalSection(&st_hWndCS);
+    }
+    return hwnd;
+}
+
 
 int RegisterCreateWindowFunc(FuncCall_t pFunc,LPVOID pParam,int prior)
 {
