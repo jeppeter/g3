@@ -332,9 +332,17 @@ static int st_ShowCursorRequest=0;
 
 typedef int (WINAPI *ShowCursorFunc_t)(BOOL bShow);
 typedef HCURSOR(WINAPI *SetCursorFunc_t)(HCURSOR hCursor);
+typedef ULONG_PTR(WINAPI *SetClassLongPtrFunc_t)(HWND hWnd,int nIndex,LONG_PTR dwNewLong);
+typedef ULONG_PTR(WINAPI *GetClassLongPtrFunc_t)(HWND hWnd,int nIndex);
+
 
 ShowCursorFunc_t ShowCursorNext=ShowCursor;
 SetCursorFunc_t SetCursorNext=SetCursor;
+SetClassLongPtrFunc_t SetClassLongPtrANext=SetClassLongPtrA;
+SetClassLongPtrFunc_t SetClassLongPtrWNext=SetClassLongPtrW;
+GetClassLongPtrFunc_t GetClassLongPtrANext=GetClassLongPtrA;
+GetClassLongPtrFunc_t GetClassLongPtrWNext=GetClassLongPtrW;
+
 
 int ShowCursorHandle()
 {
@@ -376,12 +384,22 @@ int ShowCursorHandle()
 
             if(st_NoMouseCursor)
             {
-                (HCURSOR)SetClassLongPtr(hwnd,GCLP_HCURSOR,(LONG)st_NoMouseCursor);
+                hwnd = GetCurrentProcessActiveWindow();
+                if(hwnd)
+                {
+                    if(st_ShowCursorHideMode == 0)
+                    {
+                        st_hCursor = (HCURSOR) GetClassLongPtrNext(hwnd,GCLP_HCURSOR);
+                    }
+                    hCursor= (HCURSOR)SetClassLongPtrNext(hwnd,GCLP_HCURSOR,(LONG)st_NoMouseCursor);
+                }
             }
             else
             {
                 goto outunlock;
             }
+
+
 
 #if 1
             count = ShowCursorNext(FALSE);
@@ -414,7 +432,11 @@ int ShowCursorHandle()
         }
         else if(st_ShowCursorRequest == SHOWCURSOR_NORMAL_REQ)
         {
-            hCursor = SetCursorNext(st_hCursor);
+            hwnd = GetCurrentProcessActiveWindow();
+            if(hwnd)
+            {
+                hCursor = (HCURSOR)SetLongPtrNext(hwnd,GCLP_HCURSOR,st_hCursor);
+            }
 #if 1
             curcount = ShowCursorNext(TRUE);
             if(curcount > st_ShowCursorCount)
@@ -444,36 +466,6 @@ int ShowCursorHandle()
             st_ShowCursorHideMode = 0;
             DEBUG_INFO("Normal Cursor (st_hCursor:0x%08x:hCursor:0x%08x)\n",st_hCursor,hCursor);
             handle = 1;
-        }
-        else
-        {
-            if(st_ShowCursorHideMode)
-            {
-                hCursor = SetCursorNext(NULL);
-                count = ShowCursorNext(FALSE);
-                if(count > -1)
-                {
-                    while(1)
-                    {
-                        count = ShowCursorNext(FALSE);
-                        if(count < 0)
-                        {
-                            break;
-                        }
-                    }
-                }
-                else if(count < -1)
-                {
-                    while(1)
-                    {
-                        count = ShowCursorNext(TRUE);
-                        if(count == -1)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
         }
 outunlock:
         st_ShowCursorRequest = 0;
@@ -509,6 +501,7 @@ int SetShowCursorHide()
     return ret;
 }
 
+
 int SetShowCursorNormal()
 {
     int ret=0,wait=0;
@@ -536,6 +529,59 @@ int SetShowCursorNormal()
     return ret;
 }
 
+
+ULONG_PTR WINAPI GetClassLongPtrCallBack(HWND hwnd,int nIndex)
+{
+    HWND hActiveWindow=NULL;
+    ULONG_PTR pRet=NULL;
+
+    hActiveWindow = GetCurrentProcessActiveWindow();
+    if(hActiveWindow && hActiveWindow == hwnd && nIndex == GCLP_HCURSOR)
+    {
+
+        EnterCriticalSection(&(st_ShowCursorCS));
+        if(st_ShowCursorHideMode == 0)
+        {
+            st_hCursor = (HCURSOR) GetClassLongPtrNext(hwnd,GCLP_HCURSOR);
+        }
+        pRet = st_hCursor ;
+        LeaveCriticalSection(&(st_ShowCursorCS));
+    }
+    else
+    {
+        pRet = GetClassPtrNext(hwnd,nIndex);
+    }
+    return pRet;
+}
+
+ULONG_PTR WINAPI SetClassLongPtrCallBack(HWND hwnd,int nIndex,LONG_PTR dwNewLong)
+{
+    HWND hActiveWindow=NULL;
+    ULONG_PTR pRet=NULL;
+
+    hActiveWindow = GetCurrentProcessActiveWindow();
+    if(hActiveWindow && hActiveWindow == hwnd && nIndex == GCLP_HCURSOR)
+    {
+
+        EnterCriticalSection(&(st_ShowCursorCS));
+        if(st_ShowCursorHideMode == 0)
+        {
+            st_hCursor = (HCURSOR)dwNewLong;
+            pRet = (HCURSOR) SetClassLongPtrNext(hwnd,GCLP_HCURSOR,dwNewLong);
+        }
+        else
+        {
+            pRet = st_hCursor ;
+            st_hCursor = dwNewLong;
+        }
+        LeaveCriticalSection(&(st_ShowCursorCS));
+    }
+    else
+    {
+        pRet = SetClassPtrNext(hwnd,nIndex,dwNewLong);
+    }
+    return pRet;
+}
 
 int WINAPI ShowCursorCallBack(BOOL bShow)
 {
@@ -601,6 +647,7 @@ int DetourShowCursorFunction(void)
     InitializeCriticalSection(&st_ShowCursorCS);
     DEBUG_BUFFER_FMT(ShowCursorNext,10,"Before ShowCursorNext (0x%p)",ShowCursorNext);
     DEBUG_BUFFER_FMT(SetCursorNext,10,"Before SetCursorNext (0x%p)",SetCursorNext);
+	DEBUG_BUFFER_FMT(GetClassLongPtrNext,10,"Before SetCursorNext (0x%p)",SetCursorNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&ShowCursorNext,ShowCursorCallBack);
@@ -1152,7 +1199,7 @@ static BOOL InsertHwnd(HWND hwnd)
 
 static BOOL RemoveHwnd(HWND hwnd)
 {
-	BOOL bret=FALSE;
+    BOOL bret=FALSE;
     int findidx=-1;
     UINT i;
     if(st_InjectModuleInited)
@@ -1195,7 +1242,7 @@ BOOL WINAPI DestroyWindowCallBack(HWND hwnd)
     if(bret)
     {
         st_DestroyFuncList.CallList(hwnd);
-		RemoveHwnd(hwnd);
+        RemoveHwnd(hwnd);
     }
     return bret;
 }
@@ -1266,7 +1313,7 @@ HWND WINAPI CreateWindowExACallBack(
         DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
                    dwStyle,dwExStyle);
         /*only visible window ,we put it when call*/
-		InsertHwnd(hWnd);
+        InsertHwnd(hWnd);
         st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
@@ -1307,7 +1354,7 @@ HWND WINAPI CreateWindowExWCallBack(
         DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
                    dwStyle,dwExStyle);
         /*only visible window, we put it ok*/
-		InsertHwnd(hWnd);
+        InsertHwnd(hWnd);
         st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
