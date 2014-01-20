@@ -6,7 +6,6 @@ static CRITICAL_SECTION st_BaseKeyMouseStateCS;
 static std::vector<HWND> st_hWndBaseVecs;
 static std::vector<RECT> st_hWndBaseRectVecs;
 static std::vector<HCURSOR> st_hWndClassCursorVecs;
-static int st_SetCursorPosEnable=0;
 static unsigned char st_BaseKeyState[MAX_STATE_BUFFER_SIZE] = {0};
 static unsigned int st_KeyDownTimes[256] = {0};
 /********************************************
@@ -32,12 +31,15 @@ static int st_ShowCursorCount=0;
 static int st_ShowCursorInit=0;
 static int st_ShowCursorHideMode=0;
 static int st_ShowCursorRequest=0;
+static int st_SetCursorPosEnable=0;
 
 
 typedef int (WINAPI *ShowCursorFunc_t)(BOOL bShow);
 typedef HCURSOR(WINAPI *SetCursorFunc_t)(HCURSOR hCursor);
 typedef ULONG_PTR(WINAPI *SetClassLongPtrFunc_t)(HWND hWnd,int nIndex,LONG_PTR dwNewLong);
 typedef ULONG_PTR(WINAPI *GetClassLongPtrFunc_t)(HWND hWnd,int nIndex);
+typedef BOOL (WINAPI *SetCursorPosFunc_t)(int x,int y);
+typedef BOOL (WINAPI *GetCursorPosFunc_t)(LPPOINT lpPoint);
 
 
 ShowCursorFunc_t ShowCursorNext=ShowCursor;
@@ -46,6 +48,8 @@ SetClassLongPtrFunc_t SetClassLongPtrANext=SetClassLongPtrA;
 SetClassLongPtrFunc_t SetClassLongPtrWNext=SetClassLongPtrW;
 GetClassLongPtrFunc_t GetClassLongPtrANext=GetClassLongPtrA;
 GetClassLongPtrFunc_t GetClassLongPtrWNext=GetClassLongPtrW;
+SetCursorPosFunc_t SetCursorPosNext=SetCursorPos;
+GetCursorPosFunc_t GetCursorPosNext=GetCursorPos;
 
 int ShowCursorHandle()
 {
@@ -470,31 +474,6 @@ HCURSOR WINAPI SetCursorCallBack(HCURSOR hCursor)
     return hRetCursor;
 }
 
-int DetourShowCursorFunction(void)
-{
-    InitializeCriticalSection(&st_hWndCS);
-    DEBUG_BUFFER_FMT(ShowCursorNext,10,"Before ShowCursorNext (0x%p)",ShowCursorNext);
-    DEBUG_BUFFER_FMT(SetCursorNext,10,"Before SetCursorNext (0x%p)",SetCursorNext);
-    DEBUG_BUFFER_FMT(SetClassLongPtrANext,10,"Before SetClassLongPtrANext (0x%p)",SetClassLongPtrANext);
-    DEBUG_BUFFER_FMT(GetClassLongPtrANext,10,"Before GetClassLongPtrANext (0x%p)",GetClassLongPtrANext);
-    DEBUG_BUFFER_FMT(SetClassLongPtrWNext,10,"Before SetClassLongPtrWNext (0x%p)",SetClassLongPtrWNext);
-    DEBUG_BUFFER_FMT(GetClassLongPtrWNext,10,"Before GetClassLongPtrWNext (0x%p)",GetClassLongPtrWNext);
-    DetourTransactionBegin();
-    DetourUpdateThread(GetCurrentThread());
-    DetourAttach((PVOID*)&ShowCursorNext,ShowCursorCallBack);
-    DetourAttach((PVOID*)&SetCursorNext,SetCursorCallBack);
-    DetourTransactionCommit();
-    DEBUG_BUFFER_FMT(ShowCursorNext,10,"After ShowCursorNext (0x%p)",ShowCursorNext);
-    DEBUG_BUFFER_FMT(SetCursorNext,10,"After SetCursorNext (0x%p)",SetCursorNext);
-    DEBUG_BUFFER_FMT(SetClassLongPtrANext,10,"After SetClassLongPtrANext (0x%p)",SetClassLongPtrANext);
-    DEBUG_BUFFER_FMT(GetClassLongPtrANext,10,"After GetClassLongPtrANext (0x%p)",GetClassLongPtrANext);
-    DEBUG_BUFFER_FMT(SetClassLongPtrWNext,10,"After SetClassLongPtrWNext (0x%p)",SetClassLongPtrWNext);
-    DEBUG_BUFFER_FMT(GetClassLongPtrWNext,10,"After GetClassLongPtrWNext (0x%p)",GetClassLongPtrWNext);
-
-
-    st_ShowCursorInit = 1;
-    return 0;
-}
 
 
 BOOL InsertHwnd(HWND hwnd)
@@ -1044,6 +1023,7 @@ int __BaseSetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
 int __BaseSetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
 {
     int ret;
+    BOOL bret;
 
     if(pDevEvent->devid != 0)
     {
@@ -1078,6 +1058,21 @@ int __BaseSetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
             __MoveMouseRelativeNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
             //DEBUG_INFO("x %d y %d mousepoint(%d:%d)\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y,
             //           st_MousePoint.x,st_MousePoint.y);
+            if(st_SetCursorPosEnable)
+            {
+                bret = SetCursorPosNext(st_MousePoint.x,st_MousePoint.y);
+                if(!bret)
+                {
+                	ret=  LAST_ERROR_CODE();
+                    ERROR_INFO("SetMouse Moving[%d:%d] To MousePoint[%d:%d] Error(%d)\n",
+						pDevEvent->event.mouse.x,
+						pDevEvent->event.mouse.y,
+						st_MousePoint.x,st_MousePoint.y,
+						ret);
+                }
+            }
+
+
         }
         else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
         {
@@ -1086,6 +1081,19 @@ int __BaseSetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
         {
             __MoveMouseAbsoluteNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
+            if(st_SetCursorPosEnable)
+            {
+                bret = SetCursorPosNext(st_MousePoint.x,st_MousePoint.y);
+                if(!bret)
+                {
+                	ret=  LAST_ERROR_CODE();
+                    ERROR_INFO("SetMouse AbsoluteMove[%d:%d] To MousePoint[%d:%d] Error(%d)\n",
+						pDevEvent->event.mouse.x,
+						pDevEvent->event.mouse.y,
+						st_MousePoint.x,st_MousePoint.y,
+						ret);
+                }
+            }
         }
         else
         {
@@ -1370,4 +1378,111 @@ int GetBaseKeyState(unsigned char *pKeyState,UINT keys)
     LeaveCriticalSection(&st_BaseKeyMouseStateCS);
     return ret;
 }
+
+
+BOOL WINAPI GetCursorPosCallBack(LPPOINT lpPoint)
+{
+    BOOL bret=TRUE;
+
+    if(st_ShowCursorInit)
+    {
+        EnterCriticalSection(&st_hWndCS);
+        lpPoint->x = st_MousePoint.x;
+        lpPoint->y = st_MousePoint.y;
+        LeaveCriticalSection(&st_hWndCS);
+    }
+    else
+    {
+        bret = GetCursorPosNext(lpPoint);
+    }
+    return bret;
+}
+
+BOOL WINAPI SetCursorPosCallBack(int x,int y)
+{
+    BOOL bret=TRUE;
+
+    if(st_ShowCursorInit)
+    {
+        EnterCriticalSection(&st_hWndCS);
+        /*now we should use abosulte position*/
+        st_MousePoint.x = x;
+        st_MousePoint.y = y;
+
+        __ReCalculateMousePointNoLock(0);
+        if(st_SetCursorPosEnable)
+        {
+            /*we set the cursor real position for it */
+            bret = SetCursorPosNext(st_MousePoint.x, st_MousePoint.y);
+        }
+
+        LeaveCriticalSection(&st_hWndCS);
+    }
+    else
+    {
+        bret = SetCursorPosNext(x,y);
+    }
+    return bret;
+}
+
+int EnableSetCursorPos(void)
+{
+	int ret=0;
+
+	EnterCriticalSection(&st_hWndCS);
+	ret = st_SetCursorPosEnable;
+	st_SetCursorPosEnable = 1;
+	LeaveCriticalSection(&st_hWndCS);
+	return ret;
+}
+
+int DisableSetCursorPos(void)
+{
+	int ret=0;
+
+	EnterCriticalSection(&st_hWndCS);
+	ret = st_SetCursorPosEnable;
+	st_SetCursorPosEnable = 0;
+	LeaveCriticalSection(&st_hWndCS);
+	return ret;
+}
+
+
+
+int DetourShowCursorFunction(void)
+{
+    InitializeCriticalSection(&st_hWndCS);
+    DEBUG_BUFFER_FMT(ShowCursorNext,10,"Before ShowCursorNext (0x%p)",ShowCursorNext);
+    DEBUG_BUFFER_FMT(SetCursorNext,10,"Before SetCursorNext (0x%p)",SetCursorNext);
+    DEBUG_BUFFER_FMT(SetClassLongPtrANext,10,"Before SetClassLongPtrANext (0x%p)",SetClassLongPtrANext);
+    DEBUG_BUFFER_FMT(GetClassLongPtrANext,10,"Before GetClassLongPtrANext (0x%p)",GetClassLongPtrANext);
+    DEBUG_BUFFER_FMT(SetClassLongPtrWNext,10,"Before SetClassLongPtrWNext (0x%p)",SetClassLongPtrWNext);
+    DEBUG_BUFFER_FMT(GetClassLongPtrWNext,10,"Before GetClassLongPtrWNext (0x%p)",GetClassLongPtrWNext);
+	DEBUG_BUFFER_FMT(GetCursorPosNext,10,"Before GetCursorPosNext (0x%p)",GetCursorPosNext);
+	DEBUG_BUFFER_FMT(SetCursorPosNext,10,"Before SetCursorPosNext (0x%p)",SetCursorPosNext);
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DetourAttach((PVOID*)&ShowCursorNext,ShowCursorCallBack);
+    DetourAttach((PVOID*)&SetCursorNext,SetCursorCallBack);
+	DetourAttach((PVOID*)&SetClassLongPtrANext,SetClassLongPtrACallBack);
+	DetourAttach((PVOID*)&GetClassLongPtrANext,GetClassLongPtrACallBack);
+	DetourAttach((PVOID*)&SetClassLongPtrWNext,SetClassLongPtrWCallBack);
+	DetourAttach((PVOID*)&GetClassLongPtrWNext,GetClassLongPtrWCallBack);
+	DetourAttach((PVOID*)&SetCursorPosNext,SetCursorPosCallBack);
+	DetourAttach((PVOID*)&GetCursorPosNext,GetCursorPosCallBack);
+    DetourTransactionCommit();
+    DEBUG_BUFFER_FMT(ShowCursorNext,10,"After ShowCursorNext (0x%p)",ShowCursorNext);
+    DEBUG_BUFFER_FMT(SetCursorNext,10,"After SetCursorNext (0x%p)",SetCursorNext);
+    DEBUG_BUFFER_FMT(SetClassLongPtrANext,10,"After SetClassLongPtrANext (0x%p)",SetClassLongPtrANext);
+    DEBUG_BUFFER_FMT(GetClassLongPtrANext,10,"After GetClassLongPtrANext (0x%p)",GetClassLongPtrANext);
+    DEBUG_BUFFER_FMT(SetClassLongPtrWNext,10,"After SetClassLongPtrWNext (0x%p)",SetClassLongPtrWNext);
+    DEBUG_BUFFER_FMT(GetClassLongPtrWNext,10,"After GetClassLongPtrWNext (0x%p)",GetClassLongPtrWNext);
+	DEBUG_BUFFER_FMT(GetCursorPosNext,10,"After GetCursorPosNext (0x%p)",GetCursorPosNext);
+	DEBUG_BUFFER_FMT(SetCursorPosNext,10,"After SetCursorPosNext (0x%p)",SetCursorPosNext);
+
+
+    st_ShowCursorInit = 1;
+    return 0;
+}
+
 
