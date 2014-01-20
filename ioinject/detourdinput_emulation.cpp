@@ -11,13 +11,10 @@
 
 
 static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
-static unsigned char st_Dinput8KeyState[MAX_STATE_BUFFER_SIZE];
 static DIMOUSESTATE  st_Dinput8MouseState;
 
 static std::vector<HWND> st_hWndVecs;
-static std::vector<RECT> st_hWndRectVecs;
 static std::vector<DWORD> st_hWndThreadId;
-static unsigned int st_KeyDownTimes[256] = {0};
 /********************************************
 .left 0
 .top 0
