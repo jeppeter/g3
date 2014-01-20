@@ -1,5 +1,6 @@
 
 #include "injectbase_window.h"
+#include <iocapcommon.h>
 
 static CRITICAL_SECTION st_hWndCS;
 static std::vector<HWND> st_hWndBaseVecs;
@@ -870,6 +871,11 @@ int BaseSetWindowRectState(HWND hwnd)
     POINT pt;
     int ret;
 
+    if(st_ShowCursorInit == 0)
+    {
+        return 0;
+    }
+
     EnterCriticalSection(&st_hWndCS);
     for(i=0; i<st_hWndBaseVecs.size() ; i++)
     {
@@ -986,13 +992,6 @@ int BaseSetWindowRectState(HWND hwnd)
                                wRect.right,
                                wRect.bottom);
                     st_hWndBaseRectVecs[i] = wRect;
-                    GetWindowRect(st_hWndBaseRectVecs[i],&wRect);
-                    DEBUG_INFO("hwnd(0x%08x) wRect(%d:%d)=>(%d:%d)\n",
-                               st_hWndBaseRectVecs[i],
-                               wRect.left,
-                               wRect.top,
-                               wRect.right,
-                               wRect.bottom);
                     refreshed ++;
                 }
             }
@@ -1272,6 +1271,14 @@ int BaseMouseBtnDown(UINT btn)
 
 int BaseSetWindowsRect(HWND hWnd)
 {
+    int ret;
+
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
     return BaseSetWindowRectState(hWnd);
 }
 
@@ -1280,6 +1287,15 @@ int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
     /*we test for the client point of this window*/
     UINT i;
     int findidx = -1;
+    int ret;
+
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
+
     EnterCriticalSection(&st_hWndCS);
     /*now first to make sure */
     for(i=0; i<st_hWndBaseVecs.size(); i++)
@@ -1381,6 +1397,23 @@ int BaseGetMousePointAbsolution(POINT *pPoint)
     return ret;
 }
 
+int InitKeyState(void)
+{
+    EnterCriticalSection(&st_hWndCS);
+    ZeroMemory(st_BaseKeyState,sizeof(st_BaseKeyState));
+    LeaveCriticalSection(&st_hWndCS);
+    return 0;
+}
+
+int InitMouseState(void)
+{
+    EnterCriticalSection(&st_hWndCS);
+    ZeroMemory(st_MousePoint,sizeof(st_MousePoint));
+    st_MouseZPoint = 0;
+    LeaveCriticalSection(&st_hWndCS);
+    return 0;
+}
+
 int GetBaseMouseState(UINT *pMouseBtnState,UINT btns,POINT *pPoint,UINT* pMouseZ)
 {
     int ret=0;
@@ -1408,6 +1441,13 @@ int GetBaseKeyState(unsigned char *pKeyState,UINT keys)
 {
     int ret=0;
     int cpsize=0;
+
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
 
     EnterCriticalSection(&st_hWndCS);
     if(keys >= MAX_STATE_BUFFER_SIZE)

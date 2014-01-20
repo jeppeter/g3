@@ -50,6 +50,10 @@ INJECTBASE_API int UnRegisterDestroyWindowFunc(FuncCall_t pFunc);
 INJECTBASE_API int ShowCursorHandle();
 INJECTBASE_API int SetShowCursorHide();
 INJECTBASE_API int SetShowCursorNormal();
+INJECTBASE_API int BaseSetKeyMouseState(LPVOID pParam,LPVOID pInput);
+INJECTBASE_API int BaseSetWindowsRect(HWND hWnd);
+INJECTBASE_API int BaseScreenMousePoint(HWND hwnd,POINT* pPoint);
+INJECTBASE_API int GetBaseMouseState(UINT *pMouseBtnState,UINT btns,POINT *pPoint,UINT* pMouseZ);
 
 
 
