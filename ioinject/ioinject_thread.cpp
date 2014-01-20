@@ -372,7 +372,7 @@ void __FreeIoInjectThreadStatus(PDETOUR_THREAD_STATUS_t *ppStatus)
 
 int __DetourIoInjectThreadStop(PIO_CAP_CONTROL_t pControl)
 {
-	SetShowCursorNormal();
+    SetShowCursorNormal();
     __FreeIoInjectThreadStatus(&st_pDetourStatus);
     st_UnPressedLastKey = -1;
     SetLastError(0);
@@ -823,6 +823,7 @@ int UnRegisterEventListHandler(FuncCall_t pFunc)
 
 void IoInjectThreadFini(HMODULE hModule)
 {
+	UnRegisterEventListHandler(BaseSetKeyMouseState);
     if(st_hIoInjectControlSema)
     {
         CloseHandle(st_hIoInjectControlSema);
@@ -841,10 +842,23 @@ int IoInjectThreadInit(HMODULE hModule)
         ERROR_INFO("Could not Create Semaphore Error(%d)\n",ret);
         goto fail;
     }
+#ifdef IOCAP_EMULATION
+    ret = RegisterEventListHandler(BaseSetKeyMouseState,NULL,0);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not Register BaseSetKeyMouseState Error(%d)\n",ret);
+        goto fail;
+    }
+#endif
 
     SetLastError(0);
     return 0;
 fail:
+#ifdef IOCAP_EMULATION
+	UnRegisterEventListHandler(BaseSetKeyMouseState);
+#endif
+
     assert(ret > 0);
     if(st_hIoInjectControlSema)
     {

@@ -11,6 +11,8 @@
 
 #define  MAX_STATE_BUFFER_SIZE   256
 
+
+#ifdef IOCAP_EMULATION
 static CRITICAL_SECTION st_hWndCS;
 static std::vector<HWND> st_hWndBaseVecs;
 static std::vector<RECT> st_hWndBaseRectVecs;
@@ -39,7 +41,7 @@ static int st_ShowCursorCount=0;
 static int st_ShowCursorInit=0;
 static int st_ShowCursorHideMode=0;
 static int st_ShowCursorRequest=0;
-static int st_SetCursorPosEnable=0;
+static int st_SetCursorPosEnable=1;
 
 
 typedef int (WINAPI *ShowCursorFunc_t)(BOOL bShow);
@@ -1664,3 +1666,4 @@ HWND GetCurrentProcessActiveWindow()
     return hwnd;
 }
 
+#endif /*IOCAP_EMULATION*/
