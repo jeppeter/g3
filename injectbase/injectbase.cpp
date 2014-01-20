@@ -704,90 +704,6 @@ typedef BOOL (WINAPI *DestroyWindowFunc_t)(HWND hWnd);
 
 static DestroyWindowFunc_t DestroyWindowNext=DestroyWindow;
 
-static BOOL InsertHwnd(HWND hwnd)
-{
-    BOOL bret=FALSE;
-    int findidx=-1;
-    UINT i;
-    HCURSOR hCursor;
-    if(st_InjectModuleInited)
-    {
-        EnterCriticalSection(&st_hWndCS);
-        for(i=0; i<st_hWndBaseVecs.size() ; i++)
-        {
-            if(st_hWndBaseVecs[i] == hwnd)
-            {
-                findidx = i;
-                break;
-            }
-        }
-
-        if(findidx < 0)
-        {
-            bret = TRUE;
-            st_hWndBaseVecs.push_back(hwnd);
-            hCursor = (HCURSOR) GetClassLongPtrANext(hwnd,GCLP_HCURSOR);
-            st_hWndClassCursorVecs.push_back(hCursor);
-            if(st_ShowCursorHideMode > 0)
-            {
-                /*this means we should hid cursor ,because when st_ShowCursorHideMode > 0 we have create hNoMouseCursor ,so assert it*/
-                assert(st_hNoMouseCursor);
-                SetClassLongPtrANext(hwnd,GCLP_HCURSOR,st_hNoMouseCursor);
-            }
-        }
-        LeaveCriticalSection(&st_hWndCS);
-
-        if(!bret)
-        {
-            SetLastError(ERROR_DUP_NAME);
-        }
-    }
-    else
-    {
-        SetLastError(ERROR_BAD_ENVIRONMENT);
-    }
-
-    return bret;
-}
-
-static BOOL RemoveHwnd(HWND hwnd)
-{
-    BOOL bret=FALSE;
-    int findidx=-1;
-    UINT i;
-    if(st_InjectModuleInited)
-    {
-        EnterCriticalSection(&st_hWndCS);
-        for(i=0; i<st_hWndBaseVecs.size() ; i++)
-        {
-            if(st_hWndBaseVecs[i] == hwnd)
-            {
-                findidx = i;
-                break;
-            }
-        }
-
-        if(findidx >= 0)
-        {
-            bret = TRUE;
-            st_hWndBaseVecs.erase(st_hWndBaseVecs.begin() + findidx);
-            st_hWndClassCursorVecs.erase(st_hWndClassCursorVecs.begin() + findidx);
-        }
-        LeaveCriticalSection(&st_hWndCS);
-
-        if(!bret)
-        {
-            SetLastError(ERROR_NO_DATA);
-        }
-    }
-    else
-    {
-        SetLastError(ERROR_BAD_ENVIRONMENT);
-    }
-
-    return bret;
-}
-
 BOOL WINAPI DestroyWindowCallBack(HWND hwnd)
 {
     BOOL bret;
@@ -1014,4 +930,5 @@ int UnRegisterDestroyWindowFunc(FuncCall_t pFunc)
 {
     return st_DestroyFuncList.RemoveFuncList(pFunc);
 }
+
 
