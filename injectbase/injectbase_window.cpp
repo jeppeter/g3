@@ -683,4 +683,360 @@ int BasePressKeyDownTimes(UINT scancode)
     LeaveCriticalSection(&st_BaseKeyMouseStateCS);
     return cnt;
 }
+int __ReCalculateMaxWindowRectNoLock()
+{
+    UINT i;
+    int pickidx=0;
+    LONG hw,hh,mw,mh;
+
+    if(st_hWndBaseVecs.size() == 0)
+    {
+        st_MaxRect.top = 0;
+        st_MaxRect.left = 0;
+        st_MaxRect.right = 2;
+        st_MaxRect.bottom = 2;
+        return 0;
+    }
+
+    assert(st_hWndBaseVecs.size() > 0);
+    for(i=0; i<st_hWndBaseVecs.size() ; i++)
+    {
+        hw = (st_hWndBaseRectVecs[i].right - st_hWndBaseRectVecs[i].left);
+        hh = (st_hWndBaseRectVecs[i].bottom - st_hWndBaseRectVecs[i].top);
+        mw = (st_hWndBaseRectVecs[pickidx].right - st_hWndBaseRectVecs[pickidx].left);
+        mh = (st_hWndBaseRectVecs[pickidx].bottom - st_hWndBaseRectVecs[pickidx].top);
+        if((hw > mw) &&
+                (hh > mh))
+        {
+            DEBUG_INFO("picked %d\n",i);
+            pickidx = i;
+        }
+    }
+
+    /*now max window size is rect*/
+    CopyMemory(&st_MaxRect,&(st_hWndBaseRectVecs[pickidx]),sizeof(st_MaxRect));
+
+    if(st_MaxRect.left < 0)
+    {
+        st_MaxRect.left = 0;
+    }
+
+    if(st_MaxRect.right < 0 || st_MaxRect.right <= st_MaxRect.left)
+    {
+        st_MaxRect.right = st_MaxRect.left + 1;
+    }
+
+    if(st_MaxRect.top < 0)
+    {
+        st_MaxRect.top = 0;
+    }
+
+    if(st_MaxRect.bottom < 0 || st_MaxRect.bottom <= st_MaxRect.top)
+    {
+        st_MaxRect.bottom = st_MaxRect.top + 1;
+    }
+
+
+    return pickidx;
+}
+
+int __ReCalculateMousePointNoLock(int check)
+{
+    //DEBUG_INFO("st_MousePoint (%d-%d) maxrect (%d-%d:%d-%d)\n",
+    //           st_MousePoint.x,st_MousePoint.y,
+    //           st_MaxRect.left,st_MaxRect.top,
+    //           st_MaxRect.right,st_MaxRect.bottom);
+    if(st_MousePoint.x <= st_MaxRect.left)
+    {
+        DEBUG_INFO("reset x (%d + 1)\n",st_MaxRect.left);
+        st_MousePoint.x = st_MaxRect.left + 1;
+    }
+    else if(st_MousePoint.x >= st_MaxRect.right)
+    {
+        DEBUG_INFO("reset x (%d - 1)\n",st_MaxRect.right);
+        st_MousePoint.x = st_MaxRect.right - 1;
+    }
+
+    if(st_MousePoint.y  <= st_MaxRect.top)
+    {
+        DEBUG_INFO("reset y (%d + 1)\n",st_MaxRect.top);
+        st_MousePoint.y = st_MaxRect.top + 1;
+    }
+    else if(st_MousePoint.y >= st_MaxRect.bottom)
+    {
+        DEBUG_INFO("reset y (%d - 1)\n",st_MaxRect.bottom);
+        st_MousePoint.y = st_MaxRect.bottom - 1;
+    }
+
+    if(st_MousePoint.x < 1)
+    {
+        st_MousePoint.x = 1;
+    }
+
+    if(st_MousePoint.y < 1)
+    {
+        st_MousePoint.y = 1;
+    }
+
+    if(check && (st_MousePoint.x != st_MouseLastPoint.x ||
+                 st_MousePoint.y != st_MouseLastPoint.y))
+    {
+        ERROR_INFO("Should MousePoint(x:%d:y:%d) But MousePoint(x:%d:y:%d)\n",
+                   st_MousePoint.x,
+                   st_MousePoint.y,
+                   st_MouseLastPoint.x,
+                   st_MouseLastPoint.y);
+    }
+
+    /*now we should make sure the point for the last mouse point*/
+    st_MouseLastPoint.x = st_MousePoint.x;
+    st_MouseLastPoint.y = st_MousePoint.y;
+
+    return 0;
+}
+
+int __MoveMouseRelativeNoLock(int x,int y)
+{
+    int ret= 0;
+    st_MousePoint.x += x;
+    st_MousePoint.y += y;
+    __ReCalculateMousePointNoLock(0);
+    return 0;
+}
+
+int __MoveMouseAbsoluteNoLock(int clientx,int clienty)
+{
+    int ret = 0;
+    st_MousePoint.x = st_MaxRect.left + clientx;
+    st_MousePoint.y = st_MaxRect.top + clienty;
+    __ReCalculateMousePointNoLock(1);
+    return ret;
+}
+
+int __SetBaseMouseBtnNoLock(UINT btn,int down)
+{
+    int ret;
+
+    if(btn > MOUSE_MAX_BTN || btn < MOUSE_MIN_BTN)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(down)
+    {
+        st_MouseBtnState[btn - 1] = 0x1;
+    }
+    else
+    {
+        st_MouseBtnState[ btn - 1] = 0x0;
+    }
+
+    return 0;
+}
+
+int BaseSetWindowRectState(HWND hwnd)
+{
+    int findidx = -1;
+    UINT i;
+    int refreshed = 0;
+    BOOL bret;
+    RECT rRect,wRect;
+    POINT pt;
+    int ret;
+	
+    EnterCriticalSection(&st_BaseKeyMouseStateCS);
+    for(i=0; i<st_hWndBaseVecs.size() ; i++)
+    {
+        if(hwnd == st_hWndBaseVecs[i])
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        bret = ::GetClientRect(hwnd,&rRect);
+        if(bret)
+        {
+            pt.x = rRect.left;
+            pt.y = rRect.top;
+            bret = ::ClientToScreen(hwnd,&pt);
+            if(!bret)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("ClientToScreen(%d-%d) Error(%d)\n",pt.x,pt.y,ret);
+                goto unlock;
+            }
+
+            wRect.left = pt.x;
+            wRect.top = pt.y;
+
+            pt.x = rRect.right;
+            pt.y = rRect.bottom;
+            bret = ::ClientToScreen(hwnd,&pt);
+            if(!bret)
+            {
+                ret = LAST_ERROR_CODE();
+                ERROR_INFO("ClientToScreen(%d-%d) Error(%d)\n",pt.x,pt.y,ret);
+                goto unlock;
+            }
+
+            wRect.right = pt.x;
+            wRect.bottom = pt.y;
+            if(st_hWndBaseRectVecs[findidx].top != wRect.top  ||
+                    st_hWndBaseRectVecs[findidx].left != wRect.left ||
+                    st_hWndBaseRectVecs[findidx].right != wRect.right ||
+                    st_hWndBaseRectVecs[findidx].bottom != wRect.bottom)
+            {
+                DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d) wRect(%d:%d)=>(%d:%d)\n",
+                           st_hWndBaseVecs[findidx],
+                           st_hWndBaseRectVecs[findidx].left,
+                           st_hWndBaseRectVecs[findidx].top,
+                           st_hWndBaseRectVecs[findidx].right,
+                           st_hWndBaseRectVecs[findidx].bottom,
+                           rRect.left,
+                           rRect.top,
+                           rRect.right,
+                           rRect.bottom,
+                           wRect.left,
+                           wRect.top,
+                           wRect.right,
+                           wRect.bottom);
+                st_hWndBaseRectVecs[findidx] = wRect;
+                refreshed ++;
+            }
+        }
+    }
+    else
+    {
+        for(i=0; i<st_hWndBaseRectVecs.size(); i++)
+        {
+            bret = ::GetClientRect(st_hWndBaseRectVecs[i],&rRect);
+            if(bret)
+            {
+                pt.x = rRect.left;
+                pt.y = rRect.top;
+                bret = ::ClientToScreen(st_hWndBaseRectVecs[i],&pt);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("ClientToScreen(%d-%d) Error(%d)\n",pt.x,pt.y,ret);
+                    continue;
+                }
+
+                wRect.left = pt.x;
+                wRect.top = pt.y;
+
+                pt.x = rRect.right;
+                pt.y = rRect.bottom;
+                bret = ::ClientToScreen(st_hWndBaseRectVecs[i],&pt);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("ClientToScreen(%d-%d) Error(%d)\n",pt.x,pt.y,ret);
+                    continue;
+                }
+
+                wRect.right = pt.x;
+                wRect.bottom = pt.y;
+                if(st_hWndBaseRectVecs[i].top != wRect.top  ||
+                        st_hWndBaseRectVecs[i].left != wRect.left ||
+                        st_hWndBaseRectVecs[i].right != wRect.right ||
+                        st_hWndBaseRectVecs[i].bottom != wRect.bottom)
+                {
+                    DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d)  wRect(%d:%d)=>(%d:%d)\n",
+                               st_hWndBaseRectVecs[i],
+                               st_hWndBaseRectVecs[i].left,
+                               st_hWndBaseRectVecs[i].top,
+                               st_hWndBaseRectVecs[i].right,
+                               st_hWndBaseRectVecs[i].bottom,
+                               rRect.left,
+                               rRect.top,
+                               rRect.right,
+                               rRect.bottom,
+                               wRect.left,
+                               wRect.top,
+                               wRect.right,
+                               wRect.bottom);
+                    st_hWndBaseRectVecs[i] = wRect;
+                    GetWindowRect(st_hWndBaseRectVecs[i],&wRect);
+                    DEBUG_INFO("hwnd(0x%08x) wRect(%d:%d)=>(%d:%d)\n",
+                               st_hWndBaseRectVecs[i],
+                               wRect.left,
+                               wRect.top,
+                               wRect.right,
+                               wRect.bottom);
+                    refreshed ++;
+                }
+            }
+        }
+    }
+unlock:
+    if(refreshed > 0)
+    {
+        /*we have refreshed window ,so recalculate the window*/
+        __ReCalculateMaxWindowRectNoLock();
+        __ReCalculateMousePointNoLock(0);
+    }
+    LeaveCriticalSection(&st_BaseKeyMouseStateCS);
+    return refreshed;
+}
+
+
+int __BaseSetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
+{
+    int ret;
+    int scancode;
+
+    if(pDevEvent->devid != 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("<0x%p>Keyboard devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    /*not check for the code*/
+
+    if(pDevEvent->event.keyboard.code >= KEYBOARD_CODE_NULL)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard code(%d) invalid\n",pDevEvent,pDevEvent->event.keyboard.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.keyboard.event >= KEYBOARD_EVENT_MAX)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard event(%d) invalid\n",pDevEvent,pDevEvent->event.keyboard.event);
+        SetLastError(ret);
+        return -ret;
+    }
+
+
+    scancode = st_CodeMapDik[pDevEvent->event.keyboard.code];
+    if(scancode == DIK_NULL)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Keyboard code(%d) TO DIK_NULL invalid\n",pDevEvent,pDevEvent->event.keyboard.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
+    {
+        st_BaseKeyState[scancode] = 0x80;
+        __BasePressKeyDownNoLock(scancode);
+    }
+    else
+    {
+        st_BaseKeyState[scancode] = 0x00;
+        __BasePressKeyUpNoLock(scancode);
+    }
+    return 0;
+}
 
