@@ -337,4 +337,18 @@ int __RawInputDetour(void)
     return 0;
 }
 
+#if 0
+int DetourDinputDebugInit(HMODULE hModule)
+{
+    /*now first to init all the critical section*/
+    InitializeCriticalSection(&st_DIDevice8ACS);
+    InitializeCriticalSection(&st_DIDevice8WCS);
+    return 0;
+}
+
+void DetourDinputDebugFini(HMODULE hModule)
+{
+    return;
+}
+#endif
 

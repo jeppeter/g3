@@ -1,7 +1,11 @@
 
+#include <iocapcommon.h>
+
+
+#ifdef IOCAP_EMULATION
+
 #include <injectbase.h>
 #include <injectbase_window.h>
-#include <iocapcommon.h>
 #include <vector>
 #include <output_debug.h>
 #include <sched.h>
@@ -12,7 +16,6 @@
 #define  MAX_STATE_BUFFER_SIZE   256
 
 
-#ifdef IOCAP_EMULATION
 static CRITICAL_SECTION st_hWndCS;
 static std::vector<HWND> st_hWndBaseVecs;
 static std::vector<RECT> st_hWndBaseRectVecs;

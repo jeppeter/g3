@@ -842,7 +842,6 @@ int IoInjectThreadInit(HMODULE hModule)
         ERROR_INFO("Could not Create Semaphore Error(%d)\n",ret);
         goto fail;
     }
-#ifdef IOCAP_EMULATION
     ret = RegisterEventListHandler(BaseSetKeyMouseState,NULL,0);
     if(ret < 0)
     {
@@ -850,14 +849,11 @@ int IoInjectThreadInit(HMODULE hModule)
         ERROR_INFO("Could not Register BaseSetKeyMouseState Error(%d)\n",ret);
         goto fail;
     }
-#endif
 
     SetLastError(0);
     return 0;
 fail:
-#ifdef IOCAP_EMULATION
 	UnRegisterEventListHandler(BaseSetKeyMouseState);
-#endif
 
     assert(ret > 0);
     if(st_hIoInjectControlSema)
