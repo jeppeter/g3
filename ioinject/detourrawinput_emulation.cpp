@@ -7,6 +7,7 @@
 #include <assert.h>
 #include "detourdinput.h"
 #include "ioinject_thread.h"
+#include <injectbase.h>
 
 #define  DEVICE_GET_INFO   0x1
 #define  DEVICE_GET_NAMEA  0x2
@@ -1098,7 +1099,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
 
     pMouseInput->data.mouse.usFlags = MOUSE_MOVE_ABSOLUTE;
     pMouseInput->data.mouse.ulButtons = 0;
-    DetourDinput8GetMousePointAbsolution(&pt);
+    BaseGetMousePointAbsolution(&pt);
     if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
     {
         /*no buttons push*/

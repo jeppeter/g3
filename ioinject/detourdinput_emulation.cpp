@@ -7,7 +7,6 @@
 
 
 #define MAX_HWND_SIZE   20
-#define  MAX_STATE_BUFFER_SIZE   256
 
 
 static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
@@ -17,8 +16,8 @@ static UINT st_LastDiMouseZ;
 
 int __DetourDinput8Init(void)
 {
-    st_LastMousePoint = {0,0};
-    st_LastMouseZ = 0;
+    st_LastDiMousePoint = {0,0};
+    st_LastDiMouseZ = 0;
     return 0;
 }
 
@@ -27,7 +26,15 @@ int DetourDinput8Init(LPVOID pParam,LPVOID pInput)
     int ret=0;
 
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    ret = __DetourDinput8Init();
+    ret = InitBaseKeyState();
+    if(ret >= 0)
+    {
+        ret = InitBaseMouseState();
+        if(ret >= 0)
+        {
+            ret = __DetourDinput8Init();
+        }
+    }
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return ret;
 }
@@ -52,7 +59,7 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     pMouseState = (DIMOUSESTATE*)pData;
 
     /*we do not call GetBaseMouseState in the critical section ,because if this is disorder ,the final state will not disturb*/
-    ret = GetBaseMouseState(&mousekeybtns,3,&mousepoint,&mousez);
+    ret = GetBaseMouseState(mousekeybtns,3,&mousepoint,&mousez);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -72,7 +79,7 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     {
         if(mousekeybtns[i])
         {
-            pMouseState[i] = 0x80;
+            pMouseState->rgbButtons[i] = 0x80;
         }
     }
 

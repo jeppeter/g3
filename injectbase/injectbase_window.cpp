@@ -1,6 +1,15 @@
 
-#include "injectbase_window.h"
+#include <injectbase.h>
+#include <injectbase_window.h>
 #include <iocapcommon.h>
+#include <vector>
+#include <output_debug.h>
+#include <sched.h>
+#include <assert.h>
+#define  DIRECTINPUT_VERSION 0x800
+#include <dinput.h>
+
+#define  MAX_STATE_BUFFER_SIZE   256
 
 static CRITICAL_SECTION st_hWndCS;
 static std::vector<HWND> st_hWndBaseVecs;
@@ -18,7 +27,6 @@ static RECT st_MaxRect = {0,0,2,2};
 static POINT st_MousePoint = { 1,1};
 static POINT st_MouseLastPoint = {1,1};
 static UINT st_MouseBtnState[MOUSE_MAX_BTN] = {0};
-static UINT st_MouseLastBtnState[MOUSE_MAX_BTN] = {0};
 static UINT st_MouseZPoint=0;
 
 
@@ -55,8 +63,6 @@ int ShowCursorHandle()
 {
     int count,handle=0,curcount;
     HCURSOR hCursor=NULL;
-    CURSORINFO cursorinfo;
-    BOOL bret;
     BYTE CursorMaskAND[] = { 0xFF };
     BYTE CursorMaskXOR[] = { 0x00 };
     HWND hwnd=NULL;
@@ -261,7 +267,7 @@ ULONG_PTR WINAPI GetClassLongPtrACallBack(HWND hwnd,int nIndex)
     }
     else
     {
-        pRet = GetClassPtrNext(hwnd,nIndex);
+        pRet = GetClassLongPtrANext(hwnd,nIndex);
     }
     return pRet;
 }
@@ -292,7 +298,7 @@ ULONG_PTR WINAPI SetClassLongPtrACallBack(HWND hwnd,int nIndex,LONG_PTR dwNewLon
             {
                 pOldRet = (ULONG_PTR)st_hWndClassCursorVecs[findidx];
                 st_hWndClassCursorVecs[findidx]= (HCURSOR)dwNewLong;
-                pRet = (HCURSOR) SetClassLongPtrANext(hwnd,GCLP_HCURSOR,dwNewLong);
+                pRet =  SetClassLongPtrANext(hwnd,GCLP_HCURSOR,dwNewLong);
                 if(pOldRet != pRet)
                 {
                     ERROR_INFO("[0x%08x] OldRet 0x%08x != Ret 0x%08x\n",hwnd,pOldRet,pRet);
@@ -300,20 +306,20 @@ ULONG_PTR WINAPI SetClassLongPtrACallBack(HWND hwnd,int nIndex,LONG_PTR dwNewLon
             }
             else
             {
-                pRet = st_hWndClassCursorVecs[findidx];
-                st_hWndClassCursorVecs[findidx]= dwNewLong;
+                pRet = (ULONG_PTR)st_hWndClassCursorVecs[findidx];
+                st_hWndClassCursorVecs[findidx]= (HCURSOR)dwNewLong;
             }
         }
         else
         {
             ERROR_INFO("[0x%08x] not found in the hwnd vecs\n",hwnd);
-            pRet = (HCURSOR) SetClassLongPtrANext(hwnd,GCLP_HCURSOR,dwNewLong);
+            pRet = SetClassLongPtrANext(hwnd,GCLP_HCURSOR,dwNewLong);
         }
         LeaveCriticalSection(&(st_ShowCursorCS));
     }
     else
     {
-        pRet = SetClassPtrNext(hwnd,nIndex,dwNewLong);
+        pRet = SetClassLongPtrWNext(hwnd,nIndex,dwNewLong);
     }
     return pRet;
 }
@@ -326,7 +332,7 @@ ULONG_PTR WINAPI GetClassLongPtrWCallBack(HWND hwnd,int nIndex)
     ULONG_PTR pRet=NULL;
     if(hwnd && nIndex == GCLP_HCURSOR)
     {
-        if(st_InjectModuleInited)
+        if(st_ShowCursorInit)
         {
             EnterCriticalSection(&st_hWndCS);
             for(i=0; i<st_hWndBaseVecs.size() ; i++)
@@ -382,7 +388,7 @@ ULONG_PTR WINAPI SetClassLongPtrWCallBack(HWND hwnd,int nIndex,LONG_PTR dwNewLon
 
     if(hwnd && nIndex == GCLP_HCURSOR)
     {
-        if(st_InjectModuleInited)
+        if(st_ShowCursorInit)
         {
             EnterCriticalSection(&st_hWndCS);
             for(i=0; i<st_hWndBaseVecs.size(); i++)
@@ -527,7 +533,7 @@ BOOL InsertHwnd(HWND hwnd)
     int findidx=-1;
     UINT i;
     HCURSOR hCursor;
-    if(st_InjectModuleInited)
+    if(st_ShowCursorInit)
     {
         EnterCriticalSection(&st_hWndCS);
         for(i=0; i<st_hWndBaseVecs.size() ; i++)
@@ -549,7 +555,7 @@ BOOL InsertHwnd(HWND hwnd)
             {
                 /*this means we should hid cursor ,because when st_ShowCursorHideMode > 0 we have create hNoMouseCursor ,so assert it*/
                 assert(st_hNoMouseCursor);
-                SetClassLongPtrANext(hwnd,GCLP_HCURSOR,st_hNoMouseCursor);
+                SetClassLongPtrANext(hwnd,GCLP_HCURSOR,(LONG)st_hNoMouseCursor);
             }
         }
         LeaveCriticalSection(&st_hWndCS);
@@ -572,7 +578,7 @@ BOOL RemoveHwnd(HWND hwnd)
     BOOL bret=FALSE;
     int findidx=-1;
     UINT i;
-    if(st_InjectModuleInited)
+    if(st_ShowCursorInit)
     {
         EnterCriticalSection(&st_hWndCS);
         for(i=0; i<st_hWndBaseVecs.size() ; i++)
@@ -944,12 +950,12 @@ int BaseSetWindowRectState(HWND hwnd)
     {
         for(i=0; i<st_hWndBaseRectVecs.size(); i++)
         {
-            bret = ::GetClientRect(st_hWndBaseRectVecs[i],&rRect);
+            bret = ::GetClientRect(st_hWndBaseVecs[i],&rRect);
             if(bret)
             {
                 pt.x = rRect.left;
                 pt.y = rRect.top;
-                bret = ::ClientToScreen(st_hWndBaseRectVecs[i],&pt);
+                bret = ::ClientToScreen(st_hWndBaseVecs[i],&pt);
                 if(!bret)
                 {
                     ret = LAST_ERROR_CODE();
@@ -962,7 +968,7 @@ int BaseSetWindowRectState(HWND hwnd)
 
                 pt.x = rRect.right;
                 pt.y = rRect.bottom;
-                bret = ::ClientToScreen(st_hWndBaseRectVecs[i],&pt);
+                bret = ::ClientToScreen(st_hWndBaseVecs[i],&pt);
                 if(!bret)
                 {
                     ret = LAST_ERROR_CODE();
@@ -978,7 +984,7 @@ int BaseSetWindowRectState(HWND hwnd)
                         st_hWndBaseRectVecs[i].bottom != wRect.bottom)
                 {
                     DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d) Set (%d:%d)=>(%d:%d)  wRect(%d:%d)=>(%d:%d)\n",
-                               st_hWndBaseRectVecs[i],
+                               st_hWndBaseVecs[i],
                                st_hWndBaseRectVecs[i].left,
                                st_hWndBaseRectVecs[i].top,
                                st_hWndBaseRectVecs[i].right,
@@ -1224,6 +1230,7 @@ int BaseSetKeyMouseState(LPVOID pParam,LPVOID pInput)
 {
     int ret;
     LPDEVICEEVENT pDevEvent=(LPDEVICEEVENT)pInput;
+
     if(pDevEvent->devtype != DEVICE_TYPE_KEYBOARD &&
             pDevEvent->devtype != DEVICE_TYPE_MOUSE)
     {
@@ -1233,6 +1240,12 @@ int BaseSetKeyMouseState(LPVOID pParam,LPVOID pInput)
         return -ret;
     }
 
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
     EnterCriticalSection(&st_hWndCS);
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
@@ -1255,6 +1268,12 @@ int BaseSetKeyMouseState(LPVOID pParam,LPVOID pInput)
 int BaseMouseBtnDown(UINT btn)
 {
     int ret;
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
 
     if(btn > MOUSE_MAX_BTN || btn < MOUSE_MIN_BTN)
     {
@@ -1389,7 +1408,12 @@ int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
 int BaseGetMousePointAbsolution(POINT *pPoint)
 {
     int ret=0;
-
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
     EnterCriticalSection(&st_hWndCS);
     pPoint->x = st_MousePoint.x;
     pPoint->y = st_MousePoint.y;
@@ -1397,18 +1421,33 @@ int BaseGetMousePointAbsolution(POINT *pPoint)
     return ret;
 }
 
-int InitKeyState(void)
+int InitBaseKeyState(void)
 {
+	int ret;
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
+	
     EnterCriticalSection(&st_hWndCS);
     ZeroMemory(st_BaseKeyState,sizeof(st_BaseKeyState));
     LeaveCriticalSection(&st_hWndCS);
     return 0;
 }
 
-int InitMouseState(void)
+int InitBaseMouseState(void)
 {
+    int ret=0;
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
     EnterCriticalSection(&st_hWndCS);
-    ZeroMemory(st_MousePoint,sizeof(st_MousePoint));
+    ZeroMemory(&st_MousePoint,sizeof(st_MousePoint));
     st_MouseZPoint = 0;
     LeaveCriticalSection(&st_hWndCS);
     return 0;
@@ -1417,8 +1456,14 @@ int InitMouseState(void)
 int GetBaseMouseState(UINT *pMouseBtnState,UINT btns,POINT *pPoint,UINT* pMouseZ)
 {
     int ret=0;
-    int i;
     int cpsize=0;
+
+    if(st_ShowCursorInit == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
 
     EnterCriticalSection(&st_hWndCS);
     if(btns >= MOUSE_MAX_BTN)
@@ -1569,4 +1614,53 @@ int DetourShowCursorFunction(void)
     return 0;
 }
 
+HWND GetCurrentProcessActiveWindow()
+{
+    HWND hwnd=NULL;
+    LONG style,exstyle;
+    UINT i;
+    int findidx=-1;
+    if(st_ShowCursorInit)
+    {
+        EnterCriticalSection(&st_hWndCS);
+        if(st_hWndBaseVecs.size() > 0)
+        {
+            for(i=0; i<st_hWndBaseVecs.size(); i++)
+            {
+                style = GetWindowLong(st_hWndBaseVecs[i],GWL_STYLE);
+                exstyle = GetWindowLong(st_hWndBaseVecs[i],GWL_EXSTYLE);
+                if(0)
+                {
+                    DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndBaseVecs[i],
+                               style,exstyle);
+                }
+                if(style & WS_VISIBLE)
+                {
+                    findidx = i;
+#if 0
+                    bret = GetClientRect(st_hWndBaseVecs[i],&rRect);
+                    if(bret)
+                    {
+                        DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d)\n",
+                                   st_hWndBaseVecs[i],
+                                   rRect.left,rRect.top,
+                                   rRect.right,rRect.bottom);
+                        DEBUG_INFO("MaxRect (%d:%d)=>(%d:%d) MousePoint (%d:%d)\n",
+                                   st_MaxRect.left,
+                                   st_MaxRect.top,st_MaxRect.right,st_MaxRect.bottom,
+                                   st_MousePoint.x,st_MousePoint.y);
+                    }
+#endif
+                    break;
+                }
+            }
+            if(findidx >= 0)
+            {
+                hwnd = st_hWndBaseVecs[findidx];
+            }
+        }
+        LeaveCriticalSection(&st_hWndCS);
+    }
+    return hwnd;
+}
 

@@ -8,6 +8,12 @@
 #define  RIGHTBUTTON_IDX     1
 #define  MIDBUTTON_IDX       2
 
+#define  MOUSE_LEFT_BTN      1
+#define  MOUSE_RIGHT_BTN     2
+#define  MOUSE_MIDDLE_BTN    3
+#define  MOUSE_MIN_BTN       1
+#define  MOUSE_MAX_BTN       3
+
 
 //#define  IOCAP_DEBUG         1
 #define  IOCAP_EMULATION     1

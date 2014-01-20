@@ -54,7 +54,12 @@ INJECTBASE_API int BaseSetKeyMouseState(LPVOID pParam,LPVOID pInput);
 INJECTBASE_API int BaseSetWindowsRect(HWND hWnd);
 INJECTBASE_API int BaseScreenMousePoint(HWND hwnd,POINT* pPoint);
 INJECTBASE_API int GetBaseMouseState(UINT *pMouseBtnState,UINT btns,POINT *pPoint,UINT* pMouseZ);
-
+INJECTBASE_API int InitBaseKeyState(void);
+INJECTBASE_API int InitBaseMouseState(void);
+INJECTBASE_API int GetBaseKeyState(unsigned char *pKeyState,UINT keys);
+INJECTBASE_API int BasePressKeyDownTimes(UINT scancode);
+INJECTBASE_API int BaseMouseBtnDown(UINT btn);
+INJECTBASE_API int BaseGetMousePointAbsolution(POINT *pPoint);
 
 
 

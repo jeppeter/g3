@@ -5,11 +5,6 @@
 #include <Windows.h>
 #include <ioinject.h>
 
-#define  MOUSE_LEFT_BTN          1
-#define  MOUSE_RIGHT_BTN       2
-#define  MOUSE_MIDDLE_BTN    3
-#define  MOUSE_MIN_BTN          1
-#define  MOUSE_MAX_BTN         3
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,12 +14,6 @@ void DetourDirectInputFini(HMODULE hModule);
 
 int DetourDirectInputControl(PIO_CAP_CONTROL_t pControl);
 
-int DetourDinputPressKeyDownTimes(UINT scancode);
-int DetourDinputMouseBtnDown(UINT btn);
-int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint);
-int DetourDinputSetWindowsRect(HWND hWnd);
-int DetourDinput8GetMousePointAbsolution(POINT *pPoint);
-HWND GetCurrentProcessActiveWindow();
 
 
 #ifdef __cplusplus

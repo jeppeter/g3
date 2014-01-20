@@ -10,6 +10,7 @@
 #include <psapi.h>
 #include <uniansi.h>
 #include <injectbase.h>
+#include <injectbase_window.h>
 
 #pragma comment(lib,"psapi.lib")
 
@@ -654,7 +655,6 @@ int InjectBaseModuleInit(HMODULE hModule)
         return 0;
     }
 
-    InitializeCriticalSection(&st_hWndCS);
 
     ret = DetourDestroyWindow();
     if(ret < 0)
@@ -858,57 +858,6 @@ static int DetourCreateWindow()
     return 0;
 }
 
-
-
-HWND GetCurrentProcessActiveWindow()
-{
-    HWND hwnd=NULL;
-    LONG style,exstyle;
-    UINT i;
-    int findidx=-1;
-    if(st_InjectModuleInited)
-    {
-        EnterCriticalSection(&st_hWndCS);
-        if(st_hWndBaseVecs.size() > 0)
-        {
-            for(i=0; i<st_hWndBaseVecs.size(); i++)
-            {
-                style = GetWindowLong(st_hWndBaseVecs[i],GWL_STYLE);
-                exstyle = GetWindowLong(st_hWndBaseVecs[i],GWL_EXSTYLE);
-                if(0)
-                {
-                    DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndBaseVecs[i],
-                               style,exstyle);
-                }
-                if(style & WS_VISIBLE)
-                {
-                    findidx = i;
-#if 0
-                    bret = GetClientRect(st_hWndBaseVecs[i],&rRect);
-                    if(bret)
-                    {
-                        DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d)\n",
-                                   st_hWndBaseVecs[i],
-                                   rRect.left,rRect.top,
-                                   rRect.right,rRect.bottom);
-                        DEBUG_INFO("MaxRect (%d:%d)=>(%d:%d) MousePoint (%d:%d)\n",
-                                   st_MaxRect.left,
-                                   st_MaxRect.top,st_MaxRect.right,st_MaxRect.bottom,
-                                   st_MousePoint.x,st_MousePoint.y);
-                    }
-#endif
-                    break;
-                }
-            }
-            if(findidx >= 0)
-            {
-                hwnd = st_hWndBaseVecs[findidx];
-            }
-        }
-        LeaveCriticalSection(&st_hWndCS);
-    }
-    return hwnd;
-}
 
 
 int RegisterCreateWindowFunc(FuncCall_t pFunc,LPVOID pParam,int prior)

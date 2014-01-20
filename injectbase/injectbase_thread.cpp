@@ -1,6 +1,6 @@
 
 #include "injectbase.h"
-
+#include <assert.h>
 
 void StopThreadControl(thread_control_t *pThrControl)
 {

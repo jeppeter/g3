@@ -7,6 +7,7 @@
 #include "detourdinput.h"
 #include <assert.h>
 #include "detourrawinput.h"
+#include <injectbase.h>
 
 #include "detourmessage_emulation_keystate.cpp"
 
@@ -236,29 +237,29 @@ int __PrepareMouseButtonMessage(LPMSG lpMsg,UINT message)
     /*now we should check for the state of*/
     lpMsg->wParam = 0;
     /*check for button down*/
-    if(DetourDinputPressKeyDownTimes(DIK_RCONTROL) ||
-            DetourDinputPressKeyDownTimes(DIK_LCONTROL))
+    if(BasePressKeyDownTimes(DIK_RCONTROL) ||
+            BasePressKeyDownTimes(DIK_LCONTROL))
     {
         lpMsg->wParam |= MK_CONTROL;
     }
 
-    if(DetourDinputMouseBtnDown(MOUSE_LEFT_BTN))
+    if(BaseMouseBtnDown(MOUSE_LEFT_BTN))
     {
         lpMsg->wParam |= MK_LBUTTON;
     }
 
-    if(DetourDinputMouseBtnDown(MOUSE_RIGHT_BTN))
+    if(BaseMouseBtnDown(MOUSE_RIGHT_BTN))
     {
         lpMsg->wParam |= MK_RBUTTON;
     }
 
-    if(DetourDinputMouseBtnDown(MOUSE_MIDDLE_BTN))
+    if(BaseMouseBtnDown(MOUSE_MIDDLE_BTN))
     {
         lpMsg->wParam |= MK_MBUTTON;
     }
 
-    if(DetourDinputPressKeyDownTimes(DIK_RSHIFT) ||
-            DetourDinputPressKeyDownTimes(DIK_LSHIFT))
+    if(BasePressKeyDownTimes(DIK_RSHIFT) ||
+            BasePressKeyDownTimes(DIK_LSHIFT))
     {
         lpMsg->wParam |= MK_SHIFT;
     }
@@ -306,7 +307,7 @@ int __PrepareKeyPressMessage(LPMSG lpMsg,UINT scancode,int keydown)
     lpMsg->lParam = 0;
     if(keydown)
     {
-        repeat = DetourDinputPressKeyDownTimes(scancode);
+        repeat = BasePressKeyDownTimes(scancode);
         if(repeat == 0)
         {
             repeat = 1;
@@ -717,7 +718,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     {
         /*we put the mouse pointer here */
         lpMsg->lParam = 0;
-        res = DetourDinputScreenMousePoint(hWnd,&pt);
+        res = BaseScreenMousePoint(hWnd,&pt);
         if(res < 0)
         {
             ret = LAST_ERROR_CODE();
@@ -731,7 +732,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     }
     else if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST && ret > 0)
     {
-        res = DetourDinputScreenMousePoint(hWnd,&pt);
+        res = BaseScreenMousePoint(hWnd,&pt);
         if(res < 0)
         {
             ret = LAST_ERROR_CODE();
@@ -782,7 +783,7 @@ fail:
 
 int __SetWindowRect(HWND hWnd)
 {
-    return DetourDinputSetWindowsRect(hWnd);
+    return BaseSetWindowsRect(hWnd);
 }
 
 BOOL WINAPI GetMessageACallBack(
