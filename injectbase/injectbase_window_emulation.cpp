@@ -1514,6 +1514,7 @@ int GetBaseKeyState(unsigned char *pKeyState,UINT keys)
 }
 
 
+
 BOOL WINAPI GetCursorPosCallBack(LPPOINT lpPoint)
 {
     BOOL bret=TRUE;

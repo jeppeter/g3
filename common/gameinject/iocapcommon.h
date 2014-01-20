@@ -241,6 +241,13 @@ typedef struct
 #define  IO_INJECT_ADD_DEVICE      2
 #define  IO_INJECT_REMOVE_DEVICE   3
 
+
+#define  IO_INJECT_HIDE_CURSOR     101
+#define  IO_INJECT_NORMAL_CURSOR   102
+#define  IO_INJECT_ENABLE_SET_POS  103
+#define  IO_INJECT_DISABLE_SET_POS 104
+#define  IO_INJECT_GET_CURSOR_BMP  105
+
 #define  IO_NAME_MAX_SIZE          256
 
 

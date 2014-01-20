@@ -68,6 +68,9 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     }
 
     totalret = st_EventHandlerFuncList.CallList(pDevEvent);
+
+	/*now we should get the point */
+	
     bret = SetEvent(pEventList->m_hFillEvt);
     if(!bret)
     {
