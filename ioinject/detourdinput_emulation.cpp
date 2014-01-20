@@ -11,318 +11,23 @@
 
 
 static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
-static DIMOUSESTATE  st_Dinput8MouseState;
+static POINT st_LastDiMousePoint;
+static UINT st_LastDiMouseZ;
 
-int __DetourDinput8SetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
-{
-    int ret;
-
-    if(pDevEvent->devid != 0)
-    {
-        ret = ERROR_DEV_NOT_EXIST;
-        ERROR_INFO("<0x%p>Mouse devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    if(pDevEvent->event.mouse.code >= MOUSE_CODE_MAX)
-    {
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p>Mouse code(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.code);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
-    {
-        ret = ERROR_INVALID_PARAMETER;
-        ERROR_INFO("<0x%p>Mouse event(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.event);
-        SetLastError(ret);
-        return -ret;
-    }
-
-
-    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
-    {
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
-        {
-            /*this is relative one*/
-            __MoveMouseRelativeNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
-            //DEBUG_INFO("x %d y %d mousepoint(%d:%d)\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y,
-            //           st_MousePoint.x,st_MousePoint.y);
-        }
-        else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
-        {
-            st_Dinput8MouseState.lZ += pDevEvent->event.mouse.x;
-        }
-        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
-        {
-            __MoveMouseAbsoluteNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
-        }
-        else
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
-                       pDevEvent->event.mouse.code,
-                       pDevEvent->event.mouse.event);
-            SetLastError(ret);
-            return -ret;
-        }
-    }
-    else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
-    {
-        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
-        {
-            st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x80;
-            __SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,1);
-            DEBUG_INFO("MouseLeftDown Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
-        }
-        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
-        {
-            st_Dinput8MouseState.rgbButtons[MOUSE_LEFT_BTN - 1] = 0x0;
-            __SetDetourDinputMouseBtnNoLock(MOUSE_LEFT_BTN,0);
-            DEBUG_INFO("MouseLeftUp Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
-        }
-        else
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
-                       pDevEvent->event.mouse.code,
-                       pDevEvent->event.mouse.event);
-            SetLastError(ret);
-            return -ret;
-        }
-    }
-    else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
-    {
-        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
-        {
-            st_Dinput8MouseState.rgbButtons[MOUSE_RIGHT_BTN - 1] = 0x80;
-            __SetDetourDinputMouseBtnNoLock(MOUSE_RIGHT_BTN,1);
-        }
-        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
-        {
-            st_Dinput8MouseState.rgbButtons[MOUSE_RIGHT_BTN - 1] = 0x0;
-            __SetDetourDinputMouseBtnNoLock(MOUSE_RIGHT_BTN,0);
-        }
-        else
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
-                       pDevEvent->event.mouse.code,
-                       pDevEvent->event.mouse.event);
-            SetLastError(ret);
-            return -ret;
-        }
-    }
-    else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
-    {
-        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
-        {
-            st_Dinput8MouseState.rgbButtons[MOUSE_MIDDLE_BTN - 1] = 0x80;
-            __SetDetourDinputMouseBtnNoLock(MOUSE_MIDDLE_BTN,1);
-        }
-        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
-        {
-            st_Dinput8MouseState.rgbButtons[MOUSE_MIDDLE_BTN - 1] = 0x0;
-            __SetDetourDinputMouseBtnNoLock(MOUSE_MIDDLE_BTN,0);
-        }
-        else
-        {
-            ret = ERROR_INVALID_PARAMETER;
-            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
-                       pDevEvent->event.mouse.code,
-                       pDevEvent->event.mouse.event);
-            SetLastError(ret);
-            return -ret;
-        }
-    }
-    else
-    {
-        /*we check before*/
-        assert(0!=0);
-    }
-
-    return 0;
-}
 
 int __DetourDinput8Init(void)
 {
-	ZeroMemory(st_Dinput8KeyState,sizeof(st_Dinput8KeyState));	
-	ZeroMemory(&st_Dinput8MouseState,sizeof(st_Dinput8MouseState));
-	ZeroMemory(st_KeyDownTimes,sizeof(st_KeyDownTimes));
-	return 0;
+    st_LastMousePoint = {0,0};
+    st_LastMouseZ = 0;
+    return 0;
 }
 
 int DetourDinput8Init(LPVOID pParam,LPVOID pInput)
 {
-	int ret=0;	
-
-	EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-	ret = __DetourDinput8Init();
-	LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-	return ret;
-}
-
-int DetourDinput8SetKeyMouseState(LPVOID pParam,LPVOID pInput)
-{
-    int ret;
-    LPDEVICEEVENT pDevEvent=(LPDEVICEEVENT)pInput;
-    if(pDevEvent->devtype != DEVICE_TYPE_KEYBOARD &&
-            pDevEvent->devtype != DEVICE_TYPE_MOUSE)
-    {
-        ret = ERROR_NOT_SUPPORTED;
-        ERROR_INFO("<0x%p> Not Supported devtype(%d)\n",pDevEvent,pDevEvent->devtype);
-        SetLastError(ret);
-        return -ret;
-    }
-
-    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
-    {
-        ret= __DetourDinput8SetKeyStateNoLock(pDevEvent);
-    }
-    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
-    {
-        ret=  __DetourDinput8SetMouseStateNoLock(pDevEvent);
-    }
-    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-
-    if(ret != 0)
-    {
-        ret = LAST_ERROR_CODE();
-        SetLastError(ret);
-    }
-    return -ret;
-}
-
-int DetourDinputMouseBtnDown(UINT btn)
-{
-    int ret;
-
-    if(btn > MOUSE_MAX_BTN || btn < MOUSE_MIN_BTN)
-    {
-        ret = ERROR_INVALID_PARAMETER;
-        SetLastError(ret);
-        return -ret;
-    }
-    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    ret = st_MouseBtnState[btn - 1];
-    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-
-    return ret;
-}
-
-int DetourDinputSetWindowsRect(HWND hWnd)
-{
-    return Dinput8SetWindowRectState(hWnd);
-}
-
-
-int DetourDinputScreenMousePoint(HWND hwnd,POINT* pPoint)
-{
-    /*we test for the client point of this window*/
-    UINT i;
-    int findidx = -1;
-    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    /*now first to make sure */
-    for(i=0; i<st_hWndVecs.size(); i++)
-    {
-        if(st_hWndVecs[i] == hwnd)
-        {
-            findidx = i;
-            break;
-        }
-    }
-
-    if(findidx >= 0)
-    {
-        /*now to make sure this mouse point is in the kernel*/
-        if(st_MousePoint.x > st_hWndRectVecs[findidx].left && st_MousePoint.x < st_hWndRectVecs[findidx].right &&
-                st_MousePoint.y > st_hWndRectVecs[findidx].top && st_MousePoint.y < st_hWndRectVecs[findidx].bottom)
-        {
-            pPoint->x = (st_MousePoint.x - st_hWndRectVecs[findidx].left);
-            pPoint->y = (st_MousePoint.y - st_hWndRectVecs[findidx].top);
-        }
-        else
-        {
-            ERROR_INFO("Mouse(x:%d:y:%d) [%d] Rect(top-left:%d-%d  bottom-right:%d-%d)\n",
-                       st_MousePoint.x,st_MousePoint.y,
-                       findidx,
-                       st_hWndRectVecs[findidx].top,
-                       st_hWndRectVecs[findidx].left,
-                       st_hWndRectVecs[findidx].bottom,
-                       st_hWndRectVecs[findidx].right);
-            if(st_MousePoint.x <= st_hWndRectVecs[findidx].left)
-            {
-                pPoint->x = 1;
-            }
-            else if(st_MousePoint.x >= st_hWndRectVecs[findidx].right)
-            {
-                pPoint->x = (st_hWndRectVecs[findidx].right - st_hWndRectVecs[findidx].left - 1);
-            }
-            else
-            {
-                pPoint->x = (st_MousePoint.x - st_hWndRectVecs[findidx].left);
-            }
-
-            if(st_MousePoint.y <= st_hWndRectVecs[findidx].top)
-            {
-                pPoint->y = 1;
-            }
-            else if(st_MousePoint.y >= st_hWndRectVecs[findidx].bottom)
-            {
-                pPoint->y = (st_hWndRectVecs[findidx].bottom - st_hWndRectVecs[findidx].top - 1);
-            }
-            else
-            {
-                pPoint->y = (st_MousePoint.y -st_hWndRectVecs[findidx].top);
-            }
-        }
-    }
-    else
-    {
-        /*not find ,so we put it in the top-left point for the max rect*/
-        if(st_MousePoint.x <= st_MaxRect.left)
-        {
-            pPoint->x = 1;
-        }
-        else if(st_MousePoint.x >= st_MaxRect.right)
-        {
-            pPoint->x = (st_MaxRect.right - st_MaxRect.left -1);
-        }
-        else
-        {
-            pPoint->x = (st_MousePoint.x - st_MaxRect.left);
-        }
-
-        if(st_MousePoint.y <= st_MaxRect.top)
-        {
-            pPoint->y = 1;
-        }
-        else if(st_MousePoint.y >= st_MaxRect.bottom)
-        {
-            pPoint->y = (st_MaxRect.bottom - st_MaxRect.top - 1);
-        }
-        else
-        {
-            pPoint->y = (st_MousePoint.y - st_MaxRect.top);
-        }
-    }
-    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-
-    return 0;
-}
-
-
-
-int DetourDinput8GetMousePointAbsolution(POINT *pPoint)
-{
     int ret=0;
 
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    pPoint->x = st_MousePoint.x;
-    pPoint->y = st_MousePoint.y;
+    ret = __DetourDinput8Init();
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return ret;
 }
@@ -330,37 +35,76 @@ int DetourDinput8GetMousePointAbsolution(POINT *pPoint)
 int __CopyDiMouseState(PVOID pData, UINT cbSize)
 {
     int ret=0;
-    if(cbSize < sizeof(st_Dinput8MouseState))
+    int i;
+    UINT mousekeybtns[3];
+    UINT mousez=0;
+    POINT mousepoint;
+    DIMOUSESTATE *pMouseState=NULL;
+
+
+    if(cbSize < sizeof(*pMouseState))
     {
         ret=  ERROR_INSUFFICIENT_BUFFER;
         SetLastError(ret);
         return -ret;
     }
 
+    pMouseState = (DIMOUSESTATE*)pData;
+
+    /*we do not call GetBaseMouseState in the critical section ,because if this is disorder ,the final state will not disturb*/
+    ret = GetBaseMouseState(&mousekeybtns,3,&mousepoint,&mousez);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return -1;
+    }
+    ZeroMemory(pMouseState,cbSize);
+
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    CopyMemory(pData,&st_Dinput8MouseState,sizeof(st_Dinput8MouseState));
-    /*to clear the relative moving*/
-    st_Dinput8MouseState.lX = 0;
-    st_Dinput8MouseState.lY = 0;
-    st_Dinput8MouseState.lZ = 0;
+
+    /*now to compare the state*/
+    pMouseState->lX = (mousepoint.x - st_LastDiMousePoint.x);
+    pMouseState->lY = (mousepoint.y - st_LastDiMousePoint.y);
+    pMouseState->lZ = (mousez - st_LastDiMouseZ);
+
+    for(i=0; i<3; i++)
+    {
+        if(mousekeybtns[i])
+        {
+            pMouseState[i] = 0x80;
+        }
+    }
+
+    st_LastDiMousePoint = mousepoint;
+    st_LastDiMouseZ = mousez;
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-    return sizeof(st_Dinput8MouseState);
+    return sizeof(*pMouseState);
 }
 
 int __CopyDiKeyState(PVOID pData,UINT cbSize)
 {
     int ret=0;
-    if(cbSize < sizeof(st_Dinput8KeyState))
+    BYTE keystate[256];
+    if(cbSize < sizeof(256))
     {
         ret=  ERROR_INSUFFICIENT_BUFFER;
         SetLastError(ret);
         return -ret;
     }
 
+    ret = GetBaseKeyState(keystate,256);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return -1;
+    }
+
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-    CopyMemory(pData,st_Dinput8KeyState,sizeof(st_Dinput8KeyState));
+    CopyMemory(pData,keystate,256);
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
-    return sizeof(st_Dinput8KeyState);
+    return 256;
 }
 
 
@@ -2172,10 +1916,7 @@ CDirectInput8WHook* RegisterDirectInput8WHook(IDirectInput8W* ptr)
 
 void DetourDinputEmulationFini(HMODULE hModule)
 {
-	UnRegisterEventListInit(DetourDinput8Init);
-    UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
-    UnRegisterCreateWindowFunc(Dinput8CreateWindowNotify);
-    UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
+    UnRegisterEventListInit(DetourDinput8Init);
     return ;
 }
 
@@ -2184,45 +1925,21 @@ int DetourDinputEmulationInit(HMODULE hModule)
     int ret;
     InitializeCriticalSection(&st_Dinput8DeviceCS);
     InitializeCriticalSection(&st_Dinput8KeyMouseStateCS);
-    ret = RegisterDestroyWindowFunc(Dinput8DestroyWindowNotify,NULL,30);
-    if(ret < 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not register destroy window Notify Error(%d)\n",ret);
-        goto fail;
-    }
-    ret = RegisterCreateWindowFunc(Dinput8CreateWindowNotify,NULL,100);
-    if(ret < 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not register create window Notify Error(%d)\n",ret);
-        goto fail;
-    }
-    ret = RegisterEventListHandler(DetourDinput8SetKeyMouseState,NULL,DINPUT_EMULATION_PRIOR);
-    if(ret < 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not register Eventlist Handler Error(%d)\n",ret);
-        goto fail;
-    }
 
-	ret = RegisterEventListInit(DetourDinput8Init,NULL,DINPUT_EMULATION_PRIOR);
+    ret = RegisterEventListInit(DetourDinput8Init,NULL,DINPUT_EMULATION_PRIOR);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
         ERROR_INFO("could not register Eventlist Init Error(%d)\n",ret);
         goto fail;
     }
-	
+
 
     SetLastError(0);
     return 0;
 fail:
     assert(ret > 0);
-	UnRegisterEventListInit(DetourDinput8Init);
-    UnRegisterEventListHandler(DetourDinput8SetKeyMouseState);
-    UnRegisterCreateWindowFunc(Dinput8CreateWindowNotify);
-    UnRegisterDestroyWindowFunc(Dinput8DestroyWindowNotify);
+    UnRegisterEventListInit(DetourDinput8Init);
     SetLastError(ret);
     return FALSE;
 }

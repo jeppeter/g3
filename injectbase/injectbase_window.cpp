@@ -20,6 +20,7 @@ static POINT st_MousePoint = { 1,1};
 static POINT st_MouseLastPoint = {1,1};
 static UINT st_MouseBtnState[MOUSE_MAX_BTN] = {0};
 static UINT st_MouseLastBtnState[MOUSE_MAX_BTN] = {0};
+static UINT st_MouseZPoint=0;
 
 
 #define   SHOWCURSOR_HIDE_REQ      -1
@@ -83,7 +84,7 @@ int ShowCursorHandle()
             }
             else
             {
-            	ERROR_INFO("could not create nomouse cursor Error(%d)\n",LAST_ERROR_CODE());
+                ERROR_INFO("could not create nomouse cursor Error(%d)\n",LAST_ERROR_CODE());
                 goto outunlock;
             }
 
@@ -845,7 +846,7 @@ int BaseSetWindowRectState(HWND hwnd)
     RECT rRect,wRect;
     POINT pt;
     int ret;
-	
+
     EnterCriticalSection(&st_BaseKeyMouseStateCS);
     for(i=0; i<st_hWndBaseVecs.size() ; i++)
     {
@@ -1038,5 +1039,335 @@ int __BaseSetKeyStateNoLock(LPDEVICEEVENT pDevEvent)
         __BasePressKeyUpNoLock(scancode);
     }
     return 0;
+}
+
+int __BaseSetMouseStateNoLock(LPDEVICEEVENT pDevEvent)
+{
+    int ret;
+
+    if(pDevEvent->devid != 0)
+    {
+        ret = ERROR_DEV_NOT_EXIST;
+        ERROR_INFO("<0x%p>Mouse devid(%d) invalid\n",pDevEvent,pDevEvent->devid);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.mouse.code >= MOUSE_CODE_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Mouse code(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.code);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p>Mouse event(%d) invalid\n",pDevEvent,pDevEvent->event.mouse.event);
+        SetLastError(ret);
+        return -ret;
+    }
+
+
+    if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
+        {
+            /*this is relative one*/
+            __MoveMouseRelativeNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
+            //DEBUG_INFO("x %d y %d mousepoint(%d:%d)\n",pDevEvent->event.mouse.x,pDevEvent->event.mouse.y,
+            //           st_MousePoint.x,st_MousePoint.y);
+        }
+        else if(pDevEvent->event.mouse.event ==  MOUSE_EVENT_SLIDE)
+        {
+            st_MouseZPoint += pDevEvent->event.mouse.x;
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
+        {
+            __MoveMouseAbsoluteNoLock(pDevEvent->event.mouse.x,pDevEvent->event.mouse.y);
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            __SetBaseMouseBtnNoLock(MOUSE_LEFT_BTN,1);
+            DEBUG_INFO("MouseLeftDown Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            __SetBaseMouseBtnNoLock(MOUSE_LEFT_BTN,0);
+            DEBUG_INFO("MouseLeftUp Point(%d:%d)\n",st_MousePoint.x,st_MousePoint.y);
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            __SetBaseMouseBtnNoLock(MOUSE_RIGHT_BTN,1);
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            __SetBaseMouseBtnNoLock(MOUSE_RIGHT_BTN,0);
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
+        }
+    }
+    else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
+    {
+        if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
+        {
+            __SetBaseMouseBtnNoLock(MOUSE_MIDDLE_BTN,1);
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
+        {
+            __SetBaseMouseBtnNoLock(MOUSE_MIDDLE_BTN,0);
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("<0x%p>Mouse Invalid code(%d) event(%d)\n",pDevEvent,
+                       pDevEvent->event.mouse.code,
+                       pDevEvent->event.mouse.event);
+            SetLastError(ret);
+            return -ret;
+        }
+    }
+    else
+    {
+        /*we check before*/
+        assert(0!=0);
+    }
+
+    return 0;
+}
+
+
+int BaseSetKeyMouseState(LPVOID pParam,LPVOID pInput)
+{
+    int ret;
+    LPDEVICEEVENT pDevEvent=(LPDEVICEEVENT)pInput;
+    if(pDevEvent->devtype != DEVICE_TYPE_KEYBOARD &&
+            pDevEvent->devtype != DEVICE_TYPE_MOUSE)
+    {
+        ret = ERROR_NOT_SUPPORTED;
+        ERROR_INFO("<0x%p> Not Supported devtype(%d)\n",pDevEvent,pDevEvent->devtype);
+        SetLastError(ret);
+        return -ret;
+    }
+
+    EnterCriticalSection(&st_BaseKeyMouseStateCS);
+    if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        ret= __BaseSetKeyStateNoLock(pDevEvent);
+    }
+    else if(pDevEvent->devtype == DEVICE_TYPE_MOUSE)
+    {
+        ret=  __BaseSetMouseStateNoLock(pDevEvent);
+    }
+    LeaveCriticalSection(&st_BaseKeyMouseStateCS);
+
+    if(ret != 0)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+    }
+    return -ret;
+}
+
+int BaseMouseBtnDown(UINT btn)
+{
+    int ret;
+
+    if(btn > MOUSE_MAX_BTN || btn < MOUSE_MIN_BTN)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return -ret;
+    }
+    EnterCriticalSection(&st_BaseKeyMouseStateCS);
+    ret = st_MouseBtnState[btn - 1];
+    LeaveCriticalSection(&st_BaseKeyMouseStateCS);
+
+    return ret;
+}
+
+int BaseSetWindowsRect(HWND hWnd)
+{
+    return BaseSetWindowRectState(hWnd);
+}
+
+int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
+{
+    /*we test for the client point of this window*/
+    UINT i;
+    int findidx = -1;
+    EnterCriticalSection(&st_BaseKeyMouseStateCS);
+    /*now first to make sure */
+    for(i=0; i<st_hWndBaseVecs.size(); i++)
+    {
+        if(st_hWndBaseVecs[i] == hwnd)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        /*now to make sure this mouse point is in the kernel*/
+        if(st_MousePoint.x > st_hWndBaseRectVecs[findidx].left && st_MousePoint.x < st_hWndBaseRectVecs[findidx].right &&
+                st_MousePoint.y > st_hWndBaseRectVecs[findidx].top && st_MousePoint.y < st_hWndBaseRectVecs[findidx].bottom)
+        {
+            pPoint->x = (st_MousePoint.x - st_hWndBaseRectVecs[findidx].left);
+            pPoint->y = (st_MousePoint.y - st_hWndBaseRectVecs[findidx].top);
+        }
+        else
+        {
+            ERROR_INFO("Mouse(x:%d:y:%d) [%d] Rect(top-left:%d-%d  bottom-right:%d-%d)\n",
+                       st_MousePoint.x,st_MousePoint.y,
+                       findidx,
+                       st_hWndBaseRectVecs[findidx].top,
+                       st_hWndBaseRectVecs[findidx].left,
+                       st_hWndBaseRectVecs[findidx].bottom,
+                       st_hWndBaseRectVecs[findidx].right);
+            if(st_MousePoint.x <= st_hWndBaseRectVecs[findidx].left)
+            {
+                pPoint->x = 1;
+            }
+            else if(st_MousePoint.x >= st_hWndBaseRectVecs[findidx].right)
+            {
+                pPoint->x = (st_hWndBaseRectVecs[findidx].right - st_hWndBaseRectVecs[findidx].left - 1);
+            }
+            else
+            {
+                pPoint->x = (st_MousePoint.x - st_hWndBaseRectVecs[findidx].left);
+            }
+
+            if(st_MousePoint.y <= st_hWndBaseRectVecs[findidx].top)
+            {
+                pPoint->y = 1;
+            }
+            else if(st_MousePoint.y >= st_hWndBaseRectVecs[findidx].bottom)
+            {
+                pPoint->y = (st_hWndBaseRectVecs[findidx].bottom - st_hWndBaseRectVecs[findidx].top - 1);
+            }
+            else
+            {
+                pPoint->y = (st_MousePoint.y -st_hWndBaseRectVecs[findidx].top);
+            }
+        }
+    }
+    else
+    {
+        /*not find ,so we put it in the top-left point for the max rect*/
+        if(st_MousePoint.x <= st_MaxRect.left)
+        {
+            pPoint->x = 1;
+        }
+        else if(st_MousePoint.x >= st_MaxRect.right)
+        {
+            pPoint->x = (st_MaxRect.right - st_MaxRect.left -1);
+        }
+        else
+        {
+            pPoint->x = (st_MousePoint.x - st_MaxRect.left);
+        }
+
+        if(st_MousePoint.y <= st_MaxRect.top)
+        {
+            pPoint->y = 1;
+        }
+        else if(st_MousePoint.y >= st_MaxRect.bottom)
+        {
+            pPoint->y = (st_MaxRect.bottom - st_MaxRect.top - 1);
+        }
+        else
+        {
+            pPoint->y = (st_MousePoint.y - st_MaxRect.top);
+        }
+    }
+    LeaveCriticalSection(&st_BaseKeyMouseStateCS);
+
+    return 0;
+}
+
+int BaseGetMousePointAbsolution(POINT *pPoint)
+{
+    int ret=0;
+
+    EnterCriticalSection(&st_BaseKeyMouseStateCS);
+    pPoint->x = st_MousePoint.x;
+    pPoint->y = st_MousePoint.y;
+    LeaveCriticalSection(&st_BaseKeyMouseStateCS);
+    return ret;
+}
+
+int GetBaseMouseState(UINT *pMouseBtnState,UINT btns,POINT *pPoint,UINT* pMouseZ)
+{
+    int ret=0;
+    int i;
+    int cpsize=0;
+
+    EnterCriticalSection(&st_BaseKeyMouseStateCS);
+    if(btns >= MOUSE_MAX_BTN)
+    {
+        cpsize = sizeof(*pMouseBtnState) * MOUSE_MAX_BTN;
+    }
+    else
+    {
+        cpsize = sizeof(*pMouseBtnState)*btns;
+    }
+    CopyMemory(pMouseBtnState,st_MouseBtnState,cpsize);
+    pPoint->x = st_MousePoint.x;
+    pPoint->y = st_MousePoint.y;
+    *pMouseZ = st_MouseZPoint;
+    LeaveCriticalSection(&st_BaseKeyMouseStateCS);
+    return ret;
+}
+
+int GetBaseKeyState(unsigned char *pKeyState,UINT keys)
+{
+    int ret=0;
+    int cpsize=0;
+
+    EnterCriticalSection(&st_BaseKeyMouseStateCS);
+    if(keys >= MAX_STATE_BUFFER_SIZE)
+    {
+        cpsize = sizeof(*pKeyState)*MAX_STATE_BUFFER_SIZE;
+    }
+    else
+    {
+        cpsize = sizeof(*pKeyState)*keys;
+    }
+    CopyMemory(pKeyState,st_BaseKeyState,cpsize);
+    LeaveCriticalSection(&st_BaseKeyMouseStateCS);
+    return ret;
 }
 
