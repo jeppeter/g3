@@ -23,6 +23,9 @@ static int st_InjectModuleInited=0;
 
 static CRITICAL_SECTION st_hWndCS;
 static std::vector<HWND> st_hWndBaseVecs;
+static std::vector<RECT> st_hWndBaseRectVecs;
+static std::vector<HCURSOR> st_hWndClassCursorVecs;
+static int st_SetCursorPosEnable=0;
 
 
 #define INSERT_DLL_NAME_ASSERT() \
@@ -322,7 +325,6 @@ fail:
 #define   SHOWCURSOR_NORMAL_REQ     1
 
 static CRITICAL_SECTION st_ShowCursorCS;
-static HCURSOR st_hCursor=NULL;
 static HCURSOR st_hNoMouseCursor=NULL;
 static int st_ShowCursorCount=0;
 static int st_ShowCursorInit=0;
@@ -350,58 +352,41 @@ int ShowCursorHandle()
     HCURSOR hCursor=NULL;
     CURSORINFO cursorinfo;
     BOOL bret;
-    static int st_Handlecount =0;
     BYTE CursorMaskAND[] = { 0xFF };
     BYTE CursorMaskXOR[] = { 0x00 };
     HWND hwnd=NULL;
+    UINT i;
 
     if(st_ShowCursorInit)
     {
-        st_Handlecount ++;
-        if((st_Handlecount % 500) == 0)
-        {
-            cursorinfo.cbSize = sizeof(cursorinfo);
-            bret = GetCursorInfo(&cursorinfo);
-            if(bret)
-            {
-                DEBUG_INFO("cursor flag(0x%08x) hCursor(0x%08x) point(x:%d:y:%d)\n",
-                           cursorinfo.flags,cursorinfo.hCursor,cursorinfo.ptScreenPos.x,
-                           cursorinfo.ptScreenPos.y);
-            }
-            else
-            {
-                ERROR_INFO("Can not get cursorinfo Error(%d)\n",LAST_ERROR_CODE());
-            }
-        }
-        EnterCriticalSection(&st_ShowCursorCS);
+        EnterCriticalSection(&st_hWndCS);
         if(st_ShowCursorRequest == SHOWCURSOR_HIDE_REQ)
         {
 
-            if(st_NoMouseCursor == NULL)
+            if(st_hNoMouseCursor == NULL)
             {
-                st_NoMouseCursor= CreateCursor(NULL, 0,0,1,1, CursorMaskAND, CursorMaskXOR);
+                st_hNoMouseCursor= CreateCursor(NULL, 0,0,1,1, CursorMaskAND, CursorMaskXOR);
             }
 
-            if(st_NoMouseCursor)
+            if(st_hNoMouseCursor)
             {
-                hwnd = GetCurrentProcessActiveWindow();
-                if(hwnd)
+
+                for(i=0; i<st_hWndBaseVecs.size() ; i++)
                 {
+                    hwnd = st_hWndBaseVecs[i];
                     if(st_ShowCursorHideMode == 0)
                     {
-                        st_hCursor = (HCURSOR) GetClassLongPtrNext(hwnd,GCLP_HCURSOR);
+                        st_hWndClassCursorVecs[i] = (HCURSOR) GetClassLongPtrANext(hwnd,GCLP_HCURSOR);
                     }
-                    hCursor= (HCURSOR)SetClassLongPtrNext(hwnd,GCLP_HCURSOR,(LONG)st_NoMouseCursor);
+                    hCursor = (HCURSOR) SetClassLongPtrANext(hwnd,GCLP_HCURSOR,(LONG)st_hNoMouseCursor);
                 }
             }
             else
             {
+            	ERROR_INFO("could not create nomouse cursor Error(%d)\n",LAST_ERROR_CODE());
                 goto outunlock;
             }
 
-
-
-#if 1
             count = ShowCursorNext(FALSE);
             if(count > -1)
             {
@@ -425,19 +410,16 @@ int ShowCursorHandle()
                     }
                 }
             }
-#endif
             st_ShowCursorHideMode = 1;
-            DEBUG_INFO("Hide CurSor (st_hCursor:0x%08x:hCursor:0x%08x)\n",st_hCursor,hCursor);
             handle = 1;
         }
         else if(st_ShowCursorRequest == SHOWCURSOR_NORMAL_REQ)
         {
-            hwnd = GetCurrentProcessActiveWindow();
-            if(hwnd)
+            for(i=0; i<st_hWndBaseVecs.size() ; i++)
             {
-                hCursor = (HCURSOR)SetLongPtrNext(hwnd,GCLP_HCURSOR,st_hCursor);
+                hwnd = st_hWndBaseVecs[i];
+                SetClassLongPtrACallBack(hwnd,GCLP_HCURSOR,(LONG)st_hWndClassCursorVecs[i]);
             }
-#if 1
             curcount = ShowCursorNext(TRUE);
             if(curcount > st_ShowCursorCount)
             {
@@ -461,15 +443,12 @@ int ShowCursorHandle()
                     }
                 }
             }
-#endif
-            count = st_ShowCursorCount;
             st_ShowCursorHideMode = 0;
-            DEBUG_INFO("Normal Cursor (st_hCursor:0x%08x:hCursor:0x%08x)\n",st_hCursor,hCursor);
             handle = 1;
         }
 outunlock:
         st_ShowCursorRequest = 0;
-        LeaveCriticalSection(&st_ShowCursorCS);
+        LeaveCriticalSection(&st_hWndCS);
     }
     return handle;
 }
@@ -483,13 +462,13 @@ int SetShowCursorHide()
         do
         {
             wait = 1;
-            EnterCriticalSection(&st_ShowCursorCS);
+            EnterCriticalSection(&st_hWndCS);
             if(st_ShowCursorRequest == 0)
             {
                 st_ShowCursorRequest = SHOWCURSOR_HIDE_REQ;
                 wait = 0;
             }
-            LeaveCriticalSection(&st_ShowCursorCS);
+            LeaveCriticalSection(&st_hWndCS);
             if(wait)
             {
                 SchedOut();
@@ -511,13 +490,13 @@ int SetShowCursorNormal()
         do
         {
             wait = 1;
-            EnterCriticalSection(&st_ShowCursorCS);
+            EnterCriticalSection(&st_hWndCS);
             if(st_ShowCursorRequest == 0)
             {
                 st_ShowCursorRequest = SHOWCURSOR_NORMAL_REQ;
                 wait = 0;
             }
-            LeaveCriticalSection(&st_ShowCursorCS);
+            LeaveCriticalSection(&st_hWndCS);
             if(wait)
             {
                 SchedOut();
@@ -530,22 +509,39 @@ int SetShowCursorNormal()
 }
 
 
-ULONG_PTR WINAPI GetClassLongPtrCallBack(HWND hwnd,int nIndex)
+ULONG_PTR WINAPI GetClassLongPtrACallBack(HWND hwnd,int nIndex)
 {
-    HWND hActiveWindow=NULL;
     ULONG_PTR pRet=NULL;
+    int findidx= -1;
+    UINT i;
 
-    hActiveWindow = GetCurrentProcessActiveWindow();
-    if(hActiveWindow && hActiveWindow == hwnd && nIndex == GCLP_HCURSOR)
+    if(hwnd && nIndex == GCLP_HCURSOR)
     {
 
-        EnterCriticalSection(&(st_ShowCursorCS));
-        if(st_ShowCursorHideMode == 0)
+        EnterCriticalSection(&(st_hWndCS));
+        for(i=0; i<st_hWndBaseVecs.size() ; i++)
         {
-            st_hCursor = (HCURSOR) GetClassLongPtrNext(hwnd,GCLP_HCURSOR);
+            if(hwnd == st_hWndBaseVecs[i])
+            {
+                findidx = i;
+                break;
+            }
         }
-        pRet = st_hCursor ;
-        LeaveCriticalSection(&(st_ShowCursorCS));
+
+        if(findidx >= 0)
+        {
+            if(st_ShowCursorHideMode == 0)
+            {
+                st_hWndClassCursorVecs[findidx]= (HCURSOR) GetClassLongPtrANext(hwnd,GCLP_HCURSOR);
+            }
+            pRet = st_hWndClassCursorVecs[findidx];
+        }
+        else
+        {
+            ERROR_INFO("[0x%08x]not find in the hwnd vecs\n",hwnd);
+            pRet = (HCURSOR)(HCURSOR) GetClassLongPtrANext(hwnd,GCLP_HCURSOR);
+        }
+        LeaveCriticalSection(&(st_hWndCS));
     }
     else
     {
@@ -554,25 +550,42 @@ ULONG_PTR WINAPI GetClassLongPtrCallBack(HWND hwnd,int nIndex)
     return pRet;
 }
 
-ULONG_PTR WINAPI SetClassLongPtrCallBack(HWND hwnd,int nIndex,LONG_PTR dwNewLong)
+ULONG_PTR WINAPI SetClassLongPtrACallBack(HWND hwnd,int nIndex,LONG_PTR dwNewLong)
 {
-    HWND hActiveWindow=NULL;
     ULONG_PTR pRet=NULL;
+    UINT i;
+    int findidx = -1;
 
-    hActiveWindow = GetCurrentProcessActiveWindow();
-    if(hActiveWindow && hActiveWindow == hwnd && nIndex == GCLP_HCURSOR)
+    if(hwnd && nIndex == GCLP_HCURSOR)
     {
 
-        EnterCriticalSection(&(st_ShowCursorCS));
-        if(st_ShowCursorHideMode == 0)
+        EnterCriticalSection(&(st_hWndCS));
+        for(i=0; i<st_hWndBaseVecs.size() ; i++)
         {
-            st_hCursor = (HCURSOR)dwNewLong;
-            pRet = (HCURSOR) SetClassLongPtrNext(hwnd,GCLP_HCURSOR,dwNewLong);
+            if(hwnd == st_hWndBaseVecs[i])
+            {
+                findidx = i;
+                break;
+            }
+        }
+
+        if(findidx >= 0)
+        {
+            if(st_ShowCursorHideMode == 0)
+            {
+                st_hWndClassCursorVecs[findidx]= (HCURSOR)dwNewLong;
+                pRet = (HCURSOR) SetClassLongPtrANext(hwnd,GCLP_HCURSOR,dwNewLong);
+            }
+            else
+            {
+                pRet = st_hWndClassCursorVecs[findidx];
+                st_hWndClassCursorVecs[findidx]= dwNewLong;
+            }
         }
         else
         {
-            pRet = st_hCursor ;
-            st_hCursor = dwNewLong;
+            ERROR_INFO("[0x%08x] not found in the hwnd vecs\n",hwnd);
+            pRet = (HCURSOR) SetClassLongPtrANext(hwnd,GCLP_HCURSOR,dwNewLong);
         }
         LeaveCriticalSection(&(st_ShowCursorCS));
     }
@@ -583,12 +596,122 @@ ULONG_PTR WINAPI SetClassLongPtrCallBack(HWND hwnd,int nIndex,LONG_PTR dwNewLong
     return pRet;
 }
 
+ULONG_PTR WINAPI GetClassLongPtrWCallBack(HWND hwnd,int nIndex)
+{
+    UINT i;
+    int findidx = -1;
+    ULONG_PTR pRet=NULL;
+    if(hwnd && nIndex == GCLP_HCURSOR)
+    {
+        if(st_InjectModuleInited)
+        {
+            EnterCriticalSection(&st_hWndCS);
+            for(i=0; i<st_hWndBaseVecs.size() ; i++)
+            {
+                if(hwnd == st_hWndBaseVecs[i])
+                {
+                    findidx = i;
+                    break;
+                }
+            }
+
+            if(findidx >= 0)
+            {
+                if(st_ShowCursorHideMode)
+                {
+                    pRet = (ULONG_PTR) st_hWndClassCursorVecs[findidx];
+                }
+                else
+                {
+                    pRet = GetClassLongPtrWNext(hwnd,nIndex);
+                    if(pRet !=(ULONG_PTR) st_hWndClassCursorVecs[findidx])
+                    {
+                        ERROR_INFO("[0x%08x] window cursor class 0x%08x  not equal 0x%08x\n",hwnd,pRet,st_hWndClassCursorVecs[findidx]);
+                        st_hWndClassCursorVecs[findidx] =(HCURSOR) pRet;
+                    }
+                }
+            }
+            else
+            {
+                ERROR_INFO("[0x%08x] not found in the hwnd vecs\n",hwnd);
+                pRet = GetClassLongPtrWNext(hwnd,nIndex);
+            }
+            LeaveCriticalSection(&st_hWndCS);
+        }
+        else
+        {
+            pRet = GetClassLongPtrWNext(hwnd,nIndex);
+        }
+    }
+    else
+    {
+        pRet = GetClassLongPtrWNext(hwnd,nIndex);
+    }
+    return pRet;
+}
+
+ULONG_PTR WINAPI SetClassLongPtrWCallBack(HWND hwnd,int nIndex,LONG_PTR dwNewLong)
+{
+    UINT i;
+    int findidx = -1;
+    ULONG_PTR pRet = NULL;
+    ULONG_PTR pOldPtr;
+
+    if(hwnd && nIndex == GCLP_HCURSOR)
+    {
+        if(st_InjectModuleInited)
+        {
+            EnterCriticalSection(&st_hWndCS);
+            for(i=0; i<st_hWndBaseVecs.size(); i++)
+            {
+                if(hwnd == st_hWndBaseVecs[i])
+                {
+                    findidx = i;
+                    break;
+                }
+            }
+            if(findidx >= 0)
+            {
+                if(st_ShowCursorHideMode)
+                {
+                }
+                else
+                {
+                    pOldPtr = (ULONG_PTR)st_hWndClassCursorVecs[findidx];
+                    st_hWndClassCursorVecs[findidx] =(HCURSOR) dwNewLong;
+                    pRet = SetClassLongPtrWNext(hwnd,nIndex,dwNewLong);
+                    if(pOldPtr != pRet)
+                    {
+                        ERROR_INFO("[0x%08x]hwnd GCLP_HCURSOR oldptr 0x%08x != pRet 0x%08x\n",hwnd,
+                                   pOldPtr,pRet);
+                    }
+                }
+            }
+            else
+            {
+                ERROR_INFO("[0x%08x] not found in hwnd vecs\n",hwnd);
+                pRet = SetClassLongPtrWNext(hwnd,nIndex,dwNewLong);
+            }
+            LeaveCriticalSection(&st_hWndCS);
+        }
+        else
+        {
+            pRet = SetClassLongPtrWNext(hwnd,nIndex,dwNewLong);
+        }
+    }
+    else
+    {
+        pRet = SetClassLongPtrWNext(hwnd,nIndex,dwNewLong);
+    }
+    return pRet;
+}
+
 int WINAPI ShowCursorCallBack(BOOL bShow)
 {
     int count=0;
     if(st_ShowCursorInit)
     {
-        EnterCriticalSection(&st_ShowCursorCS);
+        EnterCriticalSection(&st_hWndCS);
         if(st_ShowCursorHideMode)
         {
             if(bShow)
@@ -606,7 +729,7 @@ int WINAPI ShowCursorCallBack(BOOL bShow)
             st_ShowCursorCount = ShowCursorNext(bShow);
         }
         count = st_ShowCursorCount;
-        LeaveCriticalSection(&st_ShowCursorCS);
+        LeaveCriticalSection(&st_hWndCS);
     }
     else
     {
@@ -621,7 +744,7 @@ HCURSOR WINAPI SetCursorCallBack(HCURSOR hCursor)
 
     if(st_ShowCursorCount)
     {
-        EnterCriticalSection(&st_ShowCursorCS);
+        EnterCriticalSection(&st_hWndCS);
         if(st_ShowCursorHideMode)
         {
             hRetCursor = st_hCursor;
@@ -632,7 +755,7 @@ HCURSOR WINAPI SetCursorCallBack(HCURSOR hCursor)
             st_hCursor = hCursor;
             hRetCursor = SetCursorNext(hCursor);
         }
-        LeaveCriticalSection(&st_ShowCursorCS);
+        LeaveCriticalSection(&st_hWndCS);
     }
     else
     {
@@ -644,10 +767,13 @@ HCURSOR WINAPI SetCursorCallBack(HCURSOR hCursor)
 
 int DetourShowCursorFunction(void)
 {
-    InitializeCriticalSection(&st_ShowCursorCS);
+    InitializeCriticalSection(&st_hWndCS);
     DEBUG_BUFFER_FMT(ShowCursorNext,10,"Before ShowCursorNext (0x%p)",ShowCursorNext);
     DEBUG_BUFFER_FMT(SetCursorNext,10,"Before SetCursorNext (0x%p)",SetCursorNext);
-	DEBUG_BUFFER_FMT(GetClassLongPtrNext,10,"Before SetCursorNext (0x%p)",SetCursorNext);
+    DEBUG_BUFFER_FMT(SetClassLongPtrANext,10,"Before SetClassLongPtrANext (0x%p)",SetClassLongPtrANext);
+    DEBUG_BUFFER_FMT(GetClassLongPtrANext,10,"Before GetClassLongPtrANext (0x%p)",GetClassLongPtrANext);
+    DEBUG_BUFFER_FMT(SetClassLongPtrWNext,10,"Before SetClassLongPtrWNext (0x%p)",SetClassLongPtrWNext);
+    DEBUG_BUFFER_FMT(GetClassLongPtrWNext,10,"Before GetClassLongPtrWNext (0x%p)",GetClassLongPtrWNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&ShowCursorNext,ShowCursorCallBack);
@@ -655,12 +781,11 @@ int DetourShowCursorFunction(void)
     DetourTransactionCommit();
     DEBUG_BUFFER_FMT(ShowCursorNext,10,"After ShowCursorNext (0x%p)",ShowCursorNext);
     DEBUG_BUFFER_FMT(SetCursorNext,10,"After SetCursorNext (0x%p)",SetCursorNext);
+    DEBUG_BUFFER_FMT(SetClassLongPtrANext,10,"After SetClassLongPtrANext (0x%p)",SetClassLongPtrANext);
+    DEBUG_BUFFER_FMT(GetClassLongPtrANext,10,"After GetClassLongPtrANext (0x%p)",GetClassLongPtrANext);
+    DEBUG_BUFFER_FMT(SetClassLongPtrWNext,10,"After SetClassLongPtrWNext (0x%p)",SetClassLongPtrWNext);
+    DEBUG_BUFFER_FMT(GetClassLongPtrWNext,10,"After GetClassLongPtrWNext (0x%p)",GetClassLongPtrWNext);
 
-    EnterCriticalSection(&st_ShowCursorCS);
-    /*to get the cursor current now*/
-    st_hCursor = SetCursorNext(NULL);
-    SetCursorNext(st_hCursor);
-    LeaveCriticalSection(&st_ShowCursorCS);
 
     st_ShowCursorInit = 1;
     return 0;
@@ -1165,6 +1290,7 @@ static BOOL InsertHwnd(HWND hwnd)
     BOOL bret=FALSE;
     int findidx=-1;
     UINT i;
+    HCURSOR hCursor;
     if(st_InjectModuleInited)
     {
         EnterCriticalSection(&st_hWndCS);
@@ -1181,6 +1307,14 @@ static BOOL InsertHwnd(HWND hwnd)
         {
             bret = TRUE;
             st_hWndBaseVecs.push_back(hwnd);
+            hCursor = (HCURSOR) GetClassLongPtrANext(hwnd,GCLP_HCURSOR);
+            st_hWndClassCursorVecs.push_back(hCursor);
+            if(st_ShowCursorHideMode > 0)
+            {
+                /*this means we should hid cursor ,because when st_ShowCursorHideMode > 0 we have create hNoMouseCursor ,so assert it*/
+                assert(st_hNoMouseCursor);
+                SetClassLongPtrANext(hwnd,GCLP_HCURSOR,st_hNoMouseCursor);
+            }
         }
         LeaveCriticalSection(&st_hWndCS);
 
@@ -1218,6 +1352,7 @@ static BOOL RemoveHwnd(HWND hwnd)
         {
             bret = TRUE;
             st_hWndBaseVecs.erase(st_hWndBaseVecs.begin() + findidx);
+            st_hWndClassCursorVecs.erase(st_hWndClassCursorVecs.begin() + findidx);
         }
         LeaveCriticalSection(&st_hWndCS);
 
