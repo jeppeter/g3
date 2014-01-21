@@ -690,6 +690,116 @@ fail:
     return -ret;
 }
 
+
+int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
+{
+    HWND hwnd = NULL;
+    HCURSOR hcursor = NULL;
+    ICONINFOEX iconex = {0};
+    HDC hcolordc=NULL;
+    BITMAP colorbmp;
+    BITMAPINFO colorinfo,*pColorInfo=NULL;
+    UINT colorinfoextsize=0;
+    PVOID pColorBuffer=NULL;
+    int ret;
+    BOOL bret;
+
+    ZeroMemory(&iconex,sizeof(iconex));
+    /*now first to get the active window*/
+    hwnd = GetCurrentProcessActiveWindow();
+    if(hwnd == NULL)
+    {
+        ret=  ERROR_BAD_ENVIRONMENT;
+        ERROR_INFO("could not get active window\n");
+        goto fail;
+    }
+
+    /*we should get cursor by the default ,and this may be detoured ,so we do not mind it*/
+    hcursor = (HCURSOR)GetClassLongPtrA(hwnd,GCLP_HCURSOR);
+    if(hcursor == NULL)
+    {
+        ret=  ERROR_BAD_ENVIRONMENT;
+        ERROR_INFO("hwnd(0x%08x) Getcursor NULL \n",hwnd);
+        goto fail;
+    }
+
+    /*now we get the object*/
+    ZeroMemory(&iconex,sizeof(iconex));
+    iconex.cbSize = sizeof(iconex);
+    bret = GetIconInfoEx(hcursor,&iconex);
+    if(!bret)
+    {
+        ret=  LAST_ERROR_CODE();
+        ERROR_INFO("[0x%08x]GetIconInfoEx Error(%d)\n",hcursor,ret);
+        goto fail;
+    }
+
+    ZeroMemory(&colorbmp,sizeof(colorbmp));
+    bret = GetObject(iconex.hbmColor,sizeof(colorbmp),&colorbmp);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("[0x%08x]HBITMAP can not get BITMAP Error(%d)\n",
+                   iconex.hbmColor,ret);
+        goto fail;
+    }
+
+    hcolordc = GetDC(NULL);
+    if(hcolordc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("GetDC Error(%d)\n",ret);
+        goto fail;
+    }
+
+    ZeroMemory(&colorinfo,sizeof(colorinfo));
+    colorinfo.bmiHeader.biSize = sizeof(colorinfo.bmiHeader);
+    ret = ::GetDIBits(hcolordc,iconex.hbmColor,0,colorbmp.bmHeight,NULL,&colorinfo,DIB_RGB_COLORS);
+    if(ret == 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits Error(%d)\n",
+                   hcolordc,iconex.hbmColor,colorbmp.bmHeight,ret);
+        goto fail;
+    }
+
+    /*now to make the */
+
+
+
+    return 0;
+fail:
+    if(pColorBuffer)
+    {
+        free(pColorBuffer);
+    }
+    pColorBuffer = NULL;
+    if(pColorInfo)
+    {
+        free(pColorInfo);
+    }
+    pColorInfo = NULL;
+
+    if(hcolordc)
+    {
+        ReleaseDC(NULL,hcolordc);
+    }
+    hcolordc = NULL;
+
+    if(iconex.hbmColor)
+    {
+        DeleteObject(iconex.hbmColor);
+    }
+    iconex.hbmColor = NULL;
+    if(iconex.hbmMask)
+    {
+        DeleteObject(iconex.hbmMask);
+    }
+    iconex.hbmMask = NULL;
+    SetLastError(ret);
+    return -ret;
+}
+
 int __DetourIoInjectThreadRemoveDevice(PIO_CAP_CONTROL_t pControl)
 {
     int ret=ERROR_NOT_FOUND;
@@ -820,6 +930,9 @@ int DetourIoInjectThreadControl(PIO_CAP_CONTROL_t pControl)
             ERROR_INFO("Disable SetCursorPos Error(%d)\n",ret);
             goto fail;
         }
+        break;
+    case IO_INJECT_GET_CURSOR_BMP:
+
         break;
     default:
         ret=  ERROR_INVALID_PARAMETER;

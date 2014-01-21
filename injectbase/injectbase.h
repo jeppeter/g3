@@ -65,6 +65,7 @@ INJECTBASE_API int DisableSetCursorPos(void);
 
 
 
+
 int InjectBaseModuleInit(HMODULE hModule);
 void InjectBaseModuleFini(HMODULE hModule);
 
