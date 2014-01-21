@@ -5,33 +5,61 @@
 #include <injectbase.h>
 
 
+int EnableSetCursorPos(void)
+{
+	int ret;
+	ret = ERROR_NOT_SUPPORTED;
+	SetLastError(ret);
+	return -ret;
+}
+
+int DisableSetCursorPos(void)
+{
+	int ret;
+	ret = ERROR_NOT_SUPPORTED;
+	SetLastError(ret);
+	return -ret;
+}
+
+
 int BaseSetKeyMouseState(LPVOID pParam,LPVOID pInput)
 {
-	return 0;
+	int ret;
+	ret = ERROR_NOT_SUPPORTED;
+	SetLastError(ret);
+	return -ret;
 }
 
 
 int SetShowCursorNormal()
 {
-	return 0;
+	int ret=ERROR_NOT_SUPPORTED;
+	SetLastError(ret);
+	return -ret;
 }
 
 
 int SetShowCursorHide()
 {
-	return 0;
+	int ret=ERROR_NOT_SUPPORTED;
+	SetLastError(ret);
+	return -ret;
 }
 
 
 BOOL InsertHwnd(HWND hwnd)
 {
-	return TRUE;
+	int ret=ERROR_NOT_SUPPORTED;
+	SetLastError(ret);
+	return FALSE;
 }
 
 
 BOOL RemoveHwnd(HWND hwnd)
 {
-	return TRUE;
+	int ret=ERROR_NOT_SUPPORTED;
+	SetLastError(ret);
+	return FALSE;
 }
 
 

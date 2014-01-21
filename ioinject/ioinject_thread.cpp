@@ -69,8 +69,8 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 
     totalret = st_EventHandlerFuncList.CallList(pDevEvent);
 
-	/*now we should get the point */
-	
+    /*now we should get the point */
+
     bret = SetEvent(pEventList->m_hFillEvt);
     if(!bret)
     {
@@ -783,6 +783,44 @@ int DetourIoInjectThreadControl(PIO_CAP_CONTROL_t pControl)
             goto fail;
         }
         break;
+
+    case IO_INJECT_HIDE_CURSOR:
+        ret = SetShowCursorHide();
+        if(ret < 0)
+        {
+            ret=  LAST_ERROR_CODE();
+            ERROR_INFO("Hide Cursor Error(%d)\n",ret);
+            goto fail;
+        }
+        break;
+
+    case IO_INJECT_NORMAL_CURSOR:
+        ret = SetShowCursorNormal();
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Normal Cursor Error(%d)\n",ret);
+            goto fail;
+        }
+        break;
+    case IO_INJECT_ENABLE_SET_POS:
+        ret = EnableSetCursorPos();
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Enable SetCursorPos Error(%d)\n",ret);
+            goto fail;
+        }
+        break;
+    case IO_INJECT_DISABLE_SET_POS:
+        ret = DisableSetCursorPos();
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Disable SetCursorPos Error(%d)\n",ret);
+            goto fail;
+        }
+        break;
     default:
         ret=  ERROR_INVALID_PARAMETER;
         ERROR_INFO("Invalid code (%d)\n",pControl->opcode);
@@ -824,7 +862,7 @@ int UnRegisterEventListHandler(FuncCall_t pFunc)
 
 void IoInjectThreadFini(HMODULE hModule)
 {
-	UnRegisterEventListHandler(BaseSetKeyMouseState);
+    UnRegisterEventListHandler(BaseSetKeyMouseState);
     if(st_hIoInjectControlSema)
     {
         CloseHandle(st_hIoInjectControlSema);
@@ -854,7 +892,7 @@ int IoInjectThreadInit(HMODULE hModule)
     SetLastError(0);
     return 0;
 fail:
-	UnRegisterEventListHandler(BaseSetKeyMouseState);
+    UnRegisterEventListHandler(BaseSetKeyMouseState);
 
     assert(ret > 0);
     if(st_hIoInjectControlSema)

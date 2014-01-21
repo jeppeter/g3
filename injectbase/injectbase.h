@@ -60,7 +60,8 @@ INJECTBASE_API int GetBaseKeyState(unsigned char *pKeyState,UINT keys);
 INJECTBASE_API int BasePressKeyDownTimes(UINT scancode);
 INJECTBASE_API int BaseMouseBtnDown(UINT btn);
 INJECTBASE_API int BaseGetMousePointAbsolution(POINT *pPoint);
-
+INJECTBASE_API int EnableSetCursorPos(void);
+INJECTBASE_API int DisableSetCursorPos(void);
 
 
 
