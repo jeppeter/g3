@@ -690,23 +690,238 @@ fail:
     return -ret;
 }
 
+PBITMAPINFO  __GetBitmapInfo(HBITMAP hBmp,UINT *pInfoSize)
+{
+    PBITMAPINFO pBmpInfo=NULL;
+    BITMAP bmp;
+    int ret;
+    BITMAPINFO info= {0};
+    BOOL bret;
+    HDC hdc=NULL;
+    int infoextsize;
+
+    ZeroMemory(&bmp,sizeof(bmp));
+    bret = GetObject(hBmp,sizeof(bmp),&bmp);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("[0x%08x]HBITMAP can not get BITMAP Error(%d)\n",
+                   hBmp,ret);
+        goto fail;
+    }
+
+    hdc = GetDC(NULL);
+    if(hdc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("GetDC Error(%d)\n",ret);
+        goto fail;
+    }
+
+    ZeroMemory(&info,sizeof(info));
+    info.bmiHeader.biSize = sizeof(info.bmiHeader);
+    ret = ::GetDIBits(hdc,hBmp,0,bmp.bmHeight,NULL,&info,DIB_RGB_COLORS);
+    if(ret == 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits NULL Error(%d)\n",
+                   hdc,hBmp,bmp.bmHeight,ret);
+        goto fail;
+    }
+
+
+    infoextsize = sizeof(*pBmpInfo);
+    switch(info.bmiHeader.biBitCount)
+    {
+    case 1:
+        infoextsize += (1 * sizeof(RGBQUAD));
+        break;
+    case 4:
+        infoextsize += (15 * sizeof(RGBQUAD));
+        break;
+    case 8:
+        infoextsize += (255 * sizeof(RGBQUAD));
+        break;
+    case 16:
+    case 32:
+        infoextsize += (2 * sizeof(RGBQUAD));
+        break;
+    }
+
+    pBmpInfo = (BITMAPINFO*)malloc(infoextsize);
+    if(pBmpInfo == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    /*now we should make this ok*/
+    ZeroMemory(pBmpInfo,infoextsize);
+    CopyMemory(pBmpInfo,&info,sizeof(info));
+
+    if(hdc)
+    {
+        ReleaseDC(NULL,hdc);
+    }
+    hdc = NULL;
+    *pInfoSize = infoextsize;
+    return pBmpInfo;
+fail:
+    if(hdc)
+    {
+        ReleaseDC(NULL,hdc);
+    }
+    hdc = NULL;
+    if(pBmpInfo)
+    {
+        free(pBmpInfo);
+    }
+    pBmpInfo = NULL;
+    SetLastError(ret);
+    return NULL;
+}
+
+PVOID __GetBitmapData(HBITMAP hBmp,PBITMAPINFO pBmpInfo,UINT *pDataSize)
+{
+    PVOID pData=NULL;
+    int datasize;
+    int ret;
+    HDC hdc=NULL;
+    /*now to make the bitsmap ok*/
+
+    hdc = GetDC(NULL);
+    if(hdc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("GetDC Error(%d)\n",ret);
+        goto fail;
+    }
+
+    datasize = pBmpInfo->bmiHeader.biSizeImage;
+    pData = malloc(datasize);
+    if(pData == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    ret = ::GetDIBits(hdc,hBmp,0,pBmpInfo->bmiHeader.biHeight,pData,pBmpInfo,DIB_RGB_COLORS);
+    if(ret == 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits Error(%d)\n",
+                   hdc,hBmp,pBmpInfo->bmiHeader.biHeight,ret);
+        goto fail;
+    }
+
+    if(hdc)
+    {
+        ReleaseDC(NULL,hdc);
+    }
+    hdc = NULL;
+    *pDataSize = datasize;
+    return pData;
+fail:
+    if(hdc)
+    {
+        ReleaseDC(NULL,hdc);
+    }
+    hdc = NULL;
+    if(pData)
+    {
+        free(pData);
+    }
+    pData = NULL;
+    SetLastError(ret);
+    return NULL;
+}
+
+int __WriteShareData(char* pShareName,int sectsize,PVOID pData,UINT size,int type)
+{
+    HANDLE hMap=NULL;
+    PVOID pMapData=NULL;
+    int ret;
+    int retlen =0;
+    LPSHARE_DATA pShareData=NULL;
+
+    if(size > (sectsize - sizeof(*pShareData) + sizeof(pShareData->data)))
+    {
+        ret = ERROR_INSUFFICIENT_BUFFER;
+        ERROR_INFO("ShareMem(%s) sectsize (%d) size(%d) insufficient buffer\n",pShareName,
+                   sectsize,size);
+        goto fail;
+    }
+
+    hMap = CreateMapFile(pShareName,sectsize,0);
+    if(hMap == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("CreateMap(%s) size(0x%08x:%d) Error(%d)\n",pShareName,sectsize,sectsize,ret);
+        goto fail;
+    }
+
+    pMapData = MapFileBuffer(hMap,sectsize);
+    if(pMapData == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Map(%s) size(0x%08x:%d) Error(%d)\n",pShareName,sectsize,sectsize,ret);
+        goto fail;
+    }
+
+    pShareData = (LPSHARE_DATA)pMapData;
+
+    ret = WriteShareMem(&(pShareData->datalen),0,&size,sizeof(size));
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Write(%s) datalen Error(%d)\n",pShareName,ret);
+        goto fail;
+    }
+
+    ret = WriteShareMem(&(pShareData->datatype),0,&type,sizeof(type));
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Write(%s) datatype Error(%d)\n",pShareName,ret);
+        goto fail;
+    }
+
+    ret = WriteShareMem(pShareData->data,0,pData,size);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Write(%s) data Error(%d)\n",pShareName,ret);
+        goto fail;
+    }
+
+    retlen = size + sizeof(*pShareData) - sizeof(pShareData->data);
+
+    UnMapFileBuffer(&pMapData);
+    CloseMapFileHandle(&hMap);
+    SetLastError(0);
+    return retlen;
+fail:
+    assert(ret > 0);
+    UnMapFileBuffer(&pMapData);
+    CloseMapFileHandle(&hMap);
+    SetLastError(ret);
+    return -ret;
+}
+
 
 int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
 {
     HWND hwnd = NULL;
     HCURSOR hcursor = NULL;
     ICONINFOEX iconex = {0};
-    HDC hcolordc=NULL,hmaskdc=NULL;
-    BITMAP colorbmp,maskbmp;
-    BITMAPINFO colorinfo,*pColorInfo=NULL,maskinfo,*pMaskInfo=NULL;
+    PBITMAPINFO pColorInfo=NULL,pMaskInfo=NULL;
     UINT colorinfoextsize=0,colorsize=0,maskinfoextsize=0,masksize=0;
     PVOID pColorBuffer=NULL,pMaskBuffer=NULL;
     int ret;
-    int bmptype,datatype;
-    BOOL bret;
-    HANDLE hInfoMap=NULL,hDataMap=NULL,hMInfoMap=NULL,hMDataMap=NULL;
-    unsigned char *pInfoBuf=NULL,*pDataBuf=NULL,pMInfoBuf=NULL,pMDataBuf=NULL;
-    LPSHARE_DATA pShareColorBitmapInfo=NULL,pShareColorData=NULL,pShareMInfo=NULL,pShareMData=NULL;
+    int type;
+    LPSHARE_DATA pShare=NULL;
+    std::auto_ptr<unsigned char> pShareName2(new unsigned char[IO_NAME_MAX_SIZE]);
+    unsigned char* pShareName = pShareName2.get();
+
 
     ZeroMemory(&iconex,sizeof(iconex));
     /*now first to get the active window*/
@@ -738,272 +953,73 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-    ZeroMemory(&maskbmp,sizeof(maskbmp));
-    bret = GetObject(iconex.hbmMask,sizeof(maskbmp),&maskbmp);
-    if(!bret)
+    pMaskInfo = __GetBitmapInfo(iconex.hbmMask,&maskinfoextsize);
+    if(pMaskInfo == NULL)
+    {
+        ret= LAST_ERROR_CODE();
+        ERROR_INFO("GetMaskInfo Error(%d)\n",ret);
+        goto fail;
+    }
+    pMaskBuffer = __GetBitmapData(iconex.hbmMask,pMaskInfo,&masksize);
+    if(pMaskBuffer == NULL)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("[0x%08x]HBITMAP can not get BITMAP Error(%d)\n",
-                   iconex.hbmMask,ret);
+        ERROR_INFO("GetMaskBuffer Error(%d)\n",ret);
         goto fail;
     }
 
-    hmaskdc = GetDC(NULL);
-    if(hmaskdc == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("GetDC Error(%d)\n",ret);
-        goto fail;
-    }
-
-    ZeroMemory(&maskinfo,sizeof(maskinfo));
-    maskinfo.bmiHeader.biSize = sizeof(maskinfo.bmiHeader);
-    ret = ::GetDIBits(hmaskdc,iconex.hbmMask,0,maskbmp.bmHeight,NULL,&maskinfo,DIB_RGB_COLORS);
-    if(ret == 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits NULL Error(%d)\n",
-                   hmaskdc,iconex.hbmMask,maskbmp.bmHeight,ret);
-        goto fail;
-    }
-
-    /*now to make the bitsmap ok*/
-    colorsize = colorinfo.bmiHeader.biSizeImage;
-    pColorBuffer = malloc(colorsize);
-    if(pColorBuffer == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        goto fail;
-    }
-
-    colorinfoextsize = sizeof(*pColorInfo);
-    switch(colorinfo.bmiHeader.biBitCount)
-    {
-    case 1:
-        colorinfoextsize += (1 * sizeof(RGBQUAD));
-        break;
-    case 4:
-        colorinfoextsize += (15 * sizeof(RGBQUAD));
-        break;
-    case 8:
-        colorinfoextsize += (255 * sizeof(RGBQUAD));
-        break;
-    case 16:
-    case 32:
-        colorinfoextsize += (2 * sizeof(RGBQUAD));
-        break;
-    }
-
-    pColorInfo = (BITMAPINFO*)malloc(colorinfoextsize);
+    pColorInfo = __GetBitmapInfo(iconex.hbmColor,&colorinfoextsize);
     if(pColorInfo == NULL)
     {
         ret = LAST_ERROR_CODE();
+        ERROR_INFO("GetColorInfo Error(%d)\n",ret);
         goto fail;
     }
-
-    /*now we should make this ok*/
-    ZeroMemory(pColorInfo,colorinfoextsize);
-    CopyMemory(pColorInfo,&colorinfo,sizeof(colorinfo));
-    ret = ::GetDIBits(hcolordc,iconex.hbmColor,0,colorbmp.bmHeight,pColorBuffer,pColorInfo,DIB_RGB_COLORS);
-    if(ret == 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits Error(%d)\n",
-                   hcolordc,iconex.hbmColor,colorbmp.bmHeight,ret);
-        goto fail;
-    }
-
-
-    ZeroMemory(&colorbmp,sizeof(colorbmp));
-    bret = GetObject(iconex.hbmColor,sizeof(colorbmp),&colorbmp);
-    if(!bret)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("[0x%08x]HBITMAP can not get BITMAP Error(%d)\n",
-                   iconex.hbmColor,ret);
-        goto fail;
-    }
-
-    hcolordc = GetDC(NULL);
-    if(hcolordc == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("GetDC Error(%d)\n",ret);
-        goto fail;
-    }
-
-    ZeroMemory(&colorinfo,sizeof(colorinfo));
-    colorinfo.bmiHeader.biSize = sizeof(colorinfo.bmiHeader);
-    ret = ::GetDIBits(hcolordc,iconex.hbmColor,0,colorbmp.bmHeight,NULL,&colorinfo,DIB_RGB_COLORS);
-    if(ret == 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits NULL Error(%d)\n",
-                   hcolordc,iconex.hbmColor,colorbmp.bmHeight,ret);
-        goto fail;
-    }
-
-    /*now to make the bitsmap ok*/
-    colorsize = colorinfo.bmiHeader.biSizeImage;
-    pColorBuffer = malloc(colorsize);
+    pColorBuffer = __GetBitmapData(iconex.hbmColor,pColorInfo,&colorsize);
     if(pColorBuffer == NULL)
     {
         ret = LAST_ERROR_CODE();
-        goto fail;
-    }
-
-    colorinfoextsize = sizeof(*pColorInfo);
-    switch(colorinfo.bmiHeader.biBitCount)
-    {
-    case 1:
-        colorinfoextsize += (1 * sizeof(RGBQUAD));
-        break;
-    case 4:
-        colorinfoextsize += (15 * sizeof(RGBQUAD));
-        break;
-    case 8:
-        colorinfoextsize += (255 * sizeof(RGBQUAD));
-        break;
-    case 16:
-    case 32:
-        colorinfoextsize += (2 * sizeof(RGBQUAD));
-        break;
-    }
-
-    pColorInfo = (BITMAPINFO*)malloc(colorinfoextsize);
-    if(pColorInfo == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        goto fail;
-    }
-
-    /*now we should make this ok*/
-    ZeroMemory(pColorInfo,colorinfoextsize);
-    CopyMemory(pColorInfo,&colorinfo,sizeof(colorinfo));
-    ret = ::GetDIBits(hcolordc,iconex.hbmColor,0,colorbmp.bmHeight,pColorBuffer,pColorInfo,DIB_RGB_COLORS);
-    if(ret == 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits Error(%d)\n",
-                   hcolordc,iconex.hbmColor,colorbmp.bmHeight,ret);
+        ERROR_INFO("GetColorBuffer Error(%d)\n",ret);
         goto fail;
     }
 
 
-
-    /*now all is ok so we should make sure the memory copy to*/
-    /*now test for the buffer whether this is the large enough*/
-    if(pControl->memsharesectsize < (colorinfoextsize + sizeof(*pShareColorBitmapInfo) - sizeof(*pShareColorBitmapInfo->data)) ||
-            pControl->memsharesectsize < (colorsize+ sizeof(*pShareColorBitmapInfo) - sizeof(*pShareColorBitmapInfo->data)))
-    {
-        ret = ERROR_INSUFFICIENT_BUFFER;
-        ERROR_INFO("sectsize(0x%08x:%d) < colorinfoextsize(0x%08x:%d) or colorsize(0x%08x:%d)\n",
-                   pControl->memsharesectsize,pControl->memsharesectsize,
-                   colorinfoextsize,colorinfoextsize,colorsize,colorsize);
-        goto fail;
-    }
-
-    /*now to give the handler for information for freeevtbasename for the info inputevtbasename for the data */
-    hInfoMap = CreateMapFile(pControl->freeevtbasename,pControl->memsharesectsize,0);
-    if(hInfoMap == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Get(%s) size(0x%08x:%d) Error(%d)\n",pControl->freeevtbasename,pControl->memsharesectsize,pControl->memsharesectsize,ret);
-        goto fail;
-    }
-
-    pInfoBuf = MapFileBuffer(hInfoMap,pControl->memsharesectsize);
-    if(pInfoBuf == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("MapFile(%s:0x%08x) size(0x%08x:%d) Error(%d)\n",
-                   pControl->freeevtbasename,hInfoMap,pControl->memsharesectsize,pControl->memsharesectsize,ret);
-        goto fail;
-    }
-
-    hDataMap = CreateMapFile(pControl->inputevtbasename,pControl->memsharesectsize,0);
-    if(hDataMap == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("Get(%s) size(0x%08x:%d) Error(%d)\n",pControl->inputevtbasename,pControl->memsharesectsize,pControl->memsharesectsize,ret);
-        goto fail;
-    }
-    pDataBuf = MapFileBuffer(hDataMap,pControl->memsharesectsize);
-    if(pDataBuf == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("MapFile(%s:0x%08x) size(0x%08x:%d) Error(%d)\n",
-                   pControl->inputevtbasename,hInfoMap,pControl->memsharesectsize,pControl->memsharesectsize,ret);
-        goto fail;
-    }
-
-    pShareColorBitmapInfo = (LPSHARE_DATA)pInfoBuf;
-
-    /*now we should write the memory*/
-    ret = WriteShareMem(pShareColorBitmapInfo,0,&colorinfoextsize,sizeof(pShareColorBitmapInfo->datalen));
+    _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->freeevtbasename);
+    ret = __WriteShareData(pShareName,pControl->memsharesectsize,pMaskInfo,maskinfoextsize,CURSOR_MASK_BITMAPINFO);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("WriteInfoLen(0x%p) Error(%d)\n",pShareColorBitmapInfo,ret);
+        ERROR_INFO("WriteShareData For MaskInfo Error(%d)\n",ret);
         goto fail;
     }
 
-    bmptype = CURSOR_COLOR_BITMAPINFO;
-    ret = WriteShareMem(pShareColorBitmapInfo,sizeof(pShareColorBitmapInfo->datalen),&datatype,sizeof(datatype));
+    _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->inputevtbasename);
+    ret = __WriteShareData(pShareName,pControl->memsharesectsize,pMaskBuffer,masksize,CURSOR_MASK_BITDATA);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("WriteInfoType(0x%p) Offset(0x%08x:%d) Error(%d)\n",pShareColorBitmapInfo,sizeof(pShareColorBitmapInfo->datalen),sizeof(pShareColorBitmapInfo->datalen),
-                   ret);
+        ERROR_INFO("WriteShareData For MaskBuffer Error(%d)\n",ret);
         goto fail;
     }
 
-
-    ret = WriteShareMem(pShareColorBitmapInfo,sizeof(*pShareColorBitmapInfo) - sizeof(*pShareColorBitmapInfo->data),pColorInfo,colorinfoextsize);
+    _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->freeevtbasename);
+    ret = __WriteShareData(pShareName,pControl->memsharesectsize,pColorInfo,colorinfoextsize,CURSOR_COLOR_BITMAPINFO);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("WriteInfo(0x%p) from buffer(0x%p) size(0x%08x:%d) Error(%d)\n",pInfoBuf,
-                   pColorInfo,colorinfoextsize,colorinfoextsize);
+        ERROR_INFO("WriteShareData For ColorInfo Error(%d)\n",ret);
         goto fail;
     }
 
-    pShareColorData = (LPSHARE_DATA)pDataBuf;
-    ret = WriteShareMem(pShareColorData,0,&colorsize,sizeof(pShareColorData->datalen));
+    _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->inputevtbasename);
+    ret = __WriteShareData(pShareName,pControl->memsharesectsize,pColorBuffer,colorsize,CURSOR_COLOR_BITDATA);
     if(ret < 0)
     {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("WriteDataLen(0x%p) Error(%d)\n",pShareColorData,ret);
+        ret= LAST_ERROR_CODE();
+        ERROR_INFO("WriteShareData For ColorBuffer Error(%d)\n",ret);
         goto fail;
     }
 
-    datatype = CURSOR_COLOR_BITDATA;
-    ret = WriteShareMem(pShareColorData,sizeof(pShareColorData->datalen),&datatype,sizeof(pShareColorData->datatype));
-    if(ret < 0)
-    {
-        ret=  LAST_ERROR_CODE();
-        ERROR_INFO("WriteDataType(0x%p) offset(0x%08x:%d) Error(%d)\n",
-                   pShareColorData,
-                   sizeof(pShareColorData->datalen),
-                   sizeof(pShareColorData->datalen),
-                   ret);
-        goto fail;
-    }
-
-    ret = WriteShareMem(pShareColorData,sizeof(*pShareColorData) - sizeof(*pShareColorData->data),pColorBuffer,colorsize);
-    if(ret < 0)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("WriteData(0x%p) from buffer(0x%p) size(0x%08x:%d) Error(%d)\n",pShareColorData,
-                   pColorBuffer,colorsize,colorsize);
-        goto fail;
-    }
-
-
-    UnMapFileBuffer(&pDataBuf);
-    CloseMapFileHandle(&hDataMap);
-    UnMapFileBuffer(&pInfoBuf);
-    CloseMapFileHandle(&hInfoMap);
 
     if(pColorBuffer)
     {
@@ -1016,11 +1032,17 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
     }
     pColorInfo = NULL;
 
-    if(hcolordc)
+    if(pMaskBuffer)
     {
-        ReleaseDC(NULL,hcolordc);
+        free(pMaskBuffer);
     }
-    hcolordc = NULL;
+    pMaskBuffer = NULL;
+    if(pMaskInfo)
+    {
+        free(pMaskInfo);
+    }
+    pMaskInfo = NULL;
+
 
     if(iconex.hbmColor)
     {
@@ -1035,12 +1057,7 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
     SetLastError(0);
     return 0;
 fail:
-
-    UnMapFileBuffer(&pDataBuf);
-    CloseMapFileHandle(&hDataMap);
-    UnMapFileBuffer(&pInfoBuf);
-    CloseMapFileHandle(&hInfoMap);
-
+    assert(ret > 0);
     if(pColorBuffer)
     {
         free(pColorBuffer);
@@ -1052,11 +1069,17 @@ fail:
     }
     pColorInfo = NULL;
 
-    if(hcolordc)
+    if(pMaskBuffer)
     {
-        ReleaseDC(NULL,hcolordc);
+        free(pMaskBuffer);
     }
-    hcolordc = NULL;
+    pMaskBuffer = NULL;
+    if(pMaskInfo)
+    {
+        free(pMaskInfo);
+    }
+    pMaskInfo = NULL;
+
 
     if(iconex.hbmColor)
     {

@@ -6,10 +6,10 @@
 #include <Windows.h>
 #include <stdint.h>
 
-#define  CURSOR_COLOR_BITMAPINFO        101
-#define  CURSOR_COLOR_BITDATA           102
-#define  CURSOR_MASK_BITMAPINFO         103
-#define  CURSOR_MASK_BITDATA            104
+#define  CURSOR_MASK_BITMAPINFO         101
+#define  CURSOR_MASK_BITDATA            102
+#define  CURSOR_COLOR_BITMAPINFO        103
+#define  CURSOR_COLOR_BITDATA           104
 
 typedef unsigned long ptr_t;
 
@@ -26,7 +26,7 @@ typedef struct __share_data
 {
 	int datalen;
 	int datatype;
-	unsigned char data[1];
+	unsigned char data[8];
 } SHARE_DATA,*LPSHARE_DATA;
 
 
