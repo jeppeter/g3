@@ -599,6 +599,9 @@ VOID CIOController::Stop()
     /*first we should make the indicator to be stopped ,and this will give it ok*/
     this->m_Started = 0;
 
+	this->EnableSetCursorPos(TRUE);
+	this->HideCursor(FALSE);
+
     this->__CallStopIoCapControl();
     /*now we should stop thread*/
     this->__StopBackGroundThread();

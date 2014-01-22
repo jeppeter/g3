@@ -30,6 +30,8 @@ private:
 	DWORD __SocketThread();
 	static DWORD WINAPI HandleSocketThread(LPVOID pParam);
 	unsigned long __ItemAtoi(UINT id,int base=10);
+	int __GetCheck(UINT id);
+	int __SaveBmpFile(char* fname,PVOID pInfo,UINT infolen,PVOID pData,UINT datalen);
 	
 
 private:
@@ -39,6 +41,7 @@ private:
 	CString m_strDll;
 	CString m_strExe;
 	CString m_strParam;	
+	CString m_strCursorBmp;
 	HANDLE m_hProc;	
 	thread_control_t m_ThreadControl;
 // Implementation
@@ -51,10 +54,14 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	afx_msg void OnSelExe();
 	afx_msg void OnSelDll();
+	afx_msg void OnSelBmp();
 	afx_msg void OnStart();
 	afx_msg void OnClose();
 	afx_msg void OnCancel();
 	afx_msg void OnAttach();
+	afx_msg void OnSaveCursorBmp();
+	afx_msg void OnHideCursorChk();
+	afx_msg void OnSetCursorPosChk();
 	afx_msg LRESULT OnSocket(WPARAM WParam, LPARAM lParam)  ;
 	DECLARE_MESSAGE_MAP()
 };

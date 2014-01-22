@@ -60,10 +60,14 @@ BEGIN_MESSAGE_MAP(CioctrlserverDlg, CDialogEx)
     ON_WM_QUERYDRAGICON()
     ON_COMMAND(IDC_BTN_EXE,OnSelExe)
     ON_COMMAND(IDC_BTN_DLL,OnSelDll)
+    ON_COMMAND(IDC_BTN_SAVECURSORBMP,OnSelBmp)
     ON_COMMAND(IDC_BTN_START,OnStart)
     ON_COMMAND(IDC_BTN_ATTACH,OnAttach)
+    ON_COMMAND(IDC_BTN_SAVECURSORBMP,OnSaveCursorBmp)
     ON_COMMAND(IDCANCEL,OnCancel)
     ON_MESSAGE(WM_SOCKET,OnSocket)
+    ON_BN_CLICKED(IDC_CHK_HIDECURSOR, OnHideCursorChk)
+    ON_BN_CLICKED(IDC_CHK_SETCURSORPOS,OnSetCursorPosChk)
 END_MESSAGE_MAP()
 
 
@@ -72,6 +76,7 @@ END_MESSAGE_MAP()
 BOOL CioctrlserverDlg::OnInitDialog()
 {
     CEdit* pEdt=NULL;
+    CButton *pBtn=NULL;
     CString fmtstr;
     CDialogEx::OnInitDialog();
 
@@ -96,6 +101,14 @@ BOOL CioctrlserverDlg::OnInitDialog()
     pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_ATTACHPID);
     fmtstr.Format(TEXT("0"));
     pEdt->SetWindowText(fmtstr);
+    pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_SAVECURSORBMP);
+    fmtstr.Format(TEXT(""));
+    pEdt->SetWindowText(fmtstr);
+
+    pBtn = (CButton*) this->GetDlgItem(IDC_BTN_HIDECURSOR);
+    pBtn->SetCheck(0);
+    pBtn = (CButton*) this->GetDlgItem(IDC_BTN_SETCURSORPOS);
+    pBtn->SetCheck(1);
 
     return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -151,6 +164,23 @@ void CioctrlserverDlg::OnSelDll()
     return ;
 }
 
+void CioctrlserverDlg::OnSelBmp()
+{
+    CFileDialog fdlg(TRUE,NULL,NULL,0,
+                     TEXT("bmp files (*.bmp)|*.bmp||"),NULL);
+    CString fname;
+    CEdit* pEdt=NULL;
+    if(fdlg.DoModal() == IDOK)
+    {
+        CString bmpstr;
+        fname = fdlg.GetPathName();
+        pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_BMP);
+        pEdt->SetWindowText(fname);
+    }
+    return ;
+}
+
+
 unsigned long CioctrlserverDlg::__ItemAtoi(UINT id,int base)
 {
     CString lstr;
@@ -167,6 +197,14 @@ unsigned long CioctrlserverDlg::__ItemAtoi(UINT id,int base)
     lret = strtoul((LPCSTR)lstr,&pEndPtr,base);
 #endif
     return lret;
+}
+
+int CioctrlserverDlg::__GetCheck(UINT id)
+{
+    CButton* pBtn=NULL;
+
+    pBtn = (CButton*)this->GetDlgItem(id);
+    return pBtn->GetCheck();
 }
 
 void CioctrlserverDlg::OnSelExe()
@@ -207,6 +245,7 @@ void CioctrlserverDlg::OnStart()
     CString istr;
     unsigned long bufsectsize,bufnum,waittime,listenport;
     BOOL bret;
+    int hidecursor=0,enablesetcursorpos=0;
 
     this->__GetItemText(IDC_EDT_EXE,this->m_strExe);
     this->__GetItemText(IDC_EDT_PARAM,this->m_strParam);
@@ -258,6 +297,9 @@ void CioctrlserverDlg::OnStart()
         pParamAnsi = (LPCSTR)this->m_strParam;
     }
 #endif
+
+    hidecursor = this->__GetCheck(IDC_CHK_HIDECURSOR);
+    enablesetcursorpos = this->__GetCheck(IDC_CHK_SETCURSORPOS);
 
     commandsize = strlen(pExeAnsi) + 1;
     if(pParamAnsi)
@@ -378,6 +420,26 @@ void CioctrlserverDlg::OnStart()
         this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
+
+
+    bret = this->m_pIoController->EnableSetCursorPos(enablesetcursorpos ? TRUE : FALSE);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("%s setcursor Error(%d)"),enablesetcursorpos ? TEXT("Enable") : TEXT("Disable") , ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    bret = this->m_pIoController->HideCursor(hidecursor ? TRUE : FALSE);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("%s hidecursor Error(%d)"),hidecursor ? TEXT("Enable") : TEXT("Disable") , ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
 
     /*all is ok*/
     SetLastError(0);
@@ -519,6 +581,7 @@ void CioctrlserverDlg::OnAttach()
     int ret;
     unsigned long bufsectsize,bufnum,listenport,pid;
     BOOL bret;
+    int hidecursor=0,enablesetcursorpos=0;
 
 
     bufnum = this->__ItemAtoi(IDC_EDT_BUFNUM,10);
@@ -562,6 +625,9 @@ void CioctrlserverDlg::OnAttach()
         goto fail;
     }
 
+    hidecursor = this->__GetCheck(IDC_CHK_HIDECURSOR);
+    enablesetcursorpos = this->__GetCheck(IDC_CHK_SETCURSORPOS);
+
     /*to stop  the control for the next control*/
     this->__StopControl();
 
@@ -589,7 +655,7 @@ void CioctrlserverDlg::OnAttach()
         this->m_hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD, FALSE, pid);
         if(this->m_hProc == NULL)
         {
-			ret = LAST_ERROR_CODE();
+            ret = LAST_ERROR_CODE();
             errstr.Format(TEXT("Could not open processid(%d) On Debug Privilege Error(%d)"),pid,ret);
             this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
             goto fail;
@@ -620,6 +686,24 @@ void CioctrlserverDlg::OnAttach()
     {
         ret = LAST_ERROR_CODE();
         errstr.Format(TEXT("Start Thread Error(%d)"),ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    bret = this->m_pIoController->EnableSetCursorPos(enablesetcursorpos ? TRUE : FALSE);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("%s setcursor Error(%d)"),enablesetcursorpos ? TEXT("Enable") : TEXT("Disable") , ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail;
+    }
+
+    bret = this->m_pIoController->HideCursor(hidecursor ? TRUE : FALSE);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("%s hidecursor Error(%d)"),hidecursor ? TEXT("Enable") : TEXT("Disable") , ret);
         this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
@@ -838,3 +922,245 @@ DWORD CioctrlserverDlg::HandleSocketThread(LPVOID pParam)
     CioctrlserverDlg* pThis = (CioctrlserverDlg*)pParam;
     return pThis->__SocketThread();
 }
+
+void CioctrlserverDlg::OnSetCursorPosChk()
+{
+    int enablesetcursorpos=0;
+    BOOL bret;
+    CString errstr;
+    int ret;
+    if(this->m_pIoController)
+    {
+        enablesetcursorpos = this->__GetCheck(IDC_CHK_SETCURSORPOS);
+
+        bret = this->m_pIoController->EnableSetCursorPos(enablesetcursorpos ? TRUE : FALSE);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            errstr.Format(TEXT("%s setcursor Error(%d)"),enablesetcursorpos ? TEXT("Enable") : TEXT("Disable") , ret);
+            this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        }
+    }
+
+    return ;
+}
+
+void CioctrlserverDlg::OnHideCursorChk()
+{
+    int hidecursor=0;
+    BOOL bret;
+    CString errstr;
+    int ret;
+    if(this->m_pIoController)
+    {
+        hidecursor = this->__GetCheck(IDC_CHK_HIDECURSOR);
+        bret = this->m_pIoController->HideCursor(hidecursor ? TRUE : FALSE);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            errstr.Format(TEXT("%s hidecursor Error(%d)"),hidecursor ? TEXT("Enable") : TEXT("Disable") , ret);
+            this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        }
+    }
+
+    return ;
+}
+
+
+int CioctrlserverDlg::__SaveBmpFile(char * fname,PVOID pInfo,UINT infolen,PVOID pData,UINT datalen)
+{
+    FILE *fp=NULL;
+    int ret;
+    int totallen = 0;
+    BITMAPFILEHEADER bfheader;
+
+    fopen_s(&fp,fname,"w");
+    if(fp == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("can not open (%s) Error(%d)\n",fname,ret);
+        goto fail;
+    }
+
+    ZeroMemory(&bfheader,sizeof(bfheader));
+    bfheader.bfType = 'M' << 8 | 'B';
+    bfheader.bfSize = sizeof(bfheader) + infolen + datalen;
+    bfheader.bfOffBits = sizeof(bfheader) + infolen ;
+
+    ret = fwrite(&bfheader,sizeof(bfheader),1,fp);
+    if(ret != 1)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("write(%s)bfheader Error(%d)\n",fname,ret);
+        goto fail;
+    }
+    totallen += sizeof(bfheader);
+
+    ret = fwrite(pInfo,infolen,1,fp);
+    if(ret != 1)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("write(%s)info Error(%d)\n",fname,ret);
+        goto fail;
+    }
+    totallen += infolen;
+
+    ret = fwrite(pData,datalen,1,fp);
+    if(ret != 1)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("write(%s)data Error(%d)\n",fname,ret);
+        goto fail;
+    }
+
+    totallen += datalen;
+    if(fp)
+    {
+        fclose(fp);
+    }
+    fp = NULL;
+
+    return totallen;
+fail:
+    if(fp)
+    {
+        fclose(fp);
+    }
+    fp = NULL;
+    SetLastError(ret);
+    return -ret;
+}
+
+void CioctrlserverDlg::OnSaveCursorBmp()
+{
+    CString basename;
+    CString errstr;
+    char* basenameansi=NULL;
+#ifdef _UNICODE
+    int basenamesize=0;
+#endif
+    std::auto_ptr<char> pMaskFile2(new char[256]),pColorFile2(new char[256]);
+    char *pMaskFile=pMaskFile2.get(),*pColorFile = pColorFile2.get();
+    int ret;
+    BOOL bret;
+    PVOID pMaskBuffer=NULL,pMaskInfo=NULL,pColorBuffer=NULL,pColorInfo=NULL;
+    UINT maskbufsize=0,maskinfosize=0,colorbufsize=0,colorinfosize=0;
+    UINT maskbuflen,maskinfolen,colorbuflen,colorinfolen;
+
+    this->__GetItemText(IDC_EDT_SAVECURSORBMP,basename);
+    if(basename.GetLength() == 0)
+    {
+        ret = ERROR_INVALID_PARAMTER;
+        errstr.Format(TEXT("Please Set savebmp name"));
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail ;
+    }
+    if(this->m_pIoController == NULL)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        errstr.Format(TEXT("Inject Exe Not Running"));
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail ;
+    }
+
+    bret = this->m_pIoController->GetCursorBitmap(&pColorInfo,&colorinfosize,&colorinfolen,
+            &pColorBuffer,&colorbufsize,&colorbuflen,
+            &pMaskInfo,&maskinfosize,&maskbuflen,
+            &pMaskBuffer,&maskbufsize,&maskbuflen);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Can not Get(%d) cursor Error(%d)"),GetProcessId(this->m_hProc),ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail ;
+    }
+
+
+#ifdef _UNICODE
+    ret = UnicodeToAnsi((LPCWSTR)basename,&basenameansi,&basenamesize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("could not format basename Error(%d)"),ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail ;
+    }
+#else
+    basenameansi = (LPCSTR)basename;
+#endif
+
+    _snprintf_s(pMaskFile,256,_TRUNCATE,"%smask.bmp",basenameansi);
+    _snprintf_s(pColorFile,256,_TRUNCATE,"%scolor.bmp",basenameansi);
+
+    ret = this->__SaveBmpFile(pMaskFile,pMaskInfo,maskinfolen,pMaskBuffer,maskbuflen);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Write(%s) File Error(%d)"),pMaskFile,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail ;
+    }
+
+	ret = this->__SaveBmpFile(pColorFile,pColorInfo,colorinfolen,pColorBuffer,colorbuflen);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        errstr.Format(TEXT("Write(%s) File Error(%d)"),pColorFile,ret);
+        this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
+        goto fail ;
+    }
+
+#ifdef _UNICODE
+    UnicodeToAnsi(NULL,&basenameansi,&basenamesize);
+#endif
+    if(pColorInfo)
+    {
+        free(pColorInfo);
+    }
+    pColorInfo = NULL;
+    if(pColorBuffer)
+    {
+        free(pColorBuffer);
+    }
+    pColorBuffer = NULL;
+    if(pMaskInfo)
+    {
+        free(pMaskInfo);
+    }
+    pMaskInfo = NULL;
+    if(pMaskBuffer)
+    {
+        free(pMaskBuffer);
+    }
+    pMaskBuffer = NULL;
+    return ;
+fail:
+#ifdef _UNICODE
+    UnicodeToAnsi(NULL,&basenameansi,&basenamesize);
+#endif
+    if(pColorInfo)
+    {
+        free(pColorInfo);
+    }
+    pColorInfo = NULL;
+    if(pColorBuffer)
+    {
+        free(pColorBuffer);
+    }
+    pColorBuffer = NULL;
+    if(pMaskInfo)
+    {
+        free(pMaskInfo);
+    }
+    pMaskInfo = NULL;
+    if(pMaskBuffer)
+    {
+        free(pMaskBuffer);
+    }
+    pMaskBuffer = NULL;
+    SetLastError(ret);
+    return ;
+
+}
+
+
