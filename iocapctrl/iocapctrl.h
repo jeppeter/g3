@@ -50,6 +50,9 @@ private:
 	PIO_CAP_EVENTS_t __GetFreeEvent();
 	BOOL __InsertInputEvent(PIO_CAP_EVENTS_t pIoCapEvt);
 	BOOL __InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt);
+	BOOL __ExtractBuffer(LPSHARE_DATA pShareData,int sectsize,PVOID *ppBuffer,UINT* pBufSize,UINT*pBufLen,int type);
+	BOOL __CreateMap(char* pShareName,int size,HANDLE *pHandle,PVOID* ppMapBuf);
+	void __DeleteMap(HANDLE *pHandle,PVOID*ppMapBuf);
 
 private:
 	HANDLE m_hProc;

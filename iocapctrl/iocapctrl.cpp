@@ -1098,16 +1098,19 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
     LPVOID pInfoBuf=NULL,pDataBuf=NULL,pMInfoBuf=NULL,pMDataBuf=NULL;
     PVOID pRetInfo=*ppCursorBitmapInfo;
     PVOID pRetData=*ppCursorBitmapData;
-	PVOID pRetMInfo=*ppCursorMaskInfo;
-	PVOID pRetMData=*ppCursorMaskData;
+    PVOID pRetMInfo=*ppCursorMaskInfo;
+    PVOID pRetMData=*ppCursorMaskData;
     UINT retinfosize=*pInfoSize,infolen;
     UINT retdatasize=*pDataSize,datalen;
-	UINT retminfosize=*pMInfoSize,minfolen;
-	UINT retmdatasize=*pMDataSize,mdatalen;	
+    UINT retminfosize=*pMInfoSize,minfolen;
+    UINT retmdatasize=*pMDataSize,mdatalen;
     int ret;
     UINT sectorsize=64*1024;
     int cont=0;
     LPSHARE_DATA pShareInfo=NULL,pShareData=NULL,pShareMInfo=NULL,pShareMData=NULL;
+    std::auto_ptr<unsigned char> pShareName2(new unsigned char[IO_NAME_MAX_SIZE]);
+    unsigned char* pShareName = pShareName2.get();
+    BOOL bret;
 
     if(this->m_hProc == NULL || this->m_Pid == 0)
     {
@@ -1133,45 +1136,52 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
     do
     {
         cont = 0;
-        UnMapFileBuffer(&pDataBuf);
-        CloseMapFileHandle(&hdatamap);
-        UnMapFileBuffer(&pInfoBuf);
-        CloseMapFileHandle(&hinfomap);
+        this->__DeleteMap(&hminfomap,&pMInfoBuf);
+        this->__DeleteMap(&hmdatamap,&pMDataBuf);
+        this->__DeleteMap(&hinfomap,&pInfoBuf);
+        this->__DeleteMap(&hdatamap,&pDataBuf);
 
         /*now to reset for the sector size*/
         pControl->memsharesectsize = sectorsize;
 
-        hinfomap = CreateMapFile(pControl->freeevtbasename,sectorsize,1);
-        if(hinfomap == NULL)
+        _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->freeevtbasename);
+        bret = this->__CreateMap(pShareName,sectorsize,&hminfomap,&pMInfoBuf);
+        if(!bret)
         {
-            ret= LAST_ERROR_CODE();
-            ERROR_INFO("CreateInfo %s size(0x%08x:%d) Error(%d)\n",pControl->freeevtbasename,sectorsize,sectorsize,ret);
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("CreateMaskInfo(%s) Error(%d)\n",pShareName,ret);
             goto fail;
         }
 
-        pInfoBuf = MapFileBuffer(hinfomap,sectorsize);
-        if(pInfoBuf == NULL)
+        _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->inputevtbasename);
+        bret = this->__CreateMap(pShareName,sectorsize,&hmdatamap,&pMDataBuf);
+        if(!bret)
         {
-            ret= LAST_ERROR_CODE();
-            ERROR_INFO("MapInfo %s size(0x%08x:%d) Error(%d)\n",pControl->freeevtbasename,sectorsize,sectorsize,ret);
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("CreateMaskData(%s) Error(%d)\n",pShareName,ret);
             goto fail;
         }
 
-        hdatamap = CreateMapFile(pControl->inputevtbasename,sectorsize,1);
-        if(hinfomap == NULL)
+
+        _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->freeevtbasename);
+        bret = this->__CreateMap(pShareName,sectorsize,&hinfomap,&pInfoBuf);
+        if(!bret)
         {
-            ret= LAST_ERROR_CODE();
-            ERROR_INFO("CreateData %s size(0x%08x:%d) Error(%d)\n",pControl->inputevtbasename,sectorsize,sectorsize,ret);
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("CreateColorInfo(%s) Error(%d)\n",pShareName,ret);
             goto fail;
         }
 
-        pDataBuf = MapFileBuffer(hdatamap,sectorsize);
-        if(pDataBuf == NULL)
+        _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->inputevtbasename);
+        bret = this->__CreateMap(pShareName,sectorsize,&hdatamap,&pDataBuf);
+        if(!bret)
         {
-            ret= LAST_ERROR_CODE();
-            ERROR_INFO("MapData %s size(0x%08x:%d) Error(%d)\n",pControl->inputevtbasename,sectorsize,sectorsize,ret);
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("CreateColorData(%s) Error(%d)\n",pShareName,ret);
             goto fail;
         }
+
+
 
         /*now to call for the function*/
         ret = this->__CallInnerControl(pControl,3);
@@ -1194,81 +1204,48 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
 
 
     /*ok ,this will do good job*/
-    pShareData = (LPSHARE_DATA)pDataBuf;
-    pShareInfo = (LPSHARE_DATA)pInfoBuf;
-
-    /*now check for the data*/
-    if(pShareData->datatype != CURSOR_COLOR_BITDATA)
-    {
-        ret = ERROR_INVALID_DATA;
-        ERROR_INFO("ShareData Type (%d) != (%d)\n",pShareData->datatype,CURSOR_COLOR_BITDATA);
-        goto fail;
-    }
-
-    if(pShareData->datalen > (sectorsize - (sizeof(*pShareData) - sizeof(pShareData->data))))
-    {
-        ret=  ERROR_INVALID_DATA;
-        ERROR_INFO("ShareData len (%d) > (%d)\n",pShareData->datalen,(sectorsize - (sizeof(*pShareData) - sizeof(pShareData->data))));
-        goto fail;
-    }
-
-    if(pShareInfo->datatype != CURSOR_COLOR_BITMAPINFO)
-    {
-        ret = ERROR_INVALID_DATA;
-        ERROR_INFO("ShareInfo Type (%d) != (%d)\n",pShareInfo->datatype ,CURSOR_COLOR_BITMAPINFO);
-        goto fail;
-    }
-
-    if(pShareInfo->datalen > (sectorsize - (sizeof(*pShareInfo) - sizeof(pShareInfo->data))))
-    {
-        ret=  ERROR_INVALID_DATA;
-        ERROR_INFO("ShareInfo len (%d) > (%d)\n",pShareInfo->datalen,(sectorsize - (sizeof(*pShareInfo) - sizeof(pShareInfo->data))));
-        goto fail;
-    }
-
-    /*now calculate the buffer size*/
-    if(retinfosize < pShareInfo->datalen || pRetInfo == NULL)
-    {
-        if(retinfosize < pShareInfo->datalen)
-        {
-            retinfosize = pShareInfo->datalen;
-        }
-        pRetInfo = malloc(retinfosize);
-    }
-
-    if(pRetInfo == NULL)
-    {
-        ret= LAST_ERROR_CODE();
-        goto fail;
-    }
-
-    if(retdatasize < pShareData->datalen || pRetData == NULL)
-    {
-        if(retdatasize < pShareData->datalen)
-        {
-            retdatasize = pShareData->datalen;
-        }
-        pRetData = malloc(retdatasize);
-    }
-
-    if(pRetData == NULL)
+    pShareData = (LPSHARE_DATA)pMInfoBuf;
+    ret = this->__ExtractBuffer(pShareData,sectorsize,&pRetMInfo,&retminfosize,&minfolen,CURSOR_MASK_BITMAPINFO);
+    if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
+        ERROR_INFO("ExtractMaskInfo Error(%d)\n",ret);
         goto fail;
     }
 
-    /*now copy the data*/
-    CopyMemory(pRetInfo,pShareInfo->data,pShareInfo->datalen);
-    CopyMemory(pRetData,pShareData->data,pShareData->datalen);
-    infolen = pShareInfo->datalen;
-    datalen = pShareData->datalen;
+    pShareData = (LPSHARE_DATA)pMDataBuf;
+    ret = this->__ExtractBuffer(pShareData,sectorsize,&pRetMData,&retmdatasize,&mdatalen,CURSOR_MASK_BITDATA);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("ExtractMaskData Error(%d)\n",ret);
+        goto fail;
+    }
+
+    pShareData = (LPSHARE_DATA)pInfoBuf;
+    ret = this->__ExtractBuffer(pShareData,sectorsize,&pRetInfo,&retinfosize,&infolen,CURSOR_COLOR_BITMAPINFO);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("ExtractColorInfo Error(%d)\n",ret);
+        goto fail;
+    }
+
+    pShareData = (LPSHARE_DATA)pDataBuf;
+    ret = this->__ExtractBuffer(pShareData,sectorsize,&pRetData,&retdatasize,&datalen,CURSOR_COLOR_BITDATA);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("ExtractColorData Error(%d)\n",ret);
+        goto fail;
+    }
 
 
-    /*all is ok*/
-    UnMapFileBuffer(&pDataBuf);
-    CloseMapFileHandle(&hdatamap);
-    UnMapFileBuffer(&pInfoBuf);
-    CloseMapFileHandle(&hinfomap);
+    this->__DeleteMap(&hdatamap,&pDataBuf);
+    this->__DeleteMap(&hinfomap,&pInfoBuf);
+    this->__DeleteMap(&hminfomap,&pMInfoBuf);
+    this->__DeleteMap(&hmdatamap,&pMDataBuf);
+
 
     if(pControl)
     {
@@ -1280,7 +1257,6 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
     {
         free(*ppCursorBitmapInfo);
     }
-
     *ppCursorBitmapInfo = pRetInfo;
     *pInfoSize = retinfosize;
     *pInfoLen = infolen;
@@ -1293,16 +1269,32 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
     *pDataSize = retdatasize;
     *pDataLen = datalen;
 
+    if(*ppCursorMaskInfo && *ppCursorMaskInfo != pRetMInfo)
+    {
+        free(*ppCursorMaskInfo);
+    }
+    *ppCursorMaskInfo = pRetMInfo;
+    *pMInfoSize = retminfosize;
+    *pMInfoLen = minfolen;
+
+    if(*ppCursorMaskData && *ppCursorMaskData != pRetMData)
+    {
+        free(*ppCursorMaskData);
+    }
+    *ppCursorMaskData = pRetMData;
+    *pMDataSize = retmdatasize;
+    *pMDataLen = mdatalen;
+
 
 
     SetLastError(0);
     return TRUE;
 fail:
 
-    UnMapFileBuffer(&pDataBuf);
-    CloseMapFileHandle(&hdatamap);
-    UnMapFileBuffer(&pInfoBuf);
-    CloseMapFileHandle(&hinfomap);
+    this->__DeleteMap(&hdatamap,&pDataBuf);
+    this->__DeleteMap(&hinfomap,&pInfoBuf);
+    this->__DeleteMap(&hminfomap,&pMInfoBuf);
+    this->__DeleteMap(&hmdatamap,&pMDataBuf);
 
     if(pControl)
     {
@@ -1322,6 +1314,124 @@ fail:
     }
     pRetData = NULL;
 
+    if(pRetMInfo && pRetMInfo != *ppCursorMaskInfo)
+    {
+        free(pRetMInfo);
+    }
+    pRetMInfo = NULL;
+
+    if(pRetMData && pRetMData != *ppCursorMaskData)
+    {
+        free(pRetMData);
+    }
+    pRetMData = NULL;
+
     SetLastError(ret);
     return FALSE;
+}
+
+
+BOOL CIOController::__ExtractBuffer(LPSHARE_DATA pShareData,int sectsize,PVOID * ppBuffer,UINT * pBufSize,UINT * pBufLen,int type)
+{
+    int ret;
+    PVOID pRetBuf=*ppBuffer;
+    UINT retsize=*pBufSize;
+
+    if(pShareData->datalen > (sectsize - sizeof(*pShareData) + sizeof(pShareData->data)))
+    {
+        ret=  ERROR_INVALID_DATA;
+        ERROR_INFO("<0x%p>datalen (%d) not valid for %d\n",pShareData,pShareData->datalen,sectsize);
+        goto fail;
+    }
+
+    if(pShareData->datatype != type)
+    {
+        ret=  ERROR_INVALID_DATA;
+        ERROR_INFO("<0x%p>datatype (%d) != (%d)\n",pShareData->datatype,type);
+        goto fail;
+    }
+
+    if(retsize < pShareData->datalen || pRetBuf == NULL)
+    {
+        if(retsize < pShareData->datalen)
+        {
+            retsize = pShareData->datalen;
+        }
+        pRetBuf = malloc(retsize);
+    }
+
+    if(pRetBuf == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    CopyMemory(pRetBuf,pShareData->data,pShareData->datalen);
+
+    if(*ppBuffer && pRetBuf != *ppBuffer)
+    {
+        free(*ppBuffer);
+    }
+    *ppBuffer = pRetBuf;
+    *pBufSize = retsize;
+    *pBufLen = pShareData->datalen;
+    SetLastError(0);
+    return TRUE;
+fail:
+
+    if(pRetBuf && pRetBuf != *ppBuffer)
+    {
+        free(pRetBuf);
+    }
+    pRetBuf = NULL;
+
+    SetLastError(ret);
+    return FALSE;
+}
+
+
+BOOL CIOController::__CreateMap(char * pShareName,int size,HANDLE * pHandle,PVOID * ppMapBuf)
+{
+    HANDLE handle=NULL;
+    PVOID pMapBuf=NULL;
+    int ret;
+
+    if(pHandle == NULL || *pHandle || ppMapBuf == NULL || *ppMapBuf || pShareName == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        goto fail;
+    }
+
+    handle = CreateMapFile(pShareName,size,1);
+    if(handle == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("CreateMapFile(%s) Error(%d)\n",pShareName,ret);
+        goto fail;
+    }
+
+    pMapBuf = MapFileBuffer(handle,size);
+    if(pMapBuf == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("MapFileBuffer(%s) size(0x%08x:%d) Error(%d)\n",pShareName,size,size,ret);
+        goto fail;
+    }
+
+    *pHandle = handle;
+    *ppMapBuf = pMapBuf;
+    SetLastError(0);
+    return TRUE;
+fail:
+    this->__DeleteMap(&handle,&pMapBuf);
+    SetLastError(ret);
+    return FALSE;
+}
+
+
+void CIOController::__DeleteMap(HANDLE * pHandle,PVOID * ppMapBuf)
+{
+    UnMapFileBuffer(ppMapBuf);
+    CloseMapFileHandle(pHandle);
+    return ;
 }

@@ -921,8 +921,7 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
     LPSHARE_DATA pShare=NULL;
     std::auto_ptr<unsigned char> pShareName2(new unsigned char[IO_NAME_MAX_SIZE]);
     unsigned char* pShareName = pShareName2.get();
-
-
+	
     ZeroMemory(&iconex,sizeof(iconex));
     /*now first to get the active window*/
     hwnd = GetCurrentProcessActiveWindow();
