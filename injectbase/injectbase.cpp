@@ -264,7 +264,7 @@ BOOL InsertDlls(HANDLE hProcess)
         {
             assert(pFullName == NULL && pPartName == NULL);
             ERROR_INFO("Get [%d] name error(%d)\n",i,ret);
-            ret = -ret;
+            ret = LAST_ERROR_CODE();
             goto fail;
         }
         else if(ret == 0)
@@ -334,7 +334,10 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
 {
     DWORD dwMyCreationFlags = (dwCreationFlags | CREATE_SUSPENDED);
     PROCESS_INFORMATION pi;
-    int ret;
+    int ret,res;
+    BOOL bret;
+    HANDLE hdupproc=NULL;
+    int pid=0;
 
     DEBUG_INFO("Current  Process (%d)\n",GetCurrentProcessId());
     if(!CreateProcessWNext(lpApplicationName,
@@ -359,6 +362,26 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
     if(!InsertDlls(pi.hProcess))
     {
         ret = LAST_ERROR_CODE();
+        bret = TerminateProcess(pi.hProcess,3);
+        if(!bret)
+        {
+            pid = GetProcessPid(pi.hProcess);
+            res = EnableCurrentDebugPriv();
+            if(res < 0)
+            {
+                res = LAST_ERROR_CODE();
+                ERROR_INFO("could not enable debug priv Error(%d)\n",res);
+            }
+            else
+            {
+                bret = TerminateProcess(pi.hProcess,3);
+                if(!bret)
+                {
+                    res = LAST_ERROR_CODE();
+                    ERROR_INFO("could not Terminate Process %d\n",res);
+                }
+            }
+        }
         SetLastError(ret);
         return FALSE;
     }
