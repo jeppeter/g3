@@ -374,14 +374,27 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
             }
             else
             {
-                bret = TerminateProcess(pi.hProcess,3);
-                if(!bret)
+                hdupproc = OpenProcess(PROCESS_ALL_ACCESS,FALSE,pid);
+                if(hdupproc != NULL)
+                {
+                    bret = TerminateProcess(hdupproc,3);
+                    if(!bret)
+                    {
+                        res = LAST_ERROR_CODE();
+                        ERROR_INFO("could not Terminate Process %d\n",res);
+                    }
+					CloseHandle(hdupproc);
+					hdupproc = NULL;
+                }
+                else
                 {
                     res = LAST_ERROR_CODE();
-                    ERROR_INFO("could not Terminate Process %d\n",res);
+                    ERROR_INFO("could not open process(%d) Error(%d)\n",pid,ret);
                 }
             }
         }
+		CloseHandle(pi.hProcess);
+		pi.hProcess = NULL;
         SetLastError(ret);
         return FALSE;
     }
@@ -422,6 +435,9 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
     DWORD dwMyCreationFlags = (dwCreationFlags | CREATE_SUSPENDED);
     PROCESS_INFORMATION pi;
     int ret;
+	BOOL bret;
+	int pid,res;
+	HANDLE hdupproc = NULL;
 
     DEBUG_INFO("Current  Process (%d)\n",GetCurrentProcessId());
     if(!CreateProcessANext(lpApplicationName,
@@ -446,6 +462,39 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
     if(!InsertDlls(pi.hProcess))
     {
         ret = LAST_ERROR_CODE();
+        bret = TerminateProcess(pi.hProcess,3);
+        if(!bret)
+        {
+            pid = GetProcessPid(pi.hProcess);
+            res = EnableCurrentDebugPriv();
+            if(res < 0)
+            {
+                res = LAST_ERROR_CODE();
+                ERROR_INFO("could not enable debug priv Error(%d)\n",res);
+            }
+            else
+            {
+                hdupproc = OpenProcess(PROCESS_ALL_ACCESS,FALSE,pid);
+                if(hdupproc != NULL)
+                {
+                    bret = TerminateProcess(hdupproc,3);
+                    if(!bret)
+                    {
+                        res = LAST_ERROR_CODE();
+                        ERROR_INFO("could not Terminate Process %d\n",res);
+                    }
+					CloseHandle(hdupproc);
+					hdupproc = NULL;
+                }
+                else
+                {
+                    res = LAST_ERROR_CODE();
+                    ERROR_INFO("could not open process(%d) Error(%d)\n",pid,ret);
+                }
+            }
+        }
+		CloseHandle(pi.hProcess);
+		pi.hProcess = NULL;
         SetLastError(ret);
         return FALSE;
     }
@@ -632,15 +681,15 @@ static int DetourCreateProcessFunctions()
 
     OldCreateA = (PVOID)CreateProcessANext;
     DEBUG_BUFFER(OldCreateA,5);
+    DEBUG_BUFFER_FMT(CreateProcessWNext,10,"Before CreateProcessWNext (0x%p)",CreateProcessWNext);
+    DEBUG_BUFFER_FMT(CreateProcessANext,10,"Before CreateProcessANext (0x%p)",CreateProcessANext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    DEBUG_BUFFER_FMT(CreateProcessWNext,10,"Before CreateProcessWNext (0x%p)",CreateProcessWNext);
     DetourAttach((PVOID*)&CreateProcessWNext,CreateProcessWCallBack);
-    DEBUG_BUFFER_FMT(CreateProcessWNext,10,"After CreateProcessWNext (0x%p)",CreateProcessWNext);
-    DEBUG_BUFFER_FMT(CreateProcessANext,10,"Before CreateProcessANext (0x%p)",CreateProcessANext);
     DetourAttach((PVOID*)&CreateProcessANext,CreateProcessACallBack);
-    DEBUG_BUFFER_FMT(CreateProcessANext,10,"After CreateProcessANext (0x%p)",CreateProcessANext);
     DetourTransactionCommit();
+    DEBUG_BUFFER_FMT(CreateProcessANext,10,"After CreateProcessANext (0x%p)",CreateProcessANext);
+    DEBUG_BUFFER_FMT(CreateProcessWNext,10,"After CreateProcessWNext (0x%p)",CreateProcessWNext);
     return 0;
 }
 
