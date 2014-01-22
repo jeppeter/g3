@@ -6,6 +6,9 @@
 #include <Windows.h>
 #include <stdint.h>
 
+#define  CURSOR_COLOR_BITMAPINFO        101
+#define  CURSOR_COLOR_BITDATA           102
+
 typedef unsigned long ptr_t;
 
 typedef struct
@@ -16,6 +19,13 @@ typedef struct
 	int running;
 	int exited;	
 } thread_control_t;
+
+typedef struct __share_data
+{
+	int datalen;
+	int datatype;
+	unsigned char data[1];
+} SHARE_DATA,*LPSHARE_DATA;
 
 
 

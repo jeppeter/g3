@@ -236,6 +236,9 @@ typedef struct
 	DEVICEEVENT devevent;
 } SEQ_DEVICEEVENT,*LPSEQ_DEVICEEVENT;
 
+
+
+
 #define  IO_INJECT_STOP            0
 #define  IO_INJECT_START           1
 #define  IO_INJECT_ADD_DEVICE      2

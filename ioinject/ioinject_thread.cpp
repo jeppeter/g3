@@ -702,9 +702,11 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
     UINT colorinfoextsize=0,colorsize=0;
     PVOID pColorBuffer=NULL;
     int ret;
+    int bmptype,datatype;
     BOOL bret;
     HANDLE hInfoMap=NULL,hDataMap=NULL;
     unsigned char *pInfoBuf=NULL,*pDataBuf=NULL;
+    LPSHARE_DATA pShareColorBitmapInfo=NULL,pShareColorData=NULL;
 
     ZeroMemory(&iconex,sizeof(iconex));
     /*now first to get the active window*/
@@ -813,8 +815,8 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
 
     /*now all is ok so we should make sure the memory copy to*/
     /*now test for the buffer whether this is the large enough*/
-    if(pControl->memsharesectsize < colorinfoextsize ||
-            pControl->memsharesectsize < colorsize)
+    if(pControl->memsharesectsize < (colorinfoextsize + sizeof(*pShareColorBitmapInfo) - sizeof(*pShareColorBitmapInfo->data)) ||
+            pControl->memsharesectsize < (colorsize+ sizeof(*pShareColorBitmapInfo) - sizeof(*pShareColorBitmapInfo->data)))
     {
         ret = ERROR_INSUFFICIENT_BUFFER;
         ERROR_INFO("sectsize(0x%08x:%d) < colorinfoextsize(0x%08x:%d) or colorsize(0x%08x:%d)\n",
@@ -857,8 +859,29 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
+    pShareColorBitmapInfo = (LPSHARE_DATA)pInfoBuf;
+
     /*now we should write the memory*/
-    ret = WriteShareMem(pInfoBuf,0,pColorInfo,colorinfoextsize);
+    ret = WriteShareMem(pShareColorBitmapInfo,0,&colorinfoextsize,sizeof(pShareColorBitmapInfo->datalen));
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("WriteInfoLen(0x%p) Error(%d)\n",pShareColorBitmapInfo,ret);
+        goto fail;
+    }
+
+    bmptype = CURSOR_COLOR_BITMAPINFO;
+    ret = WriteShareMem(pShareColorBitmapInfo,sizeof(pShareColorBitmapInfo->datalen),&datatype,sizeof(datatype));
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("WriteInfoType(0x%p) Offset(0x%08x:%d) Error(%d)\n",pShareColorBitmapInfo,sizeof(pShareColorBitmapInfo->datalen),sizeof(pShareColorBitmapInfo->datalen),
+                   ret);
+        goto fail;
+    }
+
+
+    ret = WriteShareMem(pShareColorBitmapInfo,sizeof(*pShareColorBitmapInfo) - sizeof(*pShareColorBitmapInfo->data),pColorInfo,colorinfoextsize);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -867,11 +890,33 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-    ret = WriteShareMem(pDataBuf,0,pColorBuffer,colorsize);
+    pShareColorData = (LPSHARE_DATA)pDataBuf;
+    ret = WriteShareMem(pShareColorData,0,&colorsize,sizeof(pShareColorData->datalen));
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("WriteData(0x%p) from buffer(0x%p) size(0x%08x:%d) Error(%d)\n",pDataBuf,
+        ERROR_INFO("WriteDataLen(0x%p) Error(%d)\n",pShareColorData,ret);
+        goto fail;
+    }
+
+    datatype = CURSOR_COLOR_BITDATA;
+    ret = WriteShareMem(pShareColorData,sizeof(pShareColorData->datalen),&datatype,sizeof(pShareColorData->datatype));
+    if(ret < 0)
+    {
+        ret=  LAST_ERROR_CODE();
+        ERROR_INFO("WriteDataType(0x%p) offset(0x%08x:%d) Error(%d)\n",
+                   pShareColorData,
+                   sizeof(pShareColorData->datalen),
+                   sizeof(pShareColorData->datalen),
+                   ret);
+        goto fail;
+    }
+
+    ret = WriteShareMem(pShareColorData,sizeof(*pShareColorData) - sizeof(*pShareColorData->data),pColorBuffer,colorsize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("WriteData(0x%p) from buffer(0x%p) size(0x%08x:%d) Error(%d)\n",pShareColorData,
                    pColorBuffer,colorsize,colorsize);
         goto fail;
     }

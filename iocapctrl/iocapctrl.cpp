@@ -8,9 +8,12 @@
 #include <dllinsert.h>
 #include <memshare.h>
 
-#define  IO_FREE_EVT_BASENAME  "GlobalIoInjectFreeEvt"
-#define  IO_INPUT_EVT_BASENAME  "GlobalIoInjectInputEvt"
-#define  IO_MAP_MEM_BASENAME    "GlobalIoInjectMapMem"
+#define  IO_FREE_EVT_BASENAME               "GlobalIoInjectFreeEvt"
+#define  IO_INPUT_EVT_BASENAME              "GlobalIoInjectInputEvt"
+#define  IO_MAP_MEM_BASENAME                "GlobalIoInjectMapMem"
+
+#define  IO_MAP_CURSOR_BITMAP_INFO_BASENAME  "GlobalIoInjectCursorBitmapInfo"
+#define  IO_MAP_CURSOR_BITMAP_DATA_BASENAME  "GlobalIoInjectCursorBitmapData"
 
 #ifdef _DEBUG
 #define IOINJECT_DLL  "ioinjectd.dll"
@@ -976,4 +979,342 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
     }
     //DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);
     return this->__InsertInputEvent(pIoCapEvt);
+}
+
+
+BOOL CIOController::EnableSetCursorPos(BOOL enabled)
+{
+    int ret;
+    PIO_CAP_CONTROL_t pControl=NULL;
+
+    if(this->m_hProc == NULL)
+    {
+        ret = ERROR_INVALID_HANDLE;
+        ERROR_INFO("%s set cursor pos not init hproc\n",enabled ? "enable" : "disable");
+        goto fail;
+    }
+
+    pControl = calloc(1,sizeof(*pControl));
+    if(pControl == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    if(enabled)
+    {
+        pControl->opcode = IO_INJECT_ENABLE_SET_POS;
+    }
+    else
+    {
+        pControl->opcode = IO_INJECT_DISABLE_SET_POS;
+    }
+
+    ret=  this->__CallInnerControl(pControl,2);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not %s cursor set position Error(%d)\n",enabled ? "enable": "disable",ret);
+        goto fail;
+    }
+
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(0);
+    return TRUE;
+fail:
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(ret);
+    return FALSE;
+}
+
+BOOL CIOController::HideCursor(BOOL hideenable)
+{
+    int ret;
+    PIO_CAP_CONTROL_t pControl=NULL;
+
+    if(this->m_hProc == NULL)
+    {
+        ret = ERROR_INVALID_HANDLE;
+        ERROR_INFO("%s hide cursor not init hproc\n",hideenable ? "enable" : "disable");
+        goto fail;
+    }
+
+    pControl = calloc(1,sizeof(*pControl));
+    if(pControl == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    if(hideenable)
+    {
+        pControl->opcode = IO_INJECT_HIDE_CURSOR;
+    }
+    else
+    {
+        pControl->opcode = IO_INJECT_NORMAL_CURSOR;
+    }
+
+    ret=  this->__CallInnerControl(pControl,2);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Could not %s hide cursor Error(%d)\n",enabled ? "enable": "disable",ret);
+        goto fail;
+    }
+
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(0);
+    return TRUE;
+fail:
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+    SetLastError(ret);
+    return FALSE;
+}
+
+BOOL CIOController::GetCursorBitmap(PVOID * ppCursorBitmapInfo,UINT * pInfoSize,UINT * pInfoLen,PVOID * ppCursorBitmapData,UINT * pDataSize,UINT * pDataLen)
+{
+    PIO_CAP_CONTROL_t pControl=NULL;
+    HANDLE hinfomap=NULL,hdatamap=NULL;
+    LPVOID pInfoBuf=NULL,pDataBuf=NULL;
+    PVOID pRetInfo=*ppCursorBitmapInfo;
+    PVOID pRetData=*ppCursorBitmapData;
+    UINT retinfosize=*pInfoSize,infolen;
+    UINT retdatasize=*pDataSize,datalen;
+    int ret;
+    UINT sectorsize=64*1024;
+    int cont=0;
+    LPSHARE_DATA pShareInfo=NULL,pShareData=NULL;
+
+    if(this->m_hProc == NULL || this->m_Pid == 0)
+    {
+        ret = ERROR_INVALID_HANDLE;
+        ERROR_INFO("GetCursorBitmap not init hproc\n");
+        goto fail;
+    }
+
+    pControl = calloc(1,sizeof(*pControl));
+    if(pControl == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    pControl->opcode = IO_INJECT_GET_CURSOR_BMP;
+
+    _snprintf_s(pControl->freeevtbasename,sizeof(pControl->freeevtbasename),_TRUNCATE,"%s%d",IO_MAP_CURSOR_BITMAP_INFO_BASENAME,this->m_Pid);
+    _snprintf_s(pControl->inputevtbasename,sizeof(pControl->inputevtbasename),_TRUNCATE,"%s%d",IO_MAP_CURSOR_BITMAP_DATA_BASENAME,this->m_Pid);
+
+    /*now we call the map for it */
+
+    do
+    {
+        cont = 0;
+        UnMapFileBuffer(&pDataBuf);
+        CloseMapFileHandle(&hdatamap);
+        UnMapFileBuffer(&pInfoBuf);
+        CloseMapFileHandle(&hinfomap);
+
+        /*now to reset for the sector size*/
+        pControl->memsharesectsize = sectorsize;
+
+        hinfomap = CreateMapFile(pControl->freeevtbasename,sectorsize,1);
+        if(hinfomap == NULL)
+        {
+            ret= LAST_ERROR_CODE();
+            ERROR_INFO("CreateInfo %s size(0x%08x:%d) Error(%d)\n",pControl->freeevtbasename,sectorsize,sectorsize,ret);
+            goto fail;
+        }
+
+        pInfoBuf = MapFileBuffer(hinfomap,sectorsize);
+        if(pInfoBuf == NULL)
+        {
+            ret= LAST_ERROR_CODE();
+            ERROR_INFO("MapInfo %s size(0x%08x:%d) Error(%d)\n",pControl->freeevtbasename,sectorsize,sectorsize,ret);
+            goto fail;
+        }
+
+        hdatamap = CreateMapFile(pControl->inputevtbasename,sectorsize,1);
+        if(hinfomap == NULL)
+        {
+            ret= LAST_ERROR_CODE();
+            ERROR_INFO("CreateData %s size(0x%08x:%d) Error(%d)\n",pControl->inputevtbasename,sectorsize,sectorsize,ret);
+            goto fail;
+        }
+
+        pDataBuf = MapFileBuffer(hdatamap,sectorsize);
+        if(pDataBuf == NULL)
+        {
+            ret= LAST_ERROR_CODE();
+            ERROR_INFO("MapData %s size(0x%08x:%d) Error(%d)\n",pControl->inputevtbasename,sectorsize,sectorsize,ret);
+            goto fail;
+        }
+
+        /*now to call for the function*/
+        ret = this->__CallInnerControl(pControl,3);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            if(ret != ERROR_INSUFFICIENT_BUFFER)
+            {
+                goto fail;
+            }
+            cont = 1;
+        }
+
+        if(cont)
+        {
+            sectorsize <<= 1;
+        }
+    }
+    while(cont);
+
+
+    /*ok ,this will do good job*/
+    pShareData = (LPSHARE_DATA)pDataBuf;
+    pShareInfo = (LPSHARE_DATA)pInfoBuf;
+
+    /*now check for the data*/
+    if(pShareData->datatype != CURSOR_COLOR_BITDATA)
+    {
+        ret = ERROR_INVALID_DATA;
+        ERROR_INFO("ShareData Type (%d) != (%d)\n",pShareData->datatype,CURSOR_COLOR_BITDATA);
+        goto fail;
+    }
+
+    if(pShareData->datalen > (sectorsize - (sizeof(*pShareData) - sizeof(pShareData->data))))
+    {
+        ret=  ERROR_INVALID_DATA;
+        ERROR_INFO("ShareData len (%d) > (%d)\n",pShareData->datalen,(sectorsize - (sizeof(*pShareData) - sizeof(pShareData->data))));
+        goto fail;
+    }
+
+    if(pShareInfo->datatype != CURSOR_COLOR_BITMAPINFO)
+    {
+        ret = ERROR_INVALID_DATA;
+        ERROR_INFO("ShareInfo Type (%d) != (%d)\n",pShareInfo->datatype ,CURSOR_COLOR_BITMAPINFO);
+        goto fail;
+    }
+
+    if(pShareInfo->datalen > (sectorsize - (sizeof(*pShareInfo) - sizeof(pShareInfo->data))))
+    {
+        ret=  ERROR_INVALID_DATA;
+        ERROR_INFO("ShareInfo len (%d) > (%d)\n",pShareInfo->datalen,(sectorsize - (sizeof(*pShareInfo) - sizeof(pShareInfo->data))));
+        goto fail;
+    }
+
+    /*now calculate the buffer size*/
+    if(retinfosize < pShareInfo->datalen || pRetInfo == NULL)
+    {
+        if(retinfosize < pShareInfo->datalen)
+        {
+            retinfosize = pShareInfo->datalen;
+        }
+        pRetInfo = malloc(retinfosize);
+    }
+
+    if(pRetInfo == NULL)
+    {
+        ret= LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    if(retdatasize < pShareData->datalen || pRetData == NULL)
+    {
+        if(retdatasize < pShareData->datalen)
+        {
+            retdatasize = pShareData->datalen;
+        }
+        pRetData = malloc(retdatasize);
+    }
+
+    if(pRetData == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    /*now copy the data*/
+    CopyMemory(pRetInfo,pShareInfo->data,pShareInfo->datalen);
+    CopyMemory(pRetData,pShareData->data,pShareData->datalen);
+	infolen = pShareInfo->datalen;
+	datalen = pShareData->datalen;
+
+
+    /*all is ok*/
+    UnMapFileBuffer(&pDataBuf);
+    CloseMapFileHandle(&hdatamap);
+    UnMapFileBuffer(&pInfoBuf);
+    CloseMapFileHandle(&hinfomap);
+
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+
+    if(*ppCursorBitmapInfo && *ppCursorBitmapInfo != pRetInfo)
+    {
+        free(*ppCursorBitmapInfo);
+    }
+
+    *ppCursorBitmapInfo = pRetInfo;
+    *pInfoSize = retinfosize;
+    *pInfoLen = infolen;
+
+    if(*ppCursorBitmapData && *ppCursorBitmapData != pRetData)
+    {
+        free(*ppCursorBitmapData);
+    }
+    *ppCursorBitmapData = pRetData;
+    *pDataSize = retdatasize;
+    *pDataLen = datalen;
+
+
+
+    SetLastError(0);
+    return TRUE;
+fail:
+
+    UnMapFileBuffer(&pDataBuf);
+    CloseMapFileHandle(&hdatamap);
+    UnMapFileBuffer(&pInfoBuf);
+    CloseMapFileHandle(&hinfomap);
+
+    if(pControl)
+    {
+        free(pControl);
+    }
+    pControl = NULL;
+
+    if(pRetInfo && pRetInfo != *ppCursorBitmapInfo)
+    {
+        free(pRetInfo);
+    }
+    pRetInfo = NULL;
+
+    if(pRetData && pRetData != *ppCursorBitmapData)
+    {
+        free(pRetData);
+    }
+    pRetData = NULL;
+
+    SetLastError(ret);
+    return FALSE;
 }

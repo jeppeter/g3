@@ -24,8 +24,10 @@ public:
 	int GetDeviceNum(int iType);
 	BOOL GetDeviceIds(int iType, ptr_t * pIds, int iSize);
 	BOOL RemoveDevice(uint32_t iType,uint32_t iId);
-
 	BOOL PushEvent(DEVICEEVENT * pDevEvt);
+	BOOL EnableSetCursorPos(BOOL enabled);
+	BOOL HideCursor(BOOL hideenable);
+	BOOL GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UINT *pInfoLen,PVOID* ppCursorBitmapData,UINT* pDataSize,UINT *pDataLen);
 
 private:
 	void __StopBackGroundThread();
