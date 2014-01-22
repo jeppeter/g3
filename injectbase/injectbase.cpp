@@ -907,12 +907,12 @@ HWND WINAPI CreateWindowExWCallBack(
 
 static int DetourDestroyWindow()
 {
+    DEBUG_BUFFER_FMT(DestroyWindowNext,10,"Before DestroyWindowNext (0x%p)",DestroyWindowNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    DEBUG_BUFFER_FMT(DestroyWindowNext,10,"Before DestroyWindowNext (0x%p)",DestroyWindowNext);
     DetourAttach((PVOID*)&DestroyWindowNext,DestroyWindowCallBack);
-    DEBUG_BUFFER_FMT(DestroyWindowNext,10,"After DestroyWindowNext (0x%p)",DestroyWindowNext);
     DetourTransactionCommit();
+    DEBUG_BUFFER_FMT(DestroyWindowNext,10,"After DestroyWindowNext (0x%p)",DestroyWindowNext);
     return 0;
 }
 
