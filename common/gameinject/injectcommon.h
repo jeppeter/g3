@@ -8,6 +8,8 @@
 
 #define  CURSOR_COLOR_BITMAPINFO        101
 #define  CURSOR_COLOR_BITDATA           102
+#define  CURSOR_MASK_BITMAPINFO         103
+#define  CURSOR_MASK_BITDATA            104
 
 typedef unsigned long ptr_t;
 

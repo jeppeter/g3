@@ -27,7 +27,8 @@ public:
 	BOOL PushEvent(DEVICEEVENT * pDevEvt);
 	BOOL EnableSetCursorPos(BOOL enabled);
 	BOOL HideCursor(BOOL hideenable);
-	BOOL GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UINT *pInfoLen,PVOID* ppCursorBitmapData,UINT* pDataSize,UINT *pDataLen);
+	BOOL GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UINT *pInfoLen,PVOID* ppCursorBitmapData,UINT* pDataSize,UINT *pDataLen,
+		PVOID *ppCursorMaskInfo,UINT *pMInfoSize,UINT* pMInfoLen,PVOID* ppCursorMaskData,UINT *pMDataSize,UINT *pMDataLen);
 
 private:
 	void __StopBackGroundThread();

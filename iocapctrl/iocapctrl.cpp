@@ -1088,19 +1088,26 @@ fail:
     return FALSE;
 }
 
-BOOL CIOController::GetCursorBitmap(PVOID * ppCursorBitmapInfo,UINT * pInfoSize,UINT * pInfoLen,PVOID * ppCursorBitmapData,UINT * pDataSize,UINT * pDataLen)
+BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UINT *pInfoLen,
+                                    PVOID* ppCursorBitmapData,UINT* pDataSize,UINT *pDataLen,
+                                    PVOID *ppCursorMaskInfo,UINT *pMInfoSize,UINT* pMInfoLen,
+                                    PVOID* ppCursorMaskData,UINT *pMDataSize,UINT *pMDataLen)
 {
     PIO_CAP_CONTROL_t pControl=NULL;
-    HANDLE hinfomap=NULL,hdatamap=NULL;
-    LPVOID pInfoBuf=NULL,pDataBuf=NULL;
+    HANDLE hinfomap=NULL,hdatamap=NULL,hminfomap=NULL,hmdatamap=NULL;
+    LPVOID pInfoBuf=NULL,pDataBuf=NULL,pMInfoBuf=NULL,pMDataBuf=NULL;
     PVOID pRetInfo=*ppCursorBitmapInfo;
     PVOID pRetData=*ppCursorBitmapData;
+	PVOID pRetMInfo=*ppCursorMaskInfo;
+	PVOID pRetMData=*ppCursorMaskData;
     UINT retinfosize=*pInfoSize,infolen;
     UINT retdatasize=*pDataSize,datalen;
+	UINT retminfosize=*pMInfoSize,minfolen;
+	UINT retmdatasize=*pMDataSize,mdatalen;	
     int ret;
     UINT sectorsize=64*1024;
     int cont=0;
-    LPSHARE_DATA pShareInfo=NULL,pShareData=NULL;
+    LPSHARE_DATA pShareInfo=NULL,pShareData=NULL,pShareMInfo=NULL,pShareMData=NULL;
 
     if(this->m_hProc == NULL || this->m_Pid == 0)
     {
@@ -1253,8 +1260,8 @@ BOOL CIOController::GetCursorBitmap(PVOID * ppCursorBitmapInfo,UINT * pInfoSize,
     /*now copy the data*/
     CopyMemory(pRetInfo,pShareInfo->data,pShareInfo->datalen);
     CopyMemory(pRetData,pShareData->data,pShareData->datalen);
-	infolen = pShareInfo->datalen;
-	datalen = pShareData->datalen;
+    infolen = pShareInfo->datalen;
+    datalen = pShareData->datalen;
 
 
     /*all is ok*/

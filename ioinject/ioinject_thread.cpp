@@ -696,17 +696,17 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
     HWND hwnd = NULL;
     HCURSOR hcursor = NULL;
     ICONINFOEX iconex = {0};
-    HDC hcolordc=NULL;
-    BITMAP colorbmp;
-    BITMAPINFO colorinfo,*pColorInfo=NULL;
-    UINT colorinfoextsize=0,colorsize=0;
-    PVOID pColorBuffer=NULL;
+    HDC hcolordc=NULL,hmaskdc=NULL;
+    BITMAP colorbmp,maskbmp;
+    BITMAPINFO colorinfo,*pColorInfo=NULL,maskinfo,*pMaskInfo=NULL;
+    UINT colorinfoextsize=0,colorsize=0,maskinfoextsize=0,masksize=0;
+    PVOID pColorBuffer=NULL,pMaskBuffer=NULL;
     int ret;
     int bmptype,datatype;
     BOOL bret;
-    HANDLE hInfoMap=NULL,hDataMap=NULL;
-    unsigned char *pInfoBuf=NULL,*pDataBuf=NULL;
-    LPSHARE_DATA pShareColorBitmapInfo=NULL,pShareColorData=NULL;
+    HANDLE hInfoMap=NULL,hDataMap=NULL,hMInfoMap=NULL,hMDataMap=NULL;
+    unsigned char *pInfoBuf=NULL,*pDataBuf=NULL,pMInfoBuf=NULL,pMDataBuf=NULL;
+    LPSHARE_DATA pShareColorBitmapInfo=NULL,pShareColorData=NULL,pShareMInfo=NULL,pShareMData=NULL;
 
     ZeroMemory(&iconex,sizeof(iconex));
     /*now first to get the active window*/
@@ -737,6 +737,82 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
         ERROR_INFO("[0x%08x]GetIconInfoEx Error(%d)\n",hcursor,ret);
         goto fail;
     }
+
+    ZeroMemory(&maskbmp,sizeof(maskbmp));
+    bret = GetObject(iconex.hbmMask,sizeof(maskbmp),&maskbmp);
+    if(!bret)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("[0x%08x]HBITMAP can not get BITMAP Error(%d)\n",
+                   iconex.hbmMask,ret);
+        goto fail;
+    }
+
+    hmaskdc = GetDC(NULL);
+    if(hmaskdc == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("GetDC Error(%d)\n",ret);
+        goto fail;
+    }
+
+    ZeroMemory(&maskinfo,sizeof(maskinfo));
+    maskinfo.bmiHeader.biSize = sizeof(maskinfo.bmiHeader);
+    ret = ::GetDIBits(hmaskdc,iconex.hbmMask,0,maskbmp.bmHeight,NULL,&maskinfo,DIB_RGB_COLORS);
+    if(ret == 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits NULL Error(%d)\n",
+                   hmaskdc,iconex.hbmMask,maskbmp.bmHeight,ret);
+        goto fail;
+    }
+
+    /*now to make the bitsmap ok*/
+    colorsize = colorinfo.bmiHeader.biSizeImage;
+    pColorBuffer = malloc(colorsize);
+    if(pColorBuffer == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    colorinfoextsize = sizeof(*pColorInfo);
+    switch(colorinfo.bmiHeader.biBitCount)
+    {
+    case 1:
+        colorinfoextsize += (1 * sizeof(RGBQUAD));
+        break;
+    case 4:
+        colorinfoextsize += (15 * sizeof(RGBQUAD));
+        break;
+    case 8:
+        colorinfoextsize += (255 * sizeof(RGBQUAD));
+        break;
+    case 16:
+    case 32:
+        colorinfoextsize += (2 * sizeof(RGBQUAD));
+        break;
+    }
+
+    pColorInfo = (BITMAPINFO*)malloc(colorinfoextsize);
+    if(pColorInfo == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+    /*now we should make this ok*/
+    ZeroMemory(pColorInfo,colorinfoextsize);
+    CopyMemory(pColorInfo,&colorinfo,sizeof(colorinfo));
+    ret = ::GetDIBits(hcolordc,iconex.hbmColor,0,colorbmp.bmHeight,pColorBuffer,pColorInfo,DIB_RGB_COLORS);
+    if(ret == 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("HDC(0x%08x) HBITMAP(0x%08x) scanline(%d) GetDIBits Error(%d)\n",
+                   hcolordc,iconex.hbmColor,colorbmp.bmHeight,ret);
+        goto fail;
+    }
+
 
     ZeroMemory(&colorbmp,sizeof(colorbmp));
     bret = GetObject(iconex.hbmColor,sizeof(colorbmp),&colorbmp);
@@ -812,6 +888,8 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
                    hcolordc,iconex.hbmColor,colorbmp.bmHeight,ret);
         goto fail;
     }
+
+
 
     /*now all is ok so we should make sure the memory copy to*/
     /*now test for the buffer whether this is the large enough*/
