@@ -196,14 +196,150 @@ BOOL CIOController::__InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt)
     return bret;
 }
 
+BOOL CIOController::__HandleFreeEvent(DWORD idx)
+{
+    BOOL bret;
+    int ret,res;
+    int tries;
+    LPSEQ_CLIENTMOUSEPOINT pMousePoint;
+    PIO_CAP_EVENTS_t pIoCapEvt=NULL;
+    tries = 0;
+
+    while(1)
+    {
+        assert(pIoCapEvt == NULL);
+        pIoCapEvt = this->__GetInputEvent(idx);
+        if(pIoCapEvt)
+        {
+            break;
+        }
+        tries ++;
+        if(tries > 5)
+        {
+            ERROR_INFO("Wait idx (%d) Timeout\n",idx);
+            goto fail;
+        }
+        SchedOut();
+    }
+
+    pMousePoint = (LPSEQ_CLIENTMOUSEPOINT) pIoCapEvt->pEvent;
+    if((this->m_CurPointSeqId + 1) == pMousePoint->seqid)
+    {
+        bret = this->__SetCurPoint(pMousePoint->x,pMousePoint->y);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("could not set point(%d:%d) Error(%d)\n",pMousePoint->x,pMousePoint->y,ret);
+            goto fail;
+        }
+
+        bret = this->__InsertFreeEvent(pIoCapEvt);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Insert FreeEvent Error(%d)\n",ret);
+            goto fail;
+        }
+        pIoCapEvt = NULL;
+        this->m_CurPointSeqId ++;
+
+        /*if we have insert it into the wait ,so we should check for the seqid*/
+        while(1)
+        {
+            assert(pIoCapEvt == NULL);
+            pIoCapEvt = this->__GetWaitEvent();
+            if(pIoCapEvt == NULL)
+            {
+                break;
+            }
+
+            pMousePoint = (LPSEQ_CLIENTMOUSEPOINT) pIoCapEvt->pEvent;
+            if((this->m_CurPointSeqId + 1) == pMousePoint->seqid)
+            {
+                bret = this->__SetCurPoint(pMousePoint->x,pMousePoint->y);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("could not set point(%d:%d) Error(%d)\n",pMousePoint->x,pMousePoint->y,ret);
+                    goto fail;
+                }
+
+                bret = this->__InsertFreeEvent(pIoCapEvt);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("Insert FreeEvent Error(%d)\n",ret);
+                    goto fail;
+                }
+                pIoCapEvt = NULL;
+                this->m_CurPointSeqId ++;
+            }
+            else
+            {
+                bret = this->__InsertWaitEvent(pIoCapEvt);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("Insert WaitEvent Error(%d)\n",ret);
+                    goto fail;
+                }
+                pIoCapEvt = NULL;
+				/*we break out ,for it will for next wait*/
+				break;
+            }
+        }
+
+    }
+    else if((this->m_CurPointSeqId) < pMousePoint->seqid)
+    {
+        bret = this->__InsertWaitEvent(pIoCapEvt);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Insert WaitEvent Error(%d)\n",ret);
+            goto fail;
+        }
+        pIoCapEvt = NULL;
+    }
+    else
+    {
+        ERROR_INFO("[%d]seqid (%lld) > mouseid (%lld)\n",idx,this->m_CurPointSeqId,pMousePoint->seqid);
+        bret = this->__InsertFreeEvent(pIoCapEvt);
+        if(!bret)
+        {
+            ret = LAST_ERROR_CODE();
+            ERROR_INFO("Insert FreeEvent Error(%d)\n",ret);
+            goto fail;
+        }
+        pIoCapEvt = NULL;
+    }
+
+    assert(pIoCapEvt == NULL);
+    SetLastError(0);
+    return TRUE;
+fail:
+    if(pIoCapEvt)
+    {
+        bret = this->__InsertWaitEvent(pIoCapEvt);
+        if(!bret)
+        {
+            res = LAST_ERROR_CODE();
+            ERROR_INFO("<0x%p> Reinsert Error(%d)\n",pIoCapEvt,res);
+        }
+    }
+
+    pIoCapEvt = NULL;
+    SetLastError(ret);
+    return FALSE;
+}
+
+
 DWORD CIOController::__ThreadImpl()
 {
     HANDLE* pWaitHandles=NULL;
     DWORD dret,idx;
     int waitnum = 0;
     int tries=0,ret;
-    LPSEQ_CLIENTMOUSEPOINT pMousePoint=NULL;
-    PIO_CAP_EVENTS_t pIoCapEvt=NULL;
     BOOL bret;
     int cont =0;
 
@@ -232,101 +368,12 @@ DWORD CIOController::__ThreadImpl()
         {
             idx = dret - WAIT_OBJECT_0;
             /*now first to make sure we get the event*/
-            tries = 0;
-
-            while(1)
+            bret = this->__HandleFreeEvent(idx);
+            if(!bret)
             {
-                assert(pIoCapEvt == NULL);
-                pIoCapEvt = this->__GetInputEvent(idx);
-                if(pIoCapEvt)
-                {
-                    break;
-                }
-                tries ++;
-                if(tries > 5)
-                {
-                    ERROR_INFO("Wait idx (%d) Timeout\n",idx);
-                    goto out;
-                }
-                SchedOut();
-            }
-
-            pMousePoint = (LPSEQ_CLIENTMOUSEPOINT) pIoCapEvt->pEvent;
-            if((this->m_CurPointSeqId + 1) == pMousePoint->seqid)
-            {
-                bret = this->__SetCurPoint(pMousePoint->x,pMousePoint->y);
-                if(!bret)
-                {
-                    ret = LAST_ERROR_CODE();
-                    ERROR_INFO("could not set point(%d:%d) Error(%d)\n",pMousePoint->x,pMousePoint->y,ret);
-                    goto out;
-                }
-
-                bret = this->__InsertFreeEvent(pIoCapEvt);
-                if(!bret)
-                {
-                    ret = LAST_ERROR_CODE();
-                    ERROR_INFO("Insert FreeEvent Error(%d)\n",ret);
-                    goto out;
-                }
-                pIoCapEvt = NULL;
-                this->m_CurPointSeqId ++;
-
-                /*if we have insert it into the wait ,so we should check for the seqid*/
-                while(1)
-                {
-                    assert(pIoCapEvt == NULL);
-                    pIoCapEvt = this->__GetWaitEvent();
-                    if(pIoCapEvt == NULL)
-                    {
-                        break;
-                    }
-
-                    pMousePoint = (LPSEQ_CLIENTMOUSEPOINT) pIoCapEvt->pEvent;
-                    if((this->m_CurPointSeqId + 1) == pMousePoint->seqid)
-                    {
-                        bret = this->__SetCurPoint(pMousePoint->x,pMousePoint->y);
-                        if(!bret)
-                        {
-                            ret = LAST_ERROR_CODE();
-                            ERROR_INFO("could not set point(%d:%d) Error(%d)\n",pMousePoint->x,pMousePoint->y,ret);
-                            goto out;
-                        }
-
-                        bret = this->__InsertFreeEvent(pIoCapEvt);
-                        if(!bret)
-                        {
-                            ret = LAST_ERROR_CODE();
-                            ERROR_INFO("Insert FreeEvent Error(%d)\n",ret);
-                            goto out;
-                        }
-                        pIoCapEvt = NULL;
-                        this->m_CurPointSeqId ++;
-                    }
-                    else
-                    {
-                        bret = this->__InsertWaitEvent(pIoCapEvt);
-                        if(!bret)
-                        {
-                            ret = LAST_ERROR_CODE();
-                            ERROR_INFO("Insert WaitEvent Error(%d)\n",ret);
-                            goto out;
-                        }
-                        pIoCapEvt = NULL;
-                    }
-                }
-
-            }
-            else
-            {
-                bret = this->__InsertWaitEvent(pIoCapEvt);
-                if(!bret)
-                {
-                    ret = LAST_ERROR_CODE();
-                    ERROR_INFO("Insert WaitEvent Error(%d)\n",ret);
-                    goto out;
-                }
-                pIoCapEvt = NULL;
+            	ret = LAST_ERROR_CODE();
+				ERROR_INFO("[%d] InputFreeEvent Error(%d)\n",idx,ret);
+                goto out;
             }
 
         }
@@ -345,11 +392,6 @@ DWORD CIOController::__ThreadImpl()
     dret = 0;
 
 out:
-    if(pIoCapEvt)
-    {
-        this->__InsertWaitEvent(pIoCapEvt);
-    }
-    pIoCapEvt = NULL;
     if(pWaitHandles)
     {
         free(pWaitHandles);
@@ -1196,6 +1238,10 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
     }
 
     CopyMemory((&(pIoCapEvt->pEvent->devevent)),pDevEvt,sizeof(*pDevEvt));
+    if(pDevEvt->devtype == DEVICE_TYPE_KEYBOARD)
+    {
+        DEBUG_INFO("PushEvent(0x%08x) keyevent(0x%08x:%d) keycode (0x%08x:%d)\n",GetTickCount(),pDevEvt->event.keyboard.event,pDevEvt->event.keyboard.event,pDevEvt->event.keyboard.code,pDevEvt->event.keyboard.code);
+    }
     //DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);
     return this->__InsertInputEvent(pIoCapEvt);
 }
