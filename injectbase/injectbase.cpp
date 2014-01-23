@@ -362,6 +362,7 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
     if(!InsertDlls(pi.hProcess))
     {
         ret = LAST_ERROR_CODE();
+		ERROR_INFO("[%d]InsertDlls Error(%d)\n",GetProcessId(pi.hProcess),ret);
         bret = TerminateProcess(pi.hProcess,3);
         if(!bret)
         {
@@ -389,7 +390,7 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
                 else
                 {
                     res = LAST_ERROR_CODE();
-                    ERROR_INFO("could not open process(%d) Error(%d)\n",pid,ret);
+                    ERROR_INFO("could not open process(%d) Error(%d)\n",pid,res);
                 }
             }
         }
@@ -462,6 +463,7 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
     if(!InsertDlls(pi.hProcess))
     {
         ret = LAST_ERROR_CODE();
+		ERROR_INFO("[%d]InsertDlls Error(%d)\n",GetProcessId(pi.hProcess),ret);
         bret = TerminateProcess(pi.hProcess,3);
         if(!bret)
         {
@@ -489,7 +491,7 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
                 else
                 {
                     res = LAST_ERROR_CODE();
-                    ERROR_INFO("could not open process(%d) Error(%d)\n",pid,ret);
+                    ERROR_INFO("could not open process(%d) Error(%d)\n",pid,res);
                 }
             }
         }
@@ -664,23 +666,7 @@ fail:
 
 static int DetourCreateProcessFunctions()
 {
-    PVOID OldCreatW=NULL,OldCreateA=NULL;
 
-#if 0
-    CreateProcessNext =(CreateProcessFunc_t) GetProcAddress(hModule,(LPCSTR)TEXT("CreateProcess"));
-    if(CreateProcessNext == NULL)
-    {
-        ret = LAST_ERROR_CODE();
-        ERROR_INFO("could not get process addr for CreateProcess error(%d)\n",ret);
-        goto fail;
-    }
-#endif
-    OldCreatW = (PVOID)CreateProcessWNext;
-    DEBUG_INFO("CreateProcess Code");
-    DEBUG_BUFFER(OldCreatW,5);
-
-    OldCreateA = (PVOID)CreateProcessANext;
-    DEBUG_BUFFER(OldCreateA,5);
     DEBUG_BUFFER_FMT(CreateProcessWNext,10,"Before CreateProcessWNext (0x%p)",CreateProcessWNext);
     DEBUG_BUFFER_FMT(CreateProcessANext,10,"Before CreateProcessANext (0x%p)",CreateProcessANext);
     DetourTransactionBegin();
