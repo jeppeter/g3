@@ -191,6 +191,7 @@ DWORD CIOController::__ThreadImpl()
     LPSEQ_CLIENTMOUSEPOINT pMousePoint=NULL;
     PIO_CAP_EVENTS_t pIoCapEvt=NULL;
     BOOL bret;
+    int cont =0;
 
     /*including the exit notify event*/
     assert(this->m_BufferNum > 0);
@@ -255,9 +256,64 @@ DWORD CIOController::__ThreadImpl()
                     goto out;
                 }
                 pIoCapEvt = NULL;
+                this->m_CurPointSeqId ++;
+
+                /*if we have insert it into the wait ,so we should check for the seqid*/
+                while(1)
+                {
+                    assert(pIoCapEvt == NULL);
+                    pIoCapEvt = this->__GetWaitEvent();
+                    if(pIoCapEvt == NULL)
+                    {
+                        break;
+                    }
+
+                    pMousePoint = (LPSEQ_CLIENTMOUSEPOINT) pIoCapEvt->pEvent;
+                    if((this->m_CurPointSeqId + 1) == pMousePoint->seqid)
+                    {
+                        bret = this->__SetCurPoint(pMousePoint->x,pMousePoint->y);
+                        if(!bret)
+                        {
+                            ret = LAST_ERROR_CODE();
+                            ERROR_INFO("could not set point(%d:%d) Error(%d)\n",pMousePoint->x,pMousePoint->y,ret);
+                            goto out;
+                        }
+
+                        bret = this->__InsertFreeEvent(pIoCapEvt);
+                        if(!bret)
+                        {
+                            ret = LAST_ERROR_CODE();
+                            ERROR_INFO("Insert FreeEvent Error(%d)\n",ret);
+                            goto out;
+                        }
+                        pIoCapEvt = NULL;
+                        this->m_CurPointSeqId ++;
+                    }
+                    else
+                    {
+                        bret = this->__InsertWaitEvent(pIoCapEvt);
+                        if(!bret)
+                        {
+                            ret = LAST_ERROR_CODE();
+                            ERROR_INFO("Insert WaitEvent Error(%d)\n",ret);
+                            goto out;
+                        }
+                        pIoCapEvt = NULL;
+                    }
+                }
 
             }
-
+            else
+            {
+                bret = this->__InsertWaitEvent(pIoCapEvt);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("Insert WaitEvent Error(%d)\n",ret);
+                    goto out;
+                }
+                pIoCapEvt = NULL;
+            }
 
         }
         else if(dret == (WAIT_OBJECT_0+waitnum - 1))
@@ -1520,3 +1576,47 @@ void CIOController::__DeleteMap(HANDLE * pHandle,PVOID * ppMapBuf)
     CloseMapFileHandle(pHandle);
     return ;
 }
+
+BOOL CIOController::GetCursorPoint(LPPOINT pPoint)
+{
+    int ret;
+
+    if(this->m_Started == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    if(pPoint == NULL)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        SetLastError(ret);
+        return FALSE;
+    }
+
+    EnterCriticalSection(&(this->m_EvtCS));
+    pPoint->x = this->m_CurPoint.x;
+    pPoint->y = this->m_CurPoint.y;
+    LeaveCriticalSection(&(this->m_EvtCS));
+    SetLastError(0);
+    return TRUE;
+}
+
+BOOL CIOController::__SetCurPoint(int x,int y)
+{
+    int ret;
+    if(this->m_Started == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return FALSE;
+    }
+    EnterCriticalSection(&(this->m_EvtCS));
+    this->m_CurPoint.x = x;
+    this->m_CurPoint.y = y;
+    LeaveCriticalSection(&(this->m_EvtCS));
+    SetLastError(0);
+    return TRUE;
+}
+
