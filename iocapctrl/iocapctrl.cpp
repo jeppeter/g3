@@ -113,7 +113,7 @@ PIO_CAP_EVENTS_t CIOController::__GetWaitEvent()
 {
     PIO_CAP_EVENTS_t pIoCapEvt=NULL;
     int ret=ERROR_NO_DATA;
-	assert(this->m_InsertEvts > 0);
+    assert(this->m_InsertEvts > 0);
     EnterCriticalSection(&(this->m_EvtCS));
     if(this->m_WaitEvts.size() > 0)
     {
@@ -132,7 +132,7 @@ BOOL CIOController::__InsertWaitEvent(PIO_CAP_EVENTS_t pIoCapEvt)
     int findidx = -1;
     UINT i;
 
-	assert(this->m_InsertEvts > 0);
+    assert(this->m_InsertEvts > 0);
     pMousePoint = (LPSEQ_CLIENTMOUSEPOINT)pIoCapEvt->pEvent;
     EnterCriticalSection(&(this->m_EvtCS));
     for(i=0; i<this->m_WaitEvts.size() ; i++)
@@ -960,6 +960,13 @@ int CIOController::__CallAddDeviceIoCapControl(uint32_t devtype,uint32_t * pDevI
         return -ret;
     }
 
+    if(this->m_Started == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return -ret;
+    }
+
     pControl = (PIO_CAP_CONTROL_t)calloc(1,sizeof(*pControl));
     if(pControl == NULL)
     {
@@ -1088,14 +1095,24 @@ BOOL CIOController::RemoveDevice(uint32_t iType,uint32_t iId)
 PIO_CAP_EVENTS_t CIOController::__GetFreeEvent()
 {
     PIO_CAP_EVENTS_t pIoCapEvt=NULL;
+    int ret= ERROR_NO_DATA;
+
+    if(this->m_Started == 0)
+    {
+        ret = ERROR_BAD_ENVIRONMENT;
+        SetLastError(ret);
+        return NULL;
+    }
 
     EnterCriticalSection(&(this->m_EvtCS));
     if(this->m_FreeEvts.size() > 0)
     {
         pIoCapEvt = this->m_FreeEvts[0];
         this->m_FreeEvts.erase(this->m_FreeEvts.begin());
+        ret = 0;
     }
     LeaveCriticalSection(&(this->m_EvtCS));
+    SetLastError(ret);
     return pIoCapEvt;
 }
 
@@ -1179,10 +1196,6 @@ BOOL CIOController::PushEvent(DEVICEEVENT * pDevEvt)
     }
 
     CopyMemory((&(pIoCapEvt->pEvent->devevent)),pDevEvt,sizeof(*pDevEvt));
-    if(pDevEvt->devtype == DEVICE_TYPE_KEYBOARD)
-    {
-        DEBUG_INFO("PushEvent(0x%08x) keyevent(0x%08x:%d) keycode (0x%08x:%d)\n",GetTickCount(),pDevEvt->event.keyboard.event,pDevEvt->event.keyboard.event,pDevEvt->event.keyboard.code,pDevEvt->event.keyboard.code);
-    }
     //DEBUG_INFO("BaseAddr 0x%x IoEvent 0x%x type(%d)\n",this->m_pMemShareBase,pIoCapEvt->pEvent,pIoCapEvt->pEvent->devtype);
     return this->__InsertInputEvent(pIoCapEvt);
 }
