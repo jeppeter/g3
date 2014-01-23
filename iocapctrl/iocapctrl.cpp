@@ -43,6 +43,7 @@ CIOController::CIOController()
     m_pIoCapEvents = NULL;
     assert(m_InputEvts.size() == 0);
     assert(m_FreeEvts.size() == 0);
+    assert(m_WaitEvts.size() == 0);
     m_InsertEvts = 0;
     m_UnPressedKey = -1;
     m_SeqId = 0;
@@ -187,6 +188,9 @@ DWORD CIOController::__ThreadImpl()
     DWORD dret,idx;
     int waitnum = 0;
     int tries=0,ret;
+    LPSEQ_CLIENTMOUSEPOINT pMousePoint=NULL;
+    PIO_CAP_EVENTS_t pIoCapEvt=NULL;
+    BOOL bret;
 
     /*including the exit notify event*/
     assert(this->m_BufferNum > 0);
@@ -212,24 +216,49 @@ DWORD CIOController::__ThreadImpl()
         if(dret >= WAIT_OBJECT_0 && dret <= (WAIT_OBJECT_0 + waitnum -2))
         {
             idx = dret - WAIT_OBJECT_0;
+            /*now first to make sure we get the event*/
+            tries = 0;
+
             while(1)
             {
-                ret = this->__ChangeInputToFreeThread(idx);
-                if(ret > 0)
+                assert(pIoCapEvt == NULL);
+                pIoCapEvt = this->__GetInputEvent(idx);
+                if(pIoCapEvt)
                 {
                     break;
                 }
-
                 tries ++;
                 if(tries > 5)
                 {
-                    ERROR_INFO("Change InputTo Free Not Set tries > 5\n");
-                    dret = ERROR_TOO_MANY_MUXWAITERS;
+                    ERROR_INFO("Wait idx (%d) Timeout\n",idx);
                     goto out;
                 }
-                ERROR_INFO("Change <%d>[%d] not commit\n",idx,tries);
                 SchedOut();
             }
+
+            pMousePoint = (LPSEQ_CLIENTMOUSEPOINT) pIoCapEvt->pEvent;
+            if((this->m_CurPointSeqId + 1) == pMousePoint->seqid)
+            {
+                bret = this->__SetCurPoint(pMousePoint->x,pMousePoint->y);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("could not set point(%d:%d) Error(%d)\n",pMousePoint->x,pMousePoint->y,ret);
+                    goto out;
+                }
+
+                bret = this->__InsertFreeEvent(pIoCapEvt);
+                if(!bret)
+                {
+                    ret = LAST_ERROR_CODE();
+                    ERROR_INFO("Insert FreeEvent Error(%d)\n",ret);
+                    goto out;
+                }
+                pIoCapEvt = NULL;
+
+            }
+
+
         }
         else if(dret == (WAIT_OBJECT_0+waitnum - 1))
         {
@@ -246,6 +275,11 @@ DWORD CIOController::__ThreadImpl()
     dret = 0;
 
 out:
+    if(pIoCapEvt)
+    {
+        this->__InsertWaitEvent(pIoCapEvt);
+    }
+    pIoCapEvt = NULL;
     if(pWaitHandles)
     {
         free(pWaitHandles);
@@ -490,7 +524,7 @@ void CIOController::__ReleaseCapEvents()
     {
         fullevents = 0;
         EnterCriticalSection(&(this->m_EvtCS));
-        if((this->m_InputEvts.size() + this->m_FreeEvts.size())==this->m_BufferNum)
+        if((this->m_InputEvts.size() + this->m_FreeEvts.size() + this->m_WaitEvts.size())==this->m_BufferNum)
         {
             fullevents = 1;
         }
@@ -507,6 +541,7 @@ void CIOController::__ReleaseCapEvents()
     }
     this->m_InputEvts.clear();
     this->m_FreeEvts.clear();
+    this->m_WaitEvts.clear();
     this->m_InsertEvts = 0;
     if(this->m_pIoCapEvents)
     {
@@ -665,6 +700,8 @@ VOID CIOController::Stop()
     this->m_Pid = 0;
     this->m_UnPressedKey = -1;
     this->m_SeqId = 0;
+    this->m_CurPointSeqId = 0;
+    this->m_CurPoint = {0,0};
 
     return ;
 }

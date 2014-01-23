@@ -52,6 +52,7 @@ private:
 	BOOL __InsertInputEvent(PIO_CAP_EVENTS_t pIoCapEvt);
 	BOOL __InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt);
 	BOOL __InsertWaitEvent(PIO_CAP_EVENTS_t pIoCapEvt);
+	BOOL __SetCurPoint(int x,int y);
 	PIO_CAP_EVENTS_t __GetWaitEvent();
 	PIO_CAP_EVENTS_t __GetInputEvent(DWORD idx);
 	BOOL __ExtractBuffer(LPSHARE_DATA pShareData,int sectsize,PVOID *ppBuffer,UINT* pBufSize,UINT*pBufLen,int type);
