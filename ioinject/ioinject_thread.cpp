@@ -47,7 +47,6 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
 
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD && pDevEvent->devid == 0)
     {
-        DEBUG_INFO("Keyboard Input Events[%d]\n",idx);
         if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_DOWN)
         {
             st_UnPressedLastKey = -1;
@@ -57,20 +56,20 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
             if(st_UnPressedLastKey == pDevEvent->event.keyboard.code)
             {
                 DEBUG_INFO("[%d]<0x%p>UnPressed key double(0x%08x:%d)\n",idx,pDevEvent,st_UnPressedLastKey,st_UnPressedLastKey);
-				pMousePoint = (LPSEQ_CLIENTMOUSEPOINT)pSeqEvent;
-				ret = BaseScreenMousePoint(NULL,&pt);
-				if(ret >= 0)
-				{
-					pMousePoint->x = pt.x;
-					pMousePoint->y = pt.y;
-				}
-				else
-				{
-					ret = LAST_ERROR_CODE();
-					pMousePoint->x = 1;
-					pMousePoint->y = 1;
-					ERROR_INFO("could not get point Error(%d)\n",ret);
-				}
+                pMousePoint = (LPSEQ_CLIENTMOUSEPOINT)pSeqEvent;
+                ret = BaseScreenMousePoint(NULL,&pt);
+                if(ret >= 0)
+                {
+                    pMousePoint->x = pt.x;
+                    pMousePoint->y = pt.y;
+                }
+                else
+                {
+                    ret = LAST_ERROR_CODE();
+                    pMousePoint->x = 1;
+                    pMousePoint->y = 1;
+                    ERROR_INFO("could not get point Error(%d)\n",ret);
+                }
                 bret = SetEvent(pEventList->m_hFillEvt);
                 if(!bret)
                 {
@@ -92,10 +91,10 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     }
     else
     {
-		ret = LAST_ERROR_CODE();
+        ret = LAST_ERROR_CODE();
         pMousePoint->x = 1;
         pMousePoint->y = 1;
-		ERROR_INFO("could not get point Error(%d)\n",ret);
+        ERROR_INFO("could not get point Error(%d)\n",ret);
     }
 
     totalret = st_EventHandlerFuncList.CallList(pDevEvent);
@@ -171,7 +170,7 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
             ERROR_INFO("wait seqids %d\n",pStatus->m_pSeqIdVecs->size());
         }
         /*now to push find the index*/
-		findidx = -1;
+        findidx = -1;
         for(i=0; i<pStatus->m_pSeqIdVecs->size(); i++)
         {
             if(pStatus->m_pSeqIdVecs->at(i) > pSeqEvent->seqid)
@@ -618,6 +617,22 @@ int __DetourIoInjectThreadStart(PIO_CAP_CONTROL_t pControl)
         ERROR_INFO("Already Exist Start\n");
         SetLastError(ret);
         return -ret;
+    }
+
+    /*to reset for the base state*/
+    ret = InitBaseMouseState();
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("init mouse Error(%d)\n",ret);
+        goto fail;
+    }
+    ret = InitBaseKeyState();
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("init key Error(%d)\n",ret);
+        goto fail;
     }
 
     /*to call when use to init*/

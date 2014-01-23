@@ -898,8 +898,8 @@ int BaseSetWindowRectState(HWND hwnd)
     }
 
     EnterCriticalSection(&st_hWndCS);
-	EQUAL_WINDOW_STATE();
-	findidx = -1;
+    EQUAL_WINDOW_STATE();
+    findidx = -1;
     for(i=0; i<st_hWndBaseVecs.size() ; i++)
     {
         if(hwnd == st_hWndBaseVecs[i])
@@ -1450,6 +1450,7 @@ int InitBaseKeyState(void)
 
     EnterCriticalSection(&st_hWndCS);
     ZeroMemory(st_BaseKeyState,sizeof(st_BaseKeyState));
+    ZeroMemory(st_KeyDownTimes,sizeof(st_KeyDownTimes));
     LeaveCriticalSection(&st_hWndCS);
     return 0;
 }
@@ -1464,8 +1465,16 @@ int InitBaseMouseState(void)
         return -ret;
     }
     EnterCriticalSection(&st_hWndCS);
-    ZeroMemory(&st_MousePoint,sizeof(st_MousePoint));
+    st_MousePoint.x = st_MaxRect.left + 1;
+    st_MousePoint.y = st_MaxRect.top + 1;
+    st_MouseLastPoint.x = st_MousePoint.x;
+    st_MouseLastPoint.y = st_MousePoint.y;
+    ZeroMemory(st_MouseBtnState,sizeof(st_MouseBtnState));
     st_MouseZPoint = 0;
+    if(st_SetCursorPosEnable)
+    {
+        SetCursorPosNext(st_MousePoint.x,st_MousePoint.y);
+    }
     LeaveCriticalSection(&st_hWndCS);
     return 0;
 }
