@@ -21,6 +21,8 @@
 #define IOINJECT_DLL  "ioinject.dll"
 #endif
 
+#define IOINJECT_CONTROL_FUNC  "IoInjectControl"
+
 CIOController::CIOController()
 {
     m_hProc = NULL;
@@ -47,6 +49,9 @@ CIOController::CIOController()
     m_InsertEvts = 0;
     m_UnPressedKey = -1;
     m_SeqId = 0;
+    m_CurPointSeqId = 0;
+    m_CurPoint.x = 0;
+    m_CurPoint.y = 0;
 }
 
 
@@ -76,6 +81,12 @@ PIO_CAP_EVENTS_t CIOController::__GetInputEvent(DWORD idx)
     int findidx = -1;
     UINT i;
     int ret=ERROR_NO_DATA;
+    if(this->m_Started == 0)
+    {
+        SetLastError(ret);
+        return NULL;
+    }
+
     EnterCriticalSection(&(this->m_EvtCS));
     for(i=0; i<this->m_InputEvts.size() ; i++)
     {
@@ -102,6 +113,7 @@ PIO_CAP_EVENTS_t CIOController::__GetWaitEvent()
 {
     PIO_CAP_EVENTS_t pIoCapEvt=NULL;
     int ret=ERROR_NO_DATA;
+	assert(this->m_InsertEvts > 0);
     EnterCriticalSection(&(this->m_EvtCS));
     if(this->m_WaitEvts.size() > 0)
     {
@@ -119,6 +131,8 @@ BOOL CIOController::__InsertWaitEvent(PIO_CAP_EVENTS_t pIoCapEvt)
     LPSEQ_CLIENTMOUSEPOINT pMousePoint=NULL;
     int findidx = -1;
     UINT i;
+
+	assert(this->m_InsertEvts > 0);
     pMousePoint = (LPSEQ_CLIENTMOUSEPOINT)pIoCapEvt->pEvent;
     EnterCriticalSection(&(this->m_EvtCS));
     for(i=0; i<this->m_WaitEvts.size() ; i++)
@@ -148,8 +162,8 @@ BOOL CIOController::__InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt)
     int findidx=-1;
     UINT i;
     BOOL bret=FALSE;
-    EnterCriticalSection(&(this->m_EvtCS));
 
+    EnterCriticalSection(&(this->m_EvtCS));
     for(i=0; i<this->m_FreeEvts.size(); i++)
     {
         if(this->m_FreeEvts[i] == pIoCapEvt)
@@ -374,6 +388,7 @@ void CIOController::__ReleaseAllEvents()
         free(this->m_pFreeTotalEvts);
     }
     this->m_pFreeTotalEvts = NULL;
+    ZeroMemory(this->m_FreeEvtBaseName,sizeof(this->m_FreeEvtBaseName));
 
 
 
@@ -390,6 +405,7 @@ void CIOController::__ReleaseAllEvents()
         free(this->m_pInputTotalEvts);
     }
     this->m_pInputTotalEvts = NULL;
+    ZeroMemory(this->m_InputEvtBaseName,sizeof(this->m_InputEvtBaseName));
 
     return ;
 }
@@ -489,11 +505,11 @@ int CIOController::__CallInnerControl(PIO_CAP_CONTROL_t pControl,int timeout)
     pid = this->m_Pid;
 
     /*now we should get the address of the */
-    ret = GetRemoteProcAddress(pid,IOINJECT_DLL,"IoInjectControl",&pFnAddr);
+    ret = GetRemoteProcAddress(pid,IOINJECT_DLL,IOINJECT_CONTROL_FUNC,&pFnAddr);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("can not find[%d] %s:%s Error(%d)\n",pid,IOINJECT_DLL,"IoInjectControl",ret);
+        ERROR_INFO("can not find[%d] %s:%s Error(%d)\n",pid,IOINJECT_DLL,IOINJECT_CONTROL_FUNC,ret);
         SetLastError(ret);
         return -ret;
     }
@@ -729,18 +745,67 @@ fail:
     return -ret;
 }
 
+#define CHECK_STOP_STATE()  \
+do\
+{\
+    int __i;\
+    assert(this->m_hProc == NULL);\
+    assert(this->m_Pid == 0);\
+    for(__i = 0 ; __i < DEVICE_TYPE_MAX ; __i++)\
+    {\
+        assert(this->m_TypeIds[__i] == 0);\
+    }\
+    assert(this->m_BackGroundThread.thread == NULL);\
+    assert(this->m_BackGroundThread.threadid == 0);\
+    assert(this->m_BackGroundThread.exitevt == NULL);\
+    assert(this->m_BackGroundThread.running == 0);\
+    assert(this->m_BackGroundThread.exited == 1);\
+    assert(this->m_Started == 0);\
+    for(__i = 0; __i < sizeof(this->m_MemShareName); __i++)\
+    {\
+        assert(this->m_MemShareName[__i] == '\0');\
+    }\
+    assert(this->m_BufferNum == 0);\
+    assert(this->m_BufferSectSize == 0);\
+    assert(this->m_BufferTotalSize == 0);\
+    assert(this->m_pMemShareBase == NULL);\
+    assert(this->m_hMapFile == NULL);\
+    for(__i = 0; __i < sizeof(this->m_FreeEvtBaseName); __i++)\
+    {\
+        assert(this->m_FreeEvtBaseName[__i] == '\0');\
+    }\
+    assert(this->m_pFreeTotalEvts == NULL);\
+    for(__i = 0; __i < sizeof(this->m_InputEvtBaseName); __i++)\
+    {\
+        assert(this->m_InputEvtBaseName[__i] == '\0');\
+    }\
+    assert(this->m_pInputTotalEvts == NULL);\
+    assert(this->m_pIoCapEvents == NULL);\
+    assert(this->m_InputEvts.size() == 0);\
+    assert(this->m_FreeEvts.size() == 0);\
+    assert(this->m_WaitEvts.size() == 0);\
+    assert(this->m_InsertEvts == 0);\
+    assert(this->m_UnPressedKey == -1);\
+    assert(this->m_SeqId == 0);\
+    assert(this->m_CurPointSeqId == 0);\
+    assert(this->m_CurPoint.x == 0);\
+    assert(this->m_CurPoint.y == 0);\
+}\
+while(0)
+
 
 VOID CIOController::Stop()
 {
     /*first we should make the indicator to be stopped ,and this will give it ok*/
     this->m_Started = 0;
+    /*now we should stop thread*/
+    this->__StopBackGroundThread();
 
+    /*we put the default value for cursor value*/
     this->EnableSetCursorPos(TRUE);
     this->HideCursor(FALSE);
 
     this->__CallStopIoCapControl();
-    /*now we should stop thread*/
-    this->__StopBackGroundThread();
 
     this->__ReleaseCapEvents();
 
@@ -758,7 +823,7 @@ VOID CIOController::Stop()
     this->m_SeqId = 0;
     this->m_CurPointSeqId = 0;
     this->m_CurPoint = {0,0};
-
+    CHECK_STOP_STATE();
     return ;
 }
 

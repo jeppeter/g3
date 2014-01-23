@@ -65,7 +65,6 @@ private:
 	uint32_t m_TypeIds[DEVICE_TYPE_MAX];
 	thread_control_t m_BackGroundThread;
 	CRITICAL_SECTION m_EvtCS;
-	POINT m_CurPoint;
 	int m_Started;
 	uint8_t m_MemShareName[IO_NAME_MAX_SIZE];
 	uint32_t m_BufferNum;
@@ -78,16 +77,15 @@ private:
 	uint8_t m_InputEvtBaseName[IO_NAME_MAX_SIZE];
 	HANDLE *m_pInputTotalEvts;
 	PIO_CAP_EVENTS_t m_pIoCapEvents;
-	std::vector<PIO_CAP_EVENTS_t> m_WaitEvts;
 	std::vector<PIO_CAP_EVENTS_t> m_InputEvts;
 	std::vector<PIO_CAP_EVENTS_t> m_FreeEvts;
+	std::vector<PIO_CAP_EVENTS_t> m_WaitEvts;
 	int m_InsertEvts;
 	int m_UnPressedKey;
 	unsigned long long m_SeqId;
 	unsigned long long m_CurPointSeqId;
+	POINT m_CurPoint;
 };
-
-
 
 #endif /*__IO_CAP_CTRL_H__*/
 
