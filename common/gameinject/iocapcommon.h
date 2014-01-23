@@ -236,6 +236,12 @@ typedef struct
 	DEVICEEVENT devevent;
 } SEQ_DEVICEEVENT,*LPSEQ_DEVICEEVENT;
 
+typedef struct
+{
+	unsigned long long seqid;
+	int x;
+	int y;
+}SEQ_CLIENTMOUSEPOINT,*LPSEQ_CLIENTMOUSEPOINT;
 
 
 

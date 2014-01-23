@@ -69,32 +69,77 @@ int CIOController::__StartBackGroundThread()
 }
 
 
-int CIOController::__ChangeInputToFreeThread(DWORD idx)
+PIO_CAP_EVENTS_t CIOController::__GetInputEvent(DWORD idx)
 {
-    int ret = 0;
-    unsigned int i;
+    PIO_CAP_EVENTS_t pIoCapEvt=NULL;
     int findidx = -1;
-    PIO_CAP_EVENTS_t pIoCapEvent=NULL;
+    UINT i;
+    int ret=ERROR_NO_DATA;
     EnterCriticalSection(&(this->m_EvtCS));
     for(i=0; i<this->m_InputEvts.size() ; i++)
     {
         if(this->m_InputEvts[i]->Idx == idx)
         {
             findidx = i;
-            ret = 1;
             break;
         }
     }
 
+    if(findidx >= 0)
+    {
+        pIoCapEvt = this->m_InputEvts[findidx];
+        this->m_InputEvts.erase(this->m_InputEvts.begin() + findidx);
+        ret = 0;
+    }
+    LeaveCriticalSection(&(this->m_EvtCS));
+
+    SetLastError(ret);
+    return pIoCapEvt;
+}
+
+PIO_CAP_EVENTS_t CIOController::__GetWaitEvent()
+{
+    PIO_CAP_EVENTS_t pIoCapEvt=NULL;
+    int ret=ERROR_NO_DATA;
+    EnterCriticalSection(&(this->m_EvtCS));
+    if(this->m_WaitEvts.size() > 0)
+    {
+        ret = 0;
+        pIoCapEvt = this->m_WaitEvts[0];
+        this->m_WaitEvts.erase(this->m_WaitEvts.begin());
+    }
+    LeaveCriticalSection(&(this->m_EvtCS));
+    SetLastError(ret);
+    return pIoCapEvt;
+}
+
+BOOL CIOController::__InsertWaitEvent(PIO_CAP_EVENTS_t pIoCapEvt)
+{
+    LPSEQ_CLIENTMOUSEPOINT pMousePoint=NULL;
+    int findidx = -1;
+    UINT i;
+    pMousePoint = (LPSEQ_CLIENTMOUSEPOINT)pIoCapEvt->pEvent;
+    EnterCriticalSection(&(this->m_EvtCS));
+    for(i=0; i<this->m_WaitEvts.size() ; i++)
+    {
+        if(this->m_WaitEvts[i]->seqid > pMousePoint->seqid)
+        {
+            findidx = i;
+            break;
+        }
+    }
 
     if(findidx >= 0)
     {
-        pIoCapEvent = this->m_InputEvts[i];
-        this->m_InputEvts.erase(this->m_InputEvts.begin() + findidx);
-        this->m_FreeEvts.push_back(pIoCapEvent);
+        this->m_WaitEvts.insert(this->m_WaitEvts.begin() + findidx,pIoCapEvt);
+    }
+    else
+    {
+        this->m_WaitEvts.push_back(pIoCapEvt);
     }
     LeaveCriticalSection(&(this->m_EvtCS));
-    return ret;
+
+    return TRUE;
 }
 
 BOOL CIOController::__InsertFreeEvent(PIO_CAP_EVENTS_t pIoCapEvt)
@@ -599,8 +644,8 @@ VOID CIOController::Stop()
     /*first we should make the indicator to be stopped ,and this will give it ok*/
     this->m_Started = 0;
 
-	this->EnableSetCursorPos(TRUE);
-	this->HideCursor(FALSE);
+    this->EnableSetCursorPos(TRUE);
+    this->HideCursor(FALSE);
 
     this->__CallStopIoCapControl();
     /*now we should stop thread*/

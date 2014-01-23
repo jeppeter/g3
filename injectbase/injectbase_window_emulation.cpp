@@ -559,8 +559,8 @@ BOOL InsertHwnd(HWND hwnd)
 
         if(findidx < 0)
         {
-        	/*make the dummy rect*/
-        	rRect = {0,0,2,2};
+            /*make the dummy rect*/
+            rRect = {0,0,2,2};
             st_hWndBaseVecs.push_back(hwnd);
             hCursor = (HCURSOR) GetClassLongPtrANext(hwnd,GCLP_HCURSOR);
             st_hWndClassCursorVecs.push_back(hCursor);
@@ -595,7 +595,7 @@ BOOL RemoveHwnd(HWND hwnd)
     {
         findidx = -1;
         EnterCriticalSection(&st_hWndCS);
-		EQUAL_WINDOW_STATE();
+        EQUAL_WINDOW_STATE();
         for(i=0; i<st_hWndBaseVecs.size() ; i++)
         {
             if(st_hWndBaseVecs[i] == hwnd)
@@ -743,7 +743,7 @@ int __ReCalculateMaxWindowRectNoLock()
         return 0;
     }
 
-	EQUAL_WINDOW_STATE();
+    EQUAL_WINDOW_STATE();
     assert(st_hWndBaseVecs.size() > 0);
     for(i=0; i<st_hWndBaseVecs.size() ; i++)
     {
@@ -898,6 +898,8 @@ int BaseSetWindowRectState(HWND hwnd)
     }
 
     EnterCriticalSection(&st_hWndCS);
+	EQUAL_WINDOW_STATE();
+	findidx = -1;
     for(i=0; i<st_hWndBaseVecs.size() ; i++)
     {
         if(hwnd == st_hWndBaseVecs[i])

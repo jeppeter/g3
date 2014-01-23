@@ -34,6 +34,8 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     int totalret=0;
     LPDEVICEEVENT pDevEvent=NULL;
     LPSEQ_DEVICEEVENT pSeqEvent=NULL;
+    LPSEQ_CLIENTMOUSEPOINT pMousePoint=NULL;
+    POINT pt;
     int ret;
     /*now we should handle this function*/
     EVENT_LIST_t* pEventList=NULL;
@@ -65,6 +67,21 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
             }
             st_UnPressedLastKey = pDevEvent->event.keyboard.code;
         }
+    }
+
+    pMousePoint = (LPSEQ_CLIENTMOUSEPOINT)pSeqEvent;
+    ret = BaseScreenMousePoint(NULL,&pt);
+    if(ret >= 0)
+    {
+        pMousePoint->x = pt.x;
+        pMousePoint->y = pt.y;
+    }
+    else
+    {
+		ret = LAST_ERROR_CODE();
+        pMousePoint->x = 1;
+        pMousePoint->y = 1;
+		ERROR_INFO("could not get point Error(%d)\n",ret);
     }
 
     totalret = st_EventHandlerFuncList.CallList(pDevEvent);
@@ -921,7 +938,7 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
     LPSHARE_DATA pShare=NULL;
     std::auto_ptr<unsigned char> pShareName2(new unsigned char[IO_NAME_MAX_SIZE]);
     unsigned char* pShareName = pShareName2.get();
-	
+
     ZeroMemory(&iconex,sizeof(iconex));
     /*now first to get the active window*/
     hwnd = GetCurrentProcessActiveWindow();
