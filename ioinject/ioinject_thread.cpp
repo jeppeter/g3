@@ -82,6 +82,10 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
         }
     }
 
+
+	//DEBUG_INFO("<0x%p> devtype (%d) devid(%d)\n",pDevEvent,pDevEvent->devtype,pDevEvent->devid);
+    totalret = st_EventHandlerFuncList.CallList(pDevEvent);
+
     pMousePoint = (LPSEQ_CLIENTMOUSEPOINT)pSeqEvent;
     ret = BaseScreenMousePoint(NULL,&pt);
     if(ret >= 0)
@@ -96,9 +100,6 @@ int __HandleStatusEventReal(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
         pMousePoint->y = 1;
         ERROR_INFO("could not get point Error(%d)\n",ret);
     }
-
-    totalret = st_EventHandlerFuncList.CallList(pDevEvent);
-
     /*now we should get the point */
 
     bret = SetEvent(pEventList->m_hFillEvt);

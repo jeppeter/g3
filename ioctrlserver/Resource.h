@@ -9,14 +9,13 @@
 #define IDC_EDT_EXE                     1002
 #define IDC_EDT_PARAM                   1003
 #define IDC_EDT_DLL                     1004
-#define ID_START                        1005
-#define IDC_BTN_START                   1005
 #define IDC_BTN_GETCURSOR               1005
 #define IDC_BTN_ATTACH                  1006
 #define IDC_EDT_PID                     1007
 #define IDC_EDT_ATTACHPID               1007
 #define IDC_EDT_BUFNUM                  1008
 #define IDC_BTN_START2                  1009
+#define IDC_BTN_START                   1009
 #define IDC_EDT_BUFSIZE                 1010
 #define IDC_EDT_PORT                    1011
 #define IDC_EDT_WAITTIME                1012

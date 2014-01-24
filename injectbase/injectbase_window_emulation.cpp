@@ -43,7 +43,7 @@ static int st_ShowCursorCount=0;
 static int st_ShowCursorInit=0;
 static int st_ShowCursorHideMode=0;
 static int st_ShowCursorRequest=0;
-static int st_SetCursorPosEnable=1;  /*default is enabled*/
+static int st_SetCursorPosEnable=0;  /*default is disabled*/
 
 
 typedef int (WINAPI *ShowCursorFunc_t)(BOOL bShow);
