@@ -1259,7 +1259,7 @@ BOOL CIOController::EnableSetCursorPos(BOOL enabled)
         goto fail;
     }
 
-    pControl = calloc(1,sizeof(*pControl));
+    pControl =(PIO_CAP_CONTROL_t) calloc(1,sizeof(*pControl));
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -1312,7 +1312,7 @@ BOOL CIOController::HideCursor(BOOL hideenable)
         goto fail;
     }
 
-    pControl = calloc(1,sizeof(*pControl));
+    pControl = (PIO_CAP_CONTROL_t)calloc(1,sizeof(*pControl));
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -1332,7 +1332,7 @@ BOOL CIOController::HideCursor(BOOL hideenable)
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
-        ERROR_INFO("Could not %s hide cursor Error(%d)\n",enabled ? "enable": "disable",ret);
+        ERROR_INFO("Could not %s hide cursor Error(%d)\n",hideenable ? "enable": "disable",ret);
         goto fail;
     }
 
@@ -1384,7 +1384,7 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
         goto fail;
     }
 
-    pControl = calloc(1,sizeof(*pControl));
+    pControl = (PIO_CAP_CONTROL_t)calloc(1,sizeof(*pControl));
     if(pControl == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -1393,8 +1393,8 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
 
     pControl->opcode = IO_INJECT_GET_CURSOR_BMP;
 
-    _snprintf_s(pControl->freeevtbasename,sizeof(pControl->freeevtbasename),_TRUNCATE,"%s%d",IO_MAP_CURSOR_BITMAP_INFO_BASENAME,this->m_Pid);
-    _snprintf_s(pControl->inputevtbasename,sizeof(pControl->inputevtbasename),_TRUNCATE,"%s%d",IO_MAP_CURSOR_BITMAP_DATA_BASENAME,this->m_Pid);
+    _snprintf_s((char*)pControl->freeevtbasename,sizeof(pControl->freeevtbasename),_TRUNCATE,"%s%d",IO_MAP_CURSOR_BITMAP_INFO_BASENAME,this->m_Pid);
+    _snprintf_s((char*)pControl->inputevtbasename,sizeof(pControl->inputevtbasename),_TRUNCATE,"%s%d",IO_MAP_CURSOR_BITMAP_DATA_BASENAME,this->m_Pid);
 
     /*now we call the map for it */
 
@@ -1409,8 +1409,8 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
         /*now to reset for the sector size*/
         pControl->memsharesectsize = sectorsize;
 
-        _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->freeevtbasename);
-        bret = this->__CreateMap(pShareName,sectorsize,&hminfomap,&pMInfoBuf);
+        _snprintf_s((char*)pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->freeevtbasename);
+        bret = this->__CreateMap((char*)pShareName,sectorsize,&hminfomap,&pMInfoBuf);
         if(!bret)
         {
             ret = LAST_ERROR_CODE();
@@ -1418,8 +1418,8 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
             goto fail;
         }
 
-        _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->inputevtbasename);
-        bret = this->__CreateMap(pShareName,sectorsize,&hmdatamap,&pMDataBuf);
+        _snprintf_s((char*)pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->inputevtbasename);
+        bret = this->__CreateMap((char*)pShareName,sectorsize,&hmdatamap,&pMDataBuf);
         if(!bret)
         {
             ret = LAST_ERROR_CODE();
@@ -1428,8 +1428,8 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
         }
 
 
-        _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->freeevtbasename);
-        bret = this->__CreateMap(pShareName,sectorsize,&hinfomap,&pInfoBuf);
+        _snprintf_s((char*)pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->freeevtbasename);
+        bret = this->__CreateMap((char*)pShareName,sectorsize,&hinfomap,&pInfoBuf);
         if(!bret)
         {
             ret = LAST_ERROR_CODE();
@@ -1437,8 +1437,8 @@ BOOL CIOController::GetCursorBitmap(PVOID *ppCursorBitmapInfo,UINT*pInfoSize,UIN
             goto fail;
         }
 
-        _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->inputevtbasename);
-        bret = this->__CreateMap(pShareName,sectorsize,&hdatamap,&pDataBuf);
+        _snprintf_s((char*)pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->inputevtbasename);
+        bret = this->__CreateMap((char*)pShareName,sectorsize,&hdatamap,&pDataBuf);
         if(!bret)
         {
             ret = LAST_ERROR_CODE();
@@ -1696,7 +1696,7 @@ fail:
 
 void CIOController::__DeleteMap(HANDLE * pHandle,PVOID * ppMapBuf)
 {
-    UnMapFileBuffer(ppMapBuf);
+    UnMapFileBuffer((unsigned char**)ppMapBuf);
     CloseMapFileHandle(pHandle);
     return ;
 }

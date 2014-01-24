@@ -105,9 +105,9 @@ BOOL CioctrlserverDlg::OnInitDialog()
     fmtstr.Format(TEXT(""));
     pEdt->SetWindowText(fmtstr);
 
-    pBtn = (CButton*) this->GetDlgItem(IDC_BTN_HIDECURSOR);
+    pBtn = (CButton*) this->GetDlgItem(IDC_CHK_HIDECURSOR);
     pBtn->SetCheck(0);
-    pBtn = (CButton*) this->GetDlgItem(IDC_BTN_SETCURSORPOS);
+    pBtn = (CButton*) this->GetDlgItem(IDC_CHK_SETCURSORPOS);
     pBtn->SetCheck(1);
 
     return TRUE;  // return TRUE  unless you set the focus to a control
@@ -174,7 +174,7 @@ void CioctrlserverDlg::OnSelBmp()
     {
         CString bmpstr;
         fname = fdlg.GetPathName();
-        pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_BMP);
+        pEdt = (CEdit*) this->GetDlgItem(IDC_EDT_SAVECURSORBMP);
         pEdt->SetWindowText(fname);
     }
     return ;
@@ -426,7 +426,7 @@ void CioctrlserverDlg::OnStart()
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        errstr.Format(TEXT("%s setcursor Error(%d)"),enablesetcursorpos ? TEXT("Enable") : TEXT("Disable") , ret);
+        errstr.Format(TEXT("%s setcursorpos Error(%d)"),enablesetcursorpos ? TEXT("Enable") : TEXT("Disable") , ret);
         this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
@@ -694,7 +694,7 @@ void CioctrlserverDlg::OnAttach()
     if(!bret)
     {
         ret = LAST_ERROR_CODE();
-        errstr.Format(TEXT("%s setcursor Error(%d)"),enablesetcursorpos ? TEXT("Enable") : TEXT("Disable") , ret);
+        errstr.Format(TEXT("%s setcursorpos Error(%d)"),enablesetcursorpos ? TEXT("Enable") : TEXT("Disable") , ret);
         this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
         goto fail;
     }
@@ -1050,7 +1050,7 @@ void CioctrlserverDlg::OnSaveCursorBmp()
     this->__GetItemText(IDC_EDT_SAVECURSORBMP,basename);
     if(basename.GetLength() == 0)
     {
-        ret = ERROR_INVALID_PARAMTER;
+        ret = ERROR_INVALID_PARAMETER;
         errstr.Format(TEXT("Please Set savebmp name"));
         this->MessageBox((LPCTSTR)errstr,TEXT("Error"),MB_OK);
         goto fail ;
@@ -1077,7 +1077,7 @@ void CioctrlserverDlg::OnSaveCursorBmp()
 
 
 #ifdef _UNICODE
-    ret = UnicodeToAnsi((LPCWSTR)basename,&basenameansi,&basenamesize);
+    ret = UnicodeToAnsi((wchar_t*)((LPCWSTR)basename),&basenameansi,&basenamesize);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();

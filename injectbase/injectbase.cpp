@@ -366,7 +366,7 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
         bret = TerminateProcess(pi.hProcess,3);
         if(!bret)
         {
-            pid = GetProcessPid(pi.hProcess);
+            pid = GetProcessId(pi.hProcess);
             res = EnableCurrentDebugPriv();
             if(res < 0)
             {
@@ -467,7 +467,7 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
         bret = TerminateProcess(pi.hProcess,3);
         if(!bret)
         {
-            pid = GetProcessPid(pi.hProcess);
+            pid = GetProcessId(pi.hProcess);
             res = EnableCurrentDebugPriv();
             if(res < 0)
             {

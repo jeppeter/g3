@@ -578,7 +578,6 @@ BOOL InsertHwnd(HWND hwnd)
         {
             ret = ERROR_DUP_NAME;
         }
-unlock:
         LeaveCriticalSection(&st_hWndCS);
     }
     SetLastError(ret);

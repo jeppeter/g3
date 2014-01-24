@@ -24,8 +24,8 @@ typedef struct
 
 typedef struct __share_data
 {
-	int datalen;
-	int datatype;
+	unsigned int datalen;
+	unsigned int datatype;
 	unsigned char data[8];
 } SHARE_DATA,*LPSHARE_DATA;
 

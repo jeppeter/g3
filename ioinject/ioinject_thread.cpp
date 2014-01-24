@@ -194,6 +194,7 @@ int __HandleStatusEvent(PDETOUR_THREAD_STATUS_t pStatus,DWORD idx)
     }
     else
     {
+    	/*this is abnormal ,so we should not handle it ,just send back*/
         ERROR_INFO("[%d] seqid %lld but curseqid (%lld)\n",idx,pSeqEvent->seqid,pStatus->m_CurSeqId);
         cnt ++;
         bret = SetEvent(pEventList->m_hFillEvt);
@@ -916,7 +917,7 @@ int __WriteShareData(char* pShareName,int sectsize,PVOID pData,UINT size,int typ
 
     pShareData = (LPSHARE_DATA)pMapData;
 
-    ret = WriteShareMem(&(pShareData->datalen),0,&size,sizeof(size));
+    ret = WriteShareMem((unsigned char*)&(pShareData->datalen),0,(unsigned char*)&size,sizeof(size));
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -924,7 +925,7 @@ int __WriteShareData(char* pShareName,int sectsize,PVOID pData,UINT size,int typ
         goto fail;
     }
 
-    ret = WriteShareMem(&(pShareData->datatype),0,&type,sizeof(type));
+    ret = WriteShareMem((unsigned char*)&(pShareData->datatype),0,(unsigned char*)&type,sizeof(type));
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -932,7 +933,7 @@ int __WriteShareData(char* pShareName,int sectsize,PVOID pData,UINT size,int typ
         goto fail;
     }
 
-    ret = WriteShareMem(pShareData->data,0,pData,size);
+    ret = WriteShareMem(pShareData->data,0,(unsigned char*)pData,size);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -942,13 +943,13 @@ int __WriteShareData(char* pShareName,int sectsize,PVOID pData,UINT size,int typ
 
     retlen = size + sizeof(*pShareData) - sizeof(pShareData->data);
 
-    UnMapFileBuffer(&pMapData);
+    UnMapFileBuffer((unsigned char**)&pMapData);
     CloseMapFileHandle(&hMap);
     SetLastError(0);
     return retlen;
 fail:
     assert(ret > 0);
-    UnMapFileBuffer(&pMapData);
+    UnMapFileBuffer((unsigned char**)&pMapData);
     CloseMapFileHandle(&hMap);
     SetLastError(ret);
     return -ret;
@@ -964,7 +965,7 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
     UINT colorinfoextsize=0,colorsize=0,maskinfoextsize=0,masksize=0;
     PVOID pColorBuffer=NULL,pMaskBuffer=NULL;
     int ret;
-    int type;
+	BOOL bret;
     LPSHARE_DATA pShare=NULL;
     std::auto_ptr<unsigned char> pShareName2(new unsigned char[IO_NAME_MAX_SIZE]);
     unsigned char* pShareName = pShareName2.get();
@@ -1030,8 +1031,8 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
     }
 
 
-    _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->freeevtbasename);
-    ret = __WriteShareData(pShareName,pControl->memsharesectsize,pMaskInfo,maskinfoextsize,CURSOR_MASK_BITMAPINFO);
+    _snprintf_s((char*)pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->freeevtbasename);
+    ret = __WriteShareData((char*)pShareName,pControl->memsharesectsize,pMaskInfo,maskinfoextsize,CURSOR_MASK_BITMAPINFO);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -1039,8 +1040,8 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-    _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->inputevtbasename);
-    ret = __WriteShareData(pShareName,pControl->memsharesectsize,pMaskBuffer,masksize,CURSOR_MASK_BITDATA);
+    _snprintf_s((char*)pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_1",pControl->inputevtbasename);
+    ret = __WriteShareData((char*)pShareName,pControl->memsharesectsize,pMaskBuffer,masksize,CURSOR_MASK_BITDATA);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -1048,8 +1049,8 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-    _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->freeevtbasename);
-    ret = __WriteShareData(pShareName,pControl->memsharesectsize,pColorInfo,colorinfoextsize,CURSOR_COLOR_BITMAPINFO);
+    _snprintf_s((char*)pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->freeevtbasename);
+    ret = __WriteShareData((char*)pShareName,pControl->memsharesectsize,pColorInfo,colorinfoextsize,CURSOR_COLOR_BITMAPINFO);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -1057,8 +1058,8 @@ int __GetCursorBmp(PIO_CAP_CONTROL_t pControl)
         goto fail;
     }
 
-    _snprintf_s(pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->inputevtbasename);
-    ret = __WriteShareData(pShareName,pControl->memsharesectsize,pColorBuffer,colorsize,CURSOR_COLOR_BITDATA);
+    _snprintf_s((char*)pShareName,IO_NAME_MAX_SIZE,_TRUNCATE,"%s_2",pControl->inputevtbasename);
+    ret = __WriteShareData((char*)pShareName,pControl->memsharesectsize,pColorBuffer,colorsize,CURSOR_COLOR_BITDATA);
     if(ret < 0)
     {
         ret= LAST_ERROR_CODE();
