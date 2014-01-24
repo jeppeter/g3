@@ -67,6 +67,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ioctrlclient", "ioctrlclien
 		{09533139-1483-448E-97BF-1463B3F411BA} = {09533139-1483-448E-97BF-1463B3F411BA}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tstlib", "tstlib\tstlib.vcxproj", "{4F9AF072-4CD2-4B97-98B8-8F49990FC762}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -125,6 +127,10 @@ Global
 		{7AEA039C-EE1B-48A0-88CB-B7777CCE6CC8}.Debug|Win32.Build.0 = Debug|Win32
 		{7AEA039C-EE1B-48A0-88CB-B7777CCE6CC8}.Release|Win32.ActiveCfg = Release|Win32
 		{7AEA039C-EE1B-48A0-88CB-B7777CCE6CC8}.Release|Win32.Build.0 = Release|Win32
+		{4F9AF072-4CD2-4B97-98B8-8F49990FC762}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4F9AF072-4CD2-4B97-98B8-8F49990FC762}.Debug|Win32.Build.0 = Debug|Win32
+		{4F9AF072-4CD2-4B97-98B8-8F49990FC762}.Release|Win32.ActiveCfg = Release|Win32
+		{4F9AF072-4CD2-4B97-98B8-8F49990FC762}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
