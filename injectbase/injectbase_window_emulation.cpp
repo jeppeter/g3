@@ -1645,7 +1645,7 @@ HWND GetCurrentProcessActiveWindow()
     HWND hwnd=NULL;
     LONG style,exstyle;
     UINT i;
-    int findidx=-1;
+    int findidx=-1,bestidx=-1;
     if(st_ShowCursorInit)
     {
         EnterCriticalSection(&st_hWndCS);
@@ -1660,9 +1660,18 @@ HWND GetCurrentProcessActiveWindow()
                     DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndBaseVecs[i],
                                style,exstyle);
                 }
-                if(style & WS_VISIBLE)
+                if(exstyle & WS_EX_TOPMOST)
+                {
+                	findidx = i;
+					bestidx = findidx;
+                }
+                else if(style & WS_VISIBLE)
                 {
                     findidx = i;
+                    if(bestidx == -1)
+                    {
+                        bestidx = findidx;
+                    }
 #if 0
                     bret = GetClientRect(st_hWndBaseVecs[i],&rRect);
                     if(bret)
@@ -1677,12 +1686,11 @@ HWND GetCurrentProcessActiveWindow()
                                    st_MousePoint.x,st_MousePoint.y);
                     }
 #endif
-                    break;
                 }
             }
-            if(findidx >= 0)
+            if(bestidx >= 0)
             {
-                hwnd = st_hWndBaseVecs[findidx];
+                hwnd = st_hWndBaseVecs[bestidx];
             }
         }
         LeaveCriticalSection(&st_hWndCS);

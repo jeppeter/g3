@@ -68,5 +68,27 @@ int DetourShowCursorFunction(void)
 	return 0;
 }
 
+int InitBaseKeyState(void)
+{
+	return 0;
+}
+
+int InitBaseMouseState(void)
+{
+	return 0;
+}
+
+HWND GetCurrentProcessActiveWindow()
+{
+	return NULL;
+}
+
+int BaseScreenMousePoint(HWND hwnd,POINT * pPoint)
+{
+	int ret;
+	ret = ERROR_NOT_SUPPORTED;
+	return -ret;
+}
+
 
 #endif /*IOCAP_DEBUG*/
