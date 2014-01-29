@@ -2046,7 +2046,12 @@ int __Dinput8InsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
 
     data.dwTimeStamp = GetTickCount();
     /*sequence we do not need any more uAppData we do not any more*/
-
+    ret = __InsertKeyboardDinputData(&data);
+    if(ret < 0)
+{
+    ret = LAST_ERROR_CODE();
+        goto fail;
+    }
 
 
 
@@ -2059,6 +2064,80 @@ fail:
 
 int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
 {
+    int ret;
+    DIDEVICEOBJECTDATA data;
+
+    if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
+    {
+        ret = ERROR_INVALID_PARAMETER;
+        goto fail;
+    }
+
+    ZeroMemory(&data,sizeof(data));
+
+    switch(pDevEvent->event.mouse.event)
+    {
+    case MOUSE_EVENT_KEYDOWN:
+        if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
+        {
+            data.dwOfs = DIMOFS_BUTTON0;
+        }
+        else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
+        {
+            data.dwOfs = DIMOFS_BUTTON1;
+        }
+        else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
+        {
+            data.dwOfs = DIMOFS_BUTTON2;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("Mouse Event KEYDOWN code(%d) Error\n",pDevEvent->event.mouse.code);
+            goto fail;
+        }
+		data.dwData = 0x80;
+        break;
+    case MOUSE_EVENT_KEYUP:
+        if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
+        {
+            data.dwOfs = DIMOFS_BUTTON0;
+        }
+        else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
+        {
+            data.dwOfs = DIMOFS_BUTTON1;
+        }
+        else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
+        {
+            data.dwOfs = DIMOFS_BUTTON2;
+        }
+        else
+        {
+            ret = ERROR_INVALID_PARAMETER;
+            ERROR_INFO("Mouse Event KEYUP code(%d) Error\n",pDevEvent->event.mouse.code);
+            goto fail;
+        }
+		data.dwData = 0x00;
+        break;
+    case MOUSE_EVNET_MOVING:
+        break;
+    case MOUSE_EVENT_SLIDE:
+        break;
+    case MOUSE_EVENT_ABS_MOVING:
+        break;
+    default:
+        assert(0!=0);
+        ret = ERROR_INVALID_PARAMETER;
+        ERROR_INFO("event(%d) really error\n",pDevEvent->event.mouse.event);
+        goto fail;
+    }
+
+
+    SetLastError(0);
+    return 0;
+fail:
+    SetLastError(ret);
+    return -ret;
 }
 
 
