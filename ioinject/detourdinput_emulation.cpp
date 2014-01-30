@@ -453,9 +453,13 @@ public:
 
     COM_METHOD(HRESULT,GetDeviceData)(THIS_ DWORD cbObjectData,LPDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD dwFlags)
     {
-        HRESULT hr;
+        HRESULT hr = ;
         DIRECT_INPUT_DEVICE_8A_IN();
-        hr = m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
+        if (this->m_BufSize == 0)
+            {
+                hr = ;
+            }
+        
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
@@ -2048,8 +2052,29 @@ LPDIDEVICEOBJECTDATA __GetKeyboardData()
     return pGetData;
 }
 
-LPDIDEVICEOBJECTDATA __GetMouseData(int *pIdx)
+LPDIDEVICEOBJECTDATA __GetMouseData(int *pNum,int *pIdx)
 {
+    LPDIDEVICEOBJECTDATA pData=NULL;
+    int num,idx;
+
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(st_pMouseData.size() > 0)
+    {
+        pData = st_pMouseData[0];
+        num = st_MouseDataNums[0];
+        idx = st_MouseDataIdx[0];
+        st_pMouseData.erase(st_pMouseData.begin());
+        st_MouseDataNums.erase(st_MouseDataNums.begin());
+        st_MouseDataIdx.erase(st_MouseDataIdx.begin());
+    }
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+
+    if(pData)
+    {
+        *pNum = num;
+        *pIdx = idx;
+    }
+    return pData;
 }
 
 
@@ -2075,16 +2100,19 @@ int __InsertMouseDinputData(DIDEVICEOBJECTDATA *pData,int num,int idx,int back)
             pRemove = st_pMouseData[0];
             st_pMouseData.erase(st_pMouseData.begin());
             st_MouseDataNums.erase(st_MouseDataNums.begin());
+            st_MouseDataIdx.erase(st_MouseDataIdx.begin());
             ret = 0;
         }
 
         st_pMouseData.push_back(pInsert);
         st_MouseDataNums.push_back(num);
+        st_MouseDataIdx.push_back(idx);
     }
     else
     {
         st_pMouseData.insert(st_pMouseData.begin(),pInsert);
         st_MouseDataNums.insert(st_MouseDataNums.begin(),num);
+        st_MouseDataIdx.insert(st_MouseDataIdx.begin(),idx);
     }
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
 
