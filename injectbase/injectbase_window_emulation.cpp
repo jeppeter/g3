@@ -31,6 +31,7 @@ static unsigned int st_KeyDownTimes[256] = {0};
 static RECT st_MaxRect = {0,0,2,2};
 static POINT st_MousePoint = { 1,1};
 static POINT st_MouseLastPoint = {1,1};
+static POINT st_MousePrevPoint = {1,1};
 static UINT st_MouseBtnState[MOUSE_MAX_BTN] = {0};
 static UINT st_MouseZPoint=0;
 

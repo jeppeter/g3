@@ -10,9 +10,13 @@
 
 
 static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
-static POINT st_LastDiMousePoint;
+static POINT st_LastDiMousePoint= {1,1};
+static POINT st_PrevDiMousePoint= {1,1};
 static UINT st_LastDiMouseZ;
-
+static std::vector<LPDIDEVICEOBJECTDATA> st_pMouseData;
+static std::vector<int> st_MouseDataNums;
+static std::vector<int> st_MouseDataIdx;
+static std::vector<LPDIDEVICEOBJECTDATA> st_pKeyboardData;
 
 int __DetourDinput8Init(void)
 {
@@ -1990,12 +1994,106 @@ static int st_CodeMapDik[256] =
 };
 
 
-int __InsertKeyboardDinputData(DIDEVICEOBJECTDATA* pData)
+int __InsertKeyboardDinputData(DIDEVICEOBJECTDATA* pData,int back)
+{
+    DIDEVICEOBJECTDATA* pInsert=NULL,*pRemove=NULL;
+    int ret=1;
+
+    pInsert = calloc(1,sizeof(*pData));
+    if(pInsert == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return -ret;
+    }
+
+    CopyMemory(pInsert,pData,sizeof(*pData));
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(back)
+    {
+        if(st_pKeyboardData.size() > 20)
+        {
+            pRemove = st_pKeyboardData[0];
+            st_pKeyboardData.erase(st_pKeyboardData.begin());
+            ret = 0
+        }
+        st_pKeyboardData.push_back(pInsert);
+    }
+    else
+    {
+        st_pKeyboardData.insert(st_pKeyboardData.begin(),pInsert);
+    }
+
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(pRemove)
+    {
+        free(pRemove);
+    }
+    pRemove = NULL;
+    return ret;
+}
+
+
+LPDIDEVICEOBJECTDATA __GetKeyboardData()
+{
+    LPDIDEVICEOBJECTDATA pGetData=NULL;
+
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(st_pKeyboardData.size() > 0)
+    {
+        pGetData = st_pKeyboardData[0];
+        st_pKeyboardData.erase(st_pKeyboardData.begin());
+    }
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+    return pGetData;
+}
+
+LPDIDEVICEOBJECTDATA __GetMouseData(int *pIdx)
 {
 }
 
-int __InsertMouseDinputData(DIDEVICEOBJECTDATA *pData)
+
+int __InsertMouseDinputData(DIDEVICEOBJECTDATA *pData,int num,int idx,int back)
 {
+    DIDEVICEOBJECTDATA* pInsert=NULL,*pRemove=NULL;
+    int ret=1;
+
+    pInsert = calloc(num,sizeof(*pData));
+    if(pInsert == NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        SetLastError(ret);
+        return -ret;
+    }
+    CopyMemory(pInsert,pData,sizeof(*pData)*num);
+
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(back)
+    {
+        if(st_pMouseData.size() > 20)
+        {
+            pRemove = st_pMouseData[0];
+            st_pMouseData.erase(st_pMouseData.begin());
+            st_MouseDataNums.erase(st_MouseDataNums.begin());
+            ret = 0;
+        }
+
+        st_pMouseData.push_back(pInsert);
+        st_MouseDataNums.push_back(num);
+    }
+    else
+    {
+        st_pMouseData.insert(st_pMouseData.begin(),pInsert);
+        st_MouseDataNums.insert(st_MouseDataNums.begin(),num);
+    }
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+
+    if(pRemove)
+    {
+        free(pRemove);
+    }
+    pRemove = NULL;
+    return ret;
 }
 
 
@@ -2046,14 +2144,12 @@ int __Dinput8InsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
 
     data.dwTimeStamp = GetTickCount();
     /*sequence we do not need any more uAppData we do not any more*/
-    ret = __InsertKeyboardDinputData(&data);
+    ret = __InsertKeyboardDinputData(&data,1);
     if(ret < 0)
 {
     ret = LAST_ERROR_CODE();
         goto fail;
     }
-
-
 
     SetLastError(0);
     return 0;
@@ -2067,6 +2163,7 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
     int ret;
     DIDEVICEOBJECTDATA data[2];
     int idx=0;
+    POINT pt;
 
 
     if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
@@ -2076,6 +2173,14 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
     }
 
     ZeroMemory(&data,sizeof(data));
+    /*we do not used this*/
+    ret = BaseGetMousePointAbsolution(&pt);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("Get Mouse Point Absolution Error(%d)\n",ret);
+        goto fail;
+    }
 
     switch(pDevEvent->event.mouse.event)
     {
@@ -2099,7 +2204,7 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             goto fail;
         }
         data[idx].dwData = 0x80;
-		idx ++;
+        idx ++;
         break;
     case MOUSE_EVENT_KEYUP:
         if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
@@ -2121,29 +2226,58 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             goto fail;
         }
         data[idx].dwData = 0x00;
-		idx ++;
+        idx ++;
         break;
     case MOUSE_EVNET_MOVING:
+        EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
         if(pDevEvent->event.mouse.x != 0)
         {
+            if((st_PrevDiMousePoint.x + pDevEvent->event.mouse.x) != pt.x)
+            {
+                ERROR_INFO("Mouse x diff(%d + %d) != %d\n",
+                           st_PrevDiMousePoint.x ,pDevEvent->event.mouse.x,pt.x);
+            }
             data[idx].dwOfs = DIMOFS_X;
-            data[idx].dwData = pDevEvent->event.mouse.x;
+            data[idx].dwData = (pt.x - st_PrevDiMousePoint.x);
             idx ++;
         }
         if(pDevEvent->event.mouse.y != 0)
         {
-        	data[idx].dwOfs = DIMOFS_Y;
-			data[idx].dwData = pDevEvent->event.mouse.y;
-			idx ++;
+            if((st_PrevDiMousePoint.y + pDevEvent->event.mouse.y) != pt.y)
+            {
+                ERROR_INFO("Mouse y diff(%d + %d) != %d\n",
+                           st_PrevDiMousePoint.y ,pDevEvent->event.mouse.y,pt.y);
+            }
+            data[idx].dwOfs = DIMOFS_Y;
+            data[idx].dwData = (pt.y - st_PrevDiMousePoint.y);
+            idx ++;
         }
+        st_PrevDiMousePoint.x = pt.x;
+        st_PrevDiMousePoint.y = pt.y;
+        LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
         break;
     case MOUSE_EVENT_SLIDE:
-		data[idx].dwOfs = DIMOFS_Z;
-		data[idx].dwData = pDevEvent->event.mouse.x;
-		idx ++;
+        data[idx].dwOfs = DIMOFS_Z;
+        data[idx].dwData = pDevEvent->event.mouse.x;
+        idx ++;
         break;
     case MOUSE_EVENT_ABS_MOVING:
-		/*we do not used this*/
+        EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+        if(st_PrevDiMousePoint.x != pt.x)
+        {
+            data[idx].dwOfs = DIMOFS_X;
+            data[idx].dwData = (st_PrevDiMousePoint.x - pt.x);
+            idx ++;
+        }
+        if(st_PrevDiMousePoint.y != pt.y)
+        {
+            data[idx].dwOfs = DIMOFS_Y;
+            data[idx].dwData = (st_PrevDiMousePoint.y - pt.y);
+            idx ++;
+        }
+        st_PrevDiMousePoint.x = pt.x;
+        st_PrevDiMousePoint.y = pt.y;
+        LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
         break;
     default:
         assert(0!=0);
@@ -2152,7 +2286,20 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
+    if(idx == 0)
+    {
+        /*yes nothing to handle ,so just return*/
+        goto succ;
+    }
 
+    ret = __InsertMouseDinputData(data,idx,1);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+succ:
     SetLastError(0);
     return 0;
 fail:
