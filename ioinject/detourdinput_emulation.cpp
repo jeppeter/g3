@@ -2065,7 +2065,9 @@ fail:
 int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
 {
     int ret;
-    DIDEVICEOBJECTDATA data;
+    DIDEVICEOBJECTDATA data[2];
+    int idx=0;
+
 
     if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
     {
@@ -2080,15 +2082,15 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
     case MOUSE_EVENT_KEYDOWN:
         if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
         {
-            data.dwOfs = DIMOFS_BUTTON0;
+            data[idx].dwOfs = DIMOFS_BUTTON0;
         }
         else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
         {
-            data.dwOfs = DIMOFS_BUTTON1;
+            data[idx].dwOfs = DIMOFS_BUTTON1;
         }
         else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
         {
-            data.dwOfs = DIMOFS_BUTTON2;
+            data[idx].dwOfs = DIMOFS_BUTTON2;
         }
         else
         {
@@ -2096,20 +2098,21 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             ERROR_INFO("Mouse Event KEYDOWN code(%d) Error\n",pDevEvent->event.mouse.code);
             goto fail;
         }
-		data.dwData = 0x80;
+        data[idx].dwData = 0x80;
+		idx ++;
         break;
     case MOUSE_EVENT_KEYUP:
         if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
         {
-            data.dwOfs = DIMOFS_BUTTON0;
+            data[idx].dwOfs = DIMOFS_BUTTON0;
         }
         else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
         {
-            data.dwOfs = DIMOFS_BUTTON1;
+            data[idx].dwOfs = DIMOFS_BUTTON1;
         }
         else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
         {
-            data.dwOfs = DIMOFS_BUTTON2;
+            data[idx].dwOfs = DIMOFS_BUTTON2;
         }
         else
         {
@@ -2117,13 +2120,30 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             ERROR_INFO("Mouse Event KEYUP code(%d) Error\n",pDevEvent->event.mouse.code);
             goto fail;
         }
-		data.dwData = 0x00;
+        data[idx].dwData = 0x00;
+		idx ++;
         break;
     case MOUSE_EVNET_MOVING:
+        if(pDevEvent->event.mouse.x != 0)
+        {
+            data[idx].dwOfs = DIMOFS_X;
+            data[idx].dwData = pDevEvent->event.mouse.x;
+            idx ++;
+        }
+        if(pDevEvent->event.mouse.y != 0)
+        {
+        	data[idx].dwOfs = DIMOFS_Y;
+			data[idx].dwData = pDevEvent->event.mouse.y;
+			idx ++;
+        }
         break;
     case MOUSE_EVENT_SLIDE:
+		data[idx].dwOfs = DIMOFS_Z;
+		data[idx].dwData = pDevEvent->event.mouse.x;
+		idx ++;
         break;
     case MOUSE_EVENT_ABS_MOVING:
+		/*we do not used this*/
         break;
     default:
         assert(0!=0);
