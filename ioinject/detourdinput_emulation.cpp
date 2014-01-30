@@ -260,6 +260,7 @@ private:
     IDirectInputDevice8A* m_ptr;
     IID m_iid;
     int m_BufSize;
+    int m_SeqId;
     CRITICAL_SECTION m_CS;
 private:
     int __IsMouseDevice()
@@ -289,12 +290,15 @@ public:
     {
         m_iid = riid;
         m_BufSize = 0;
+        m_SeqId = 0;
         InitCriticalSection(&(m_CS));
     };
 
     ~CDirectInputDevice8AHook()
     {
         m_iid = IID_NULL;
+        m_SeqId = 0;
+        m_BufSize = 0;
         DeleteCriticalSection(&(m_CS));
     }
 
@@ -371,6 +375,7 @@ public:
         {
             EnterCriticalSection(&(this->m_CS));
             this->m_BufSize = pdiph->dwData;
+            this->m_SeqId = 1;
             LeaveCriticalSection(&(this->m_CS));
         }
         DIRECT_INPUT_DEVICE_8A_OUT();
@@ -453,13 +458,126 @@ public:
 
     COM_METHOD(HRESULT,GetDeviceData)(THIS_ DWORD cbObjectData,LPDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD dwFlags)
     {
-        HRESULT hr = ;
+        HRESULT hr = DI_OK;
+        LPDIDEVICEOBJECTDATA pData=NULL;
+        int idx=0,num=0,i;
+        int ret;
         DIRECT_INPUT_DEVICE_8A_IN();
-        if (this->m_BufSize == 0)
+        if(this->m_BufSize == 0)
+        {
+            hr = DIERR_NOTBUFFERED;
+        }
+        else if(cbObjectData != sizeof(*pData) || pdwInOut == NULL || *pdwInOut == 0)
+        {
+            hr = DIERR_INVALIDPARAM;
+        }
+        else
+        {
+            if(this->__IsKeyboardDevice())
             {
-                hr = ;
+                pData = __GetKeyboardData();
+                if(pData == NULL)
+                {
+                    *pdwInOut = 0;
+                }
+                else
+                {
+                    /*now if the data is ok ,so copy it*/
+                    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+                    if(rgdod)
+                    {
+                        *pdwInOut = 1;
+                        pData->dwSequence = this->m_SeqId;
+                        pData->uAppData = 0xffffffff;
+                        CopyMemory(rgdod,pData,sizeof(*pData));
+                    }
+
+                    if(dwFlags != DIGDD_PEEK)
+                    {
+                        this->m_SeqId ++;
+                    }
+
+                    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+
+                    if(dwFlags == DIGDD_PEEK)
+                    {
+                        ret = __InsertKeyboardDinputData(pData,0);
+                        if(ret != 0)
+                        {
+                            assert(0!=0);
+                            hr = DIERR_OUTOFMEMORY;
+                            goto fail;
+                        }
+                    }
+                    /*to free data*/
+                    free(pData);
+                    pData = NULL;
+                }
             }
-        
+            else if(this->__IsMouseDevice())
+            {
+                pData = __GetMouseData(&num,&idx);
+                if(pData == NULL)
+                {
+                    *pdwInOut = 0;
+                }
+                else
+                {
+                    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+                    if(*pdwInOut >= (num - idx))
+                    {
+                        *pdwInOut = (num - idx);
+                    }
+                    else
+                    {
+                        hr = DI_BUFFEROVERFLOW;
+                    }
+
+                    if(rgdod)
+                    {
+                        for(i=0; i<(num-idx); i++)
+                        {
+                            pData[idx+i].dwSequence = this->m_SeqId;
+                            pData[idx+i].uAppData = 0xffffffff;
+                        }
+                        CopyMemory(rgdod,pData,(*pdwInOut)* sizeof(*pData));
+                    }
+
+                    if(dwFlags != DIGDD_PEEK)
+                    {
+                        this->m_SeqId ++;
+                    }
+
+                    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+
+                    if(dwFlags == DIGDD_PEEK)
+                    {
+                        ret = __InsertMouseDinputData(pData,num,0,0);
+                        if(ret < 0)
+                        {
+                            assert(0!=0);
+                            hr = DIERR_OUTOFMEMORY;
+                            goto fail;
+                        }
+                    }
+
+                    free(pData);
+                    pData = NULL;
+                }
+            }
+        }
+        else
+        {
+            hr = this->m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
+        }
+        DIRECT_INPUT_DEVICE_8A_OUT();
+        return hr;
+fail:
+        if(pData)
+        {
+            free(pData);
+        }
+        pData = NULL;
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
