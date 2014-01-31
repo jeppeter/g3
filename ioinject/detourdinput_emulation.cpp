@@ -496,23 +496,24 @@ public:
                         CopyMemory(rgdod,pData,sizeof(*pData));
                     }
 
-                    if(dwFlags != DIGDD_PEEK)
+                    if(dwFlags != DIGDD_PEEK && pData)
                     {
                         this->m_SeqId ++;
                     }
-
-                    LeaveCriticalSection(&(this->m_CS));
 
                     if(dwFlags == DIGDD_PEEK && pData)
                     {
                         ret = __InsertKeyboardDinputData(pData,0);
                         if(ret < 0)
                         {
+                            LeaveCriticalSection(&(this->m_CS));
                             assert(0!=0);
                             hr = DIERR_OUTOFMEMORY;
                             goto fail;
                         }
                     }
+                    LeaveCriticalSection(&(this->m_CS));
+
                     /*to free data*/
                     if(pData)
                     {
@@ -551,23 +552,24 @@ public:
                         CopyMemory(rgdod,pData,(*pdwInOut)* sizeof(*pData));
                     }
 
-                    if(dwFlags != DIGDD_PEEK)
+                    if(dwFlags != DIGDD_PEEK && pData)
                     {
                         this->m_SeqId ++;
                     }
-
-                    LeaveCriticalSection(&(this->m_CS));
 
                     if(dwFlags == DIGDD_PEEK && pData)
                     {
                         ret = __InsertMouseDinputData(pData,num,0,0);
                         if(ret < 0)
                         {
+                            LeaveCriticalSection(&(this->m_CS));
                             assert(0!=0);
                             hr = DIERR_OUTOFMEMORY;
                             goto fail;
                         }
                     }
+                    LeaveCriticalSection(&(this->m_CS));
+
                     if(pData)
                     {
                         free(pData);
@@ -967,7 +969,10 @@ class CDirectInputDevice8WHook : public IDirectInputDevice8W
 {
 private:
     IDirectInputDevice8W* m_ptr;
+    int m_BufSize;
+    int m_SeqId;
     IID m_iid;
+    CRITICAL_SECTION m_CS;
 private:
     int __IsMouseDevice()
     {
@@ -993,10 +998,16 @@ public:
     CDirectInputDevice8WHook(IDirectInputDevice8W* ptr,REFIID riid) : m_ptr(ptr)
     {
         m_iid = riid;
+        m_BufSize = 0;
+        m_SeqId = 0;
+        InitializeCriticalSection(&(m_CS));
     };
     ~CDirectInputDevice8WHook()
     {
         m_iid = IID_NULL;
+        m_BufSize = 0;
+        m_SeqId = 0;
+        DeleteCriticalSection(&(m_CS));
     }
 public:
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid,void **ppvObject)
@@ -1055,9 +1066,7 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
-        {
-            hr = m_ptr->GetProperty(rguidProp,pdiph);
-        }
+        hr = m_ptr->GetProperty(rguidProp,pdiph);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -1158,6 +1167,7 @@ public:
         HRESULT hr=DI_OK;
         LPDIDEVICEOBJECTDATA pData=NULL;
         int ret,num=0,idx=0;
+        int i;
         DIRECT_INPUT_DEVICE_8W_IN();
         if(this->__IsMouseDevice() || this->__IsKeyboardDevice())
         {
@@ -1177,6 +1187,7 @@ public:
                         if(rgdod)
                         {
                             pData->dwSequence = this->m_SeqId;
+                            pData->uAppData = 0xffffffff;
                             CopyMemory(rgdod,pData,sizeof(*pData));
                         }
                         *pdwInOut = 1;
@@ -1186,11 +1197,29 @@ public:
                         *pdwInOut = 0;
                     }
 
-                    if(dwFlags != DIGDD_PEEK)
+                    if(dwFlags != DIGDD_PEEK && pData)
                     {
                         this->m_SeqId ++;
                     }
+                    if(dwFlags == DIGDD_PEEK && pData)
+                    {
+                        ret = __InsertKeyboardDinputData(pData,0);
+                        if(ret < 0)
+                        {
+                            LeaveCriticalSection(&(this->m_CS));
+                            assert(0!=0);
+                            hr = DIERR_OUTOFMEMORY;
+                            goto fail;
+                        }
+                    }
                     LeaveCriticalSection(&(this->m_CS));
+
+
+                    if(pData)
+                    {
+                        free(pData);
+                    }
+                    pData = NULL;
 
                 }
                 else if(this->__IsMouseDevice())
@@ -1215,43 +1244,36 @@ public:
 
                         if(rgdod)
                         {
+                            for(i=0; i<(num-idx); i++)
+                            {
+                                pData[i].dwSequence = this->m_SeqId;
+                                pData[i].uAppData = 0xffffffff;
+                            }
                             CopyMemory(rgdod,pData,(*pdwInOut)*sizeof(*pData));
                         }
-                        if(dwFlags != DIGDD_PEEK)
+                        if(dwFlags != DIGDD_PEEK && pData)
                         {
                             this->m_SeqId ++;
                         }
+                        if(dwFlags == DIGDD_PEEK && pData)
+                        {
+                            ret = __InsertMouseDinputData(pData,num,idx,0);
+                            if(ret < 0)
+                            {
+                                LeaveCriticalSection(&(this->m_CS));
+                                assert(0!=0);
+                                hr = DIERR_OUTOFMEMORY;
+                                goto fail;
+                            }
+                        }
                     }
                     LeaveCriticalSection(&(this->m_CS));
-                }
-
-                if(dwFlags == DIGDD_PEEK)
-                {
-                    if(this->__IsKeyboardDevice())
+                    if(pData)
                     {
-                        ret = __InsertKeyboardDinputData(pData,0);
-                        if(ret < 0)
-                        {
-                            hr = DIERR_OUTOFMEMORY;
-                            goto fail;
-                        }
+                        free(pData);
                     }
-                    else if(this->__IsMouseDevice())
-                    {
-                        ret = __InsertMouseDinputData(pData,num,idx,0);
-                        if(ret < 0)
-                        {
-                            hr = DIERR_OUTOFMEMORY;
-                            goto fail;
-                        }
-                    }
+                    pData = NULL;
                 }
-
-                if(pData)
-                {
-                    free(pData);
-                }
-                pData = NULL;
             }
         }
         else
@@ -2410,7 +2432,7 @@ int __Dinput8InsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     {
         data.dwData = 0x80;
     }
-    else if(]pDevEvent->event.keyboard.event == KEYBOARD_EVENT_UP)
+    else if(pDevEvent->event.keyboard.event == KEYBOARD_EVENT_UP)
     {
         data.dwData = 0x0;
     }
@@ -2419,8 +2441,8 @@ int __Dinput8InsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     /*sequence we do not need any more uAppData we do not any more*/
     ret = __InsertKeyboardDinputData(&data,1);
     if(ret < 0)
-{
-    ret = LAST_ERROR_CODE();
+    {
+        ret = LAST_ERROR_CODE();
         goto fail;
     }
 
@@ -2435,9 +2457,8 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
 {
     int ret;
     DIDEVICEOBJECTDATA data[2];
-    int idx=0;
+    int num=0,idx=0;
     POINT pt;
-
 
     if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
     {
@@ -2446,7 +2467,7 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
     }
 
     ZeroMemory(&data,sizeof(data));
-    /*we do not used this*/
+    /*we do not used this now get it and make it ok*/
     ret = BaseGetMousePointAbsolution(&pt);
     if(ret < 0)
     {
@@ -2460,15 +2481,15 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
     case MOUSE_EVENT_KEYDOWN:
         if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
         {
-            data[idx].dwOfs = DIMOFS_BUTTON0;
+            data[num].dwOfs = DIMOFS_BUTTON0;
         }
         else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
         {
-            data[idx].dwOfs = DIMOFS_BUTTON1;
+            data[num].dwOfs = DIMOFS_BUTTON1;
         }
         else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
         {
-            data[idx].dwOfs = DIMOFS_BUTTON2;
+            data[num].dwOfs = DIMOFS_BUTTON2;
         }
         else
         {
@@ -2476,21 +2497,22 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             ERROR_INFO("Mouse Event KEYDOWN code(%d) Error\n",pDevEvent->event.mouse.code);
             goto fail;
         }
-        data[idx].dwData = 0x80;
-        idx ++;
+        data[num].dwData = 0x80;
+        data[num].dwTimeStamp = GetTickCount();
+        num ++;
         break;
     case MOUSE_EVENT_KEYUP:
         if(pDevEvent->event.mouse.code == MOUSE_CODE_LEFTBUTTON)
         {
-            data[idx].dwOfs = DIMOFS_BUTTON0;
+            data[num].dwOfs = DIMOFS_BUTTON0;
         }
         else if(pDevEvent->event.mouse.code == MOUSE_CODE_RIGHTBUTTON)
         {
-            data[idx].dwOfs = DIMOFS_BUTTON1;
+            data[num].dwOfs = DIMOFS_BUTTON1;
         }
         else if(pDevEvent->event.mouse.code == MOUSE_CODE_MIDDLEBUTTON)
         {
-            data[idx].dwOfs = DIMOFS_BUTTON2;
+            data[num].dwOfs = DIMOFS_BUTTON2;
         }
         else
         {
@@ -2498,8 +2520,9 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             ERROR_INFO("Mouse Event KEYUP code(%d) Error\n",pDevEvent->event.mouse.code);
             goto fail;
         }
-        data[idx].dwData = 0x00;
-        idx ++;
+        data[num].dwData = 0x00;
+        data[num].dwTimeStamp = GetTickCount();
+        num ++;
         break;
     case MOUSE_EVNET_MOVING:
         EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
@@ -2510,9 +2533,10 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
                 ERROR_INFO("Mouse x diff(%d + %d) != %d\n",
                            st_PrevDiMousePoint.x ,pDevEvent->event.mouse.x,pt.x);
             }
-            data[idx].dwOfs = DIMOFS_X;
-            data[idx].dwData = (pt.x - st_PrevDiMousePoint.x);
-            idx ++;
+            data[num].dwOfs = DIMOFS_X;
+            data[num].dwData = (pt.x - st_PrevDiMousePoint.x);
+            data[num].dwTimeStamp = GetTickCount();
+            num ++;
         }
         if(pDevEvent->event.mouse.y != 0)
         {
@@ -2521,32 +2545,36 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
                 ERROR_INFO("Mouse y diff(%d + %d) != %d\n",
                            st_PrevDiMousePoint.y ,pDevEvent->event.mouse.y,pt.y);
             }
-            data[idx].dwOfs = DIMOFS_Y;
-            data[idx].dwData = (pt.y - st_PrevDiMousePoint.y);
-            idx ++;
+            data[num].dwOfs = DIMOFS_Y;
+            data[num].dwData = (pt.y - st_PrevDiMousePoint.y);
+            data[num].dwTimeStamp = GetTickCount();
+            num ++;
         }
         st_PrevDiMousePoint.x = pt.x;
         st_PrevDiMousePoint.y = pt.y;
         LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
         break;
     case MOUSE_EVENT_SLIDE:
-        data[idx].dwOfs = DIMOFS_Z;
-        data[idx].dwData = pDevEvent->event.mouse.x;
-        idx ++;
+        data[num].dwOfs = DIMOFS_Z;
+        data[num].dwData = pDevEvent->event.mouse.x;
+        data[num].dwTimeStamp = GetTickCount();
+        num ++;
         break;
     case MOUSE_EVENT_ABS_MOVING:
         EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
         if(st_PrevDiMousePoint.x != pt.x)
         {
-            data[idx].dwOfs = DIMOFS_X;
-            data[idx].dwData = (st_PrevDiMousePoint.x - pt.x);
-            idx ++;
+            data[num].dwOfs = DIMOFS_X;
+            data[num].dwData = (st_PrevDiMousePoint.x - pt.x);
+            data[num].dwTimeStamp = GetTickCount();
+            num ++;
         }
         if(st_PrevDiMousePoint.y != pt.y)
         {
-            data[idx].dwOfs = DIMOFS_Y;
-            data[idx].dwData = (st_PrevDiMousePoint.y - pt.y);
-            idx ++;
+            data[num].dwOfs = DIMOFS_Y;
+            data[num].dwData = (st_PrevDiMousePoint.y - pt.y);
+            data[num].dwTimeStamp = GetTickCount();
+            num ++;
         }
         st_PrevDiMousePoint.x = pt.x;
         st_PrevDiMousePoint.y = pt.y;
@@ -2559,13 +2587,14 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
-    if(idx == 0)
+    if(num == 0)
     {
         /*yes nothing to handle ,so just return*/
         goto succ;
     }
 
-    ret = __InsertMouseDinputData(data,idx,1);
+    /*num equals 0*/
+    ret = __InsertMouseDinputData(data,num,idx,1);
     if(ret < 0)
     {
         ret = LAST_ERROR_CODE();
@@ -2584,6 +2613,7 @@ fail:
 int Dinput8EventHandler(LPVOID pParam,LPVOID pInput)
 {
     LPDEVICEEVENT pDevEvent = (LPDEVICEEVENT)pInput;
+    int ret;
 
     if(pDevEvent->devtype == DEVICE_TYPE_KEYBOARD)
     {
@@ -2594,11 +2624,16 @@ int Dinput8EventHandler(LPVOID pParam,LPVOID pInput)
         return __Dinput8InsertMouseEvent(pDevEvent);
     }
 
+    ret = ERROR_NOT_SUPPORTED;
+    ERROR_INFO("<0x%p> devtype(%d) not supported\n",pDevEvent,pDevEvent->devtype);
+    SetLastError(ret);
+    return -ret;
 }
 
 
 void DetourDinputEmulationFini(HMODULE hModule)
 {
+    UnRegisterEventListHandler(Dinput8EventHandler);
     UnRegisterEventListInit(DetourDinput8Init);
     return ;
 }
@@ -2617,11 +2652,20 @@ int DetourDinputEmulationInit(HMODULE hModule)
         goto fail;
     }
 
+    ret = RegisterEventListHandler(Dinput8EventHandler,NULL,DINPUT_EMULATION_PRIOR);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("could not register EventList Handler Error(%d)\n",ret);
+        goto fail;
+    }
+
 
     SetLastError(0);
     return 0;
 fail:
     assert(ret > 0);
+    UnRegisterEventListHandler(Dinput8EventHandler);
     UnRegisterEventListInit(DetourDinput8Init);
     SetLastError(ret);
     return FALSE;
