@@ -18,6 +18,13 @@ static std::vector<int> st_MouseDataNums;
 static std::vector<int> st_MouseDataIdx;
 static std::vector<LPDIDEVICEOBJECTDATA> st_pKeyboardData;
 
+#define  MOUSE_DATA_EQUAL()  \
+do\
+{\
+	assert(st_pMouseData.size() == st_MouseDataIdx.size());\
+	assert(st_MouseDataIdx.size() == st_MouseDataNums.size());\
+}while(0)
+
 int __DetourDinput8Init(void)
 {
     st_LastDiMousePoint = {0,0};
@@ -361,7 +368,9 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
-        hr = m_ptr->GetProperty(rguidProp,pdiph);
+        {
+            hr = m_ptr->GetProperty(rguidProp,pdiph);
+        }
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
@@ -374,8 +383,16 @@ public:
         if(!FAILED(hr) && rguidProp == DIPROP_BUFFERSIZE)
         {
             EnterCriticalSection(&(this->m_CS));
-            this->m_BufSize = pdiph->dwData;
-            this->m_SeqId = 1;
+            if(this->m_BufSize != 0)
+            {
+                hr =  DIERR_ALREADYINITIALIZED;
+            }
+
+            else
+            {
+                this->m_BufSize = pdiph->dwData;
+                this->m_SeqId = 1;
+            }
             LeaveCriticalSection(&(this->m_CS));
         }
         DIRECT_INPUT_DEVICE_8A_OUT();
@@ -463,11 +480,7 @@ public:
         int idx=0,num=0,i;
         int ret;
         DIRECT_INPUT_DEVICE_8A_IN();
-        if(this->m_BufSize == 0)
-        {
-            hr = DIERR_NOTBUFFERED;
-        }
-        else if(cbObjectData != sizeof(*pData) || pdwInOut == NULL || *pdwInOut == 0)
+        if(cbObjectData != sizeof(*pData) || pdwInOut == NULL || *pdwInOut == 0)
         {
             hr = DIERR_INVALIDPARAM;
         }
@@ -483,7 +496,7 @@ public:
                 else
                 {
                     /*now if the data is ok ,so copy it*/
-                    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+                    EnterCriticalSection(&(this->m_CS));
                     if(rgdod)
                     {
                         *pdwInOut = 1;
@@ -497,7 +510,7 @@ public:
                         this->m_SeqId ++;
                     }
 
-                    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+                    LeaveCriticalSection(&(this->m_CS));
 
                     if(dwFlags == DIGDD_PEEK)
                     {
@@ -523,7 +536,7 @@ public:
                 }
                 else
                 {
-                    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+                    EnterCriticalSection(&(this->m_CS));
                     if(*pdwInOut >= (num - idx))
                     {
                         *pdwInOut = (num - idx);
@@ -548,7 +561,7 @@ public:
                         this->m_SeqId ++;
                     }
 
-                    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+                    LeaveCriticalSection(&(this->m_CS));
 
                     if(dwFlags == DIGDD_PEEK)
                     {
@@ -1045,7 +1058,9 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
-        hr = m_ptr->GetProperty(rguidProp,pdiph);
+        {
+            hr = m_ptr->GetProperty(rguidProp,pdiph);
+        }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -1053,8 +1068,16 @@ public:
     COM_METHOD(HRESULT,SetProperty)(THIS_ REFGUID rguidProp,LPCDIPROPHEADER pdiph)
     {
         HRESULT hr;
+		DIPROPDWORD* pWord;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->SetProperty(rguidProp,pdiph);
+        if(SUCCEEDED(hr) && rguidProp == DIPROP_BUFFERSIZE)
+        {
+			EnterCriticalSection(&(this->m_CS));
+			pWord = (LPDIPROPDWORD)pdiph;
+			this->m_BufSize = pWord->dwData;
+			LeaveCriticalSection(&(this->m_CS));
+        }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -1148,10 +1171,10 @@ public:
             }
             else
             {
-                EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
                 if(this->__IsKeyboardDevice())
                 {
                     pData = __GetKeyboardData();
+					EnterCriticalSection(&(this->m_CS));
                     if(pData)
                     {
                         if(rgdod)
@@ -1170,11 +1193,13 @@ public:
                     {
                         this->m_SeqId ++;
                     }
+					LeaveCriticalSection(&(this->m_CS));
 
                 }
                 else if(this->__IsMouseDevice())
                 {
                     pData = __GetMouseData(&num,&idx);
+					EnterCriticalSection(&(this->m_CS));
                     if(pData == NULL)
                     {
                         *pdwInOut = 0;
@@ -1183,10 +1208,11 @@ public:
                     {
                         if((*pdwInOut) < (num - idx))
                         {
-                            *pdwInOut= *pdwI\nOut;
+                            *pdwInOut= *pdwInOut;
                         }
                         else
                         {
+                        	hr = DI_BUFFEROVERFLOW;
                             *pdwInOut = num - idx;
                         }
 
@@ -1199,9 +1225,9 @@ public:
                             this->m_SeqId ++;
                         }
                     }
+					LeaveCriticalSection(&(this->m_CS));
                 }
 
-                LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
                 if(dwFlags == DIGDD_PEEK)
                 {
                     if(this->__IsKeyboardDevice())
