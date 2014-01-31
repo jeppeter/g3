@@ -1136,16 +1136,113 @@ public:
     COM_METHOD(HRESULT,GetDeviceData)(THIS_ DWORD cbObjectData,LPDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD dwFlags)
     {
         HRESULT hr=DI_OK;
+        LPDIDEVICEOBJECTDATA pData=NULL;
+        int ret,num=0,idx=0;
         DIRECT_INPUT_DEVICE_8W_IN();
         if(this->__IsMouseDevice() || this->__IsKeyboardDevice())
         {
-        	
+            if(cbObjectData != sizeof(*rgdod) || (dwFlags != 0 && dwFlags != DIGDD_PEEK) ||
+                    pdwInOut == NULL)
+            {
+                hr = DIERR_INVALIDPARAM;
+            }
+            else
+            {
+                EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+                if(this->__IsKeyboardDevice())
+                {
+                    pData = __GetKeyboardData();
+                    if(pData)
+                    {
+                        if(rgdod)
+                        {
+                            pData->dwSequence = this->m_SeqId;
+                            CopyMemory(rgdod,pData,sizeof(*pData));
+                        }
+                        *pdwInOut = 1;
+                    }
+                    else
+                    {
+                        *pdwInOut = 0;
+                    }
+
+                    if(dwFlags != DIGDD_PEEK)
+                    {
+                        this->m_SeqId ++;
+                    }
+
+                }
+                else if(this->__IsMouseDevice())
+                {
+                    pData = __GetMouseData(&num,&idx);
+                    if(pData == NULL)
+                    {
+                        *pdwInOut = 0;
+                    }
+                    else
+                    {
+                        if((*pdwInOut) < (num - idx))
+                        {
+                            *pdwInOut= *pdwI\nOut;
+                        }
+                        else
+                        {
+                            *pdwInOut = num - idx;
+                        }
+
+                        if(rgdod)
+                        {
+                            CopyMemory(rgdod,pData,(*pdwInOut)*sizeof(*pData));
+                        }
+                        if(dwFlags != DIGDD_PEEK)
+                        {
+                            this->m_SeqId ++;
+                        }
+                    }
+                }
+
+                LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
+                if(dwFlags == DIGDD_PEEK)
+                {
+                    if(this->__IsKeyboardDevice())
+                    {
+                        ret = __InsertKeyboardDinputData(pData,0);
+                        if(ret < 0)
+                        {
+                            hr = DIERR_OUTOFMEMORY;
+                            goto fail;
+                        }
+                    }
+                    else if(this->__IsMouseDevice())
+                    {
+                        ret = __InsertMouseDinputData(pData,num,idx,0);
+                        if(ret < 0)
+                        {
+                            hr = DIERR_OUTOFMEMORY;
+                            goto fail;
+                        }
+                    }
+                }
+
+                if(pData)
+                {
+                    free(pData);
+                }
+                pData = NULL;
+            }
         }
         else
         {
             hr = m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
         }
         DIRECT_INPUT_DEVICE_8W_OUT();
+        return hr;
+fail:
+        if(pData)
+        {
+            free(pData);
+        }
+        pData = NULL;
         return hr;
     }
 
