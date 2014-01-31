@@ -25,6 +25,12 @@ do\
 	assert(st_MouseDataIdx.size() == st_MouseDataNums.size());\
 }while(0)
 
+LPDIDEVICEOBJECTDATA __GetKeyboardData();
+int __InsertKeyboardDinputData(DIDEVICEOBJECTDATA* pData,int back);
+LPDIDEVICEOBJECTDATA __GetMouseData(int *pNum,int *pIdx);
+int __InsertMouseDinputData(DIDEVICEOBJECTDATA *pData,int num,int idx,int back);
+
+
 int __DetourDinput8Init(void)
 {
     st_LastDiMousePoint = {0,0};
@@ -298,7 +304,7 @@ public:
         m_iid = riid;
         m_BufSize = 0;
         m_SeqId = 0;
-        InitCriticalSection(&(m_CS));
+        InitializeCriticalSection(&(m_CS));
     };
 
     ~CDirectInputDevice8AHook()
@@ -475,7 +481,7 @@ public:
         {
             hr = DIERR_INVALIDPARAM;
         }
-        else
+        else if (this->__IsKeyboardDevice() || this->__IsMouseDevice())
         {
             if(this->__IsKeyboardDevice())
             {
@@ -532,9 +538,9 @@ public:
                 else
                 {
                     EnterCriticalSection(&(this->m_CS));
-                    if(*pdwInOut >= (num - idx))
+                    if((int)(*pdwInOut) >= (num - idx))
                     {
-                        *pdwInOut = (num - idx);
+                        (*pdwInOut) = (num - idx);
                     }
                     else
                     {
@@ -1232,7 +1238,7 @@ public:
                     }
                     else
                     {
-                        if((*pdwInOut) < (num - idx))
+                        if((int)(*pdwInOut) < (num - idx))
                         {
                             *pdwInOut= *pdwInOut;
                         }
@@ -2270,7 +2276,7 @@ int __InsertKeyboardDinputData(DIDEVICEOBJECTDATA* pData,int back)
     DIDEVICEOBJECTDATA* pInsert=NULL,*pRemove=NULL;
     int ret=1;
 
-    pInsert = calloc(1,sizeof(*pData));
+    pInsert = (LPDIDEVICEOBJECTDATA)calloc(1,sizeof(*pData));
     if(pInsert == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -2286,7 +2292,7 @@ int __InsertKeyboardDinputData(DIDEVICEOBJECTDATA* pData,int back)
         {
             pRemove = st_pKeyboardData[0];
             st_pKeyboardData.erase(st_pKeyboardData.begin());
-            ret = 0
+            ret = 0;
         }
         st_pKeyboardData.push_back(pInsert);
     }
@@ -2325,6 +2331,7 @@ LPDIDEVICEOBJECTDATA __GetMouseData(int *pNum,int *pIdx)
     int num,idx;
 
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+	MOUSE_DATA_EQUAL();
     if(st_pMouseData.size() > 0)
     {
         pData = st_pMouseData[0];
@@ -2350,7 +2357,7 @@ int __InsertMouseDinputData(DIDEVICEOBJECTDATA *pData,int num,int idx,int back)
     DIDEVICEOBJECTDATA* pInsert=NULL,*pRemove=NULL;
     int ret=1;
 
-    pInsert = calloc(num,sizeof(*pData));
+    pInsert = (LPDIDEVICEOBJECTDATA)calloc(num,sizeof(*pData));
     if(pInsert == NULL)
     {
         ret = LAST_ERROR_CODE();
@@ -2360,6 +2367,7 @@ int __InsertMouseDinputData(DIDEVICEOBJECTDATA *pData,int num,int idx,int back)
     CopyMemory(pInsert,pData,sizeof(*pData)*num);
 
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+	MOUSE_DATA_EQUAL();
     if(back)
     {
         if(st_pMouseData.size() > 20)
@@ -2402,7 +2410,7 @@ int __Dinput8InsertKeyboardEvent(LPDEVICEEVENT pDevEvent)
     if(pDevEvent->event.keyboard.event != KEYBOARD_EVENT_DOWN &&
             pDevEvent->event.keyboard.event != KEYBOARD_EVENT_UP)
     {
-        ret = ERROR_INVALID_PARAMTER;
+        ret = ERROR_INVALID_PARAMETER;
         ERROR_INFO("<0x%p> Keyboard Event(%d) not valid\n",
                    pDevEvent,pDevEvent->event.keyboard.event);
         goto fail;
