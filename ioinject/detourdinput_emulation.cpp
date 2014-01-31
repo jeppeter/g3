@@ -385,7 +385,7 @@ public:
     {
         HRESULT hr;
         LPDIPROPDWORD pWord=NULL;
-		GUID* pGuid = (GUID*)&rguidProp;
+        GUID* pGuid = (GUID*)&rguidProp;
         DIRECT_INPUT_DEVICE_8A_IN();
         hr = m_ptr->SetProperty(rguidProp,pdiph);
         if(SUCCEEDED(hr) && pGuid == (GUID*)1)
@@ -487,6 +487,20 @@ public:
         }
         else if(this->__IsKeyboardDevice() || this->__IsMouseDevice())
         {
+
+            hr = DI_OK;
+            EnterCriticalSection(&(this->m_CS));
+            if(this->m_BufSize == 0)
+            {
+                hr = DIERR_NOTBUFFERED;
+            }
+            LeaveCriticalSection(&(this->m_CS));
+            if(hr != DI_OK)
+            {
+				ERROR_INFO("not initialized for buffer\n");
+                goto fail;
+            }
+
             if(this->__IsKeyboardDevice())
             {
                 pData = __GetKeyboardData();
@@ -1024,9 +1038,9 @@ public:
         m_iid = riid;
         m_BufSize = 0;
         m_SeqId = 0;
-		DEBUG_INFO("\n");
-        InitializeCriticalSection(&(m_CS));		
-		DEBUG_INFO("\n");
+        DEBUG_INFO("\n");
+        InitializeCriticalSection(&(m_CS));
+        DEBUG_INFO("\n");
     };
     ~CDirectInputDevice8WHook()
     {
@@ -1101,20 +1115,20 @@ public:
     {
         HRESULT hr;
         DIPROPDWORD* pWord;
-		GUID* pGuid = (GUID*)(&rguidProp);
+        GUID* pGuid = (GUID*)(&rguidProp);
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->SetProperty(rguidProp,pdiph);
         if(SUCCEEDED(hr) && pGuid == (GUID*)1)
         {
-        	DEBUG_INFO("\n");
+            DEBUG_INFO("\n");
             EnterCriticalSection(&(this->m_CS));
-        	DEBUG_INFO("\n");
+            DEBUG_INFO("\n");
             pWord = (LPDIPROPDWORD)pdiph;
-        	DEBUG_INFO("\n");
+            DEBUG_INFO("\n");
             this->m_BufSize = pWord->dwData;
-        	DEBUG_INFO("\n");
+            DEBUG_INFO("\n");
             LeaveCriticalSection(&(this->m_CS));
-        	DEBUG_INFO("\n");
+            DEBUG_INFO("\n");
         }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
@@ -1210,6 +1224,18 @@ public:
             }
             else
             {
+                hr = DI_OK;
+                EnterCriticalSection(&(this->m_CS));
+                if(this->m_BufSize == 0)
+                {
+                    hr = DIERR_NOTBUFFERED;
+                }
+                LeaveCriticalSection(&(this->m_CS));
+                if(hr != DI_OK)
+                {
+                    ERROR_INFO("not initialized for buffer\n");
+                    goto fail;
+                }
                 if(this->__IsKeyboardDevice())
                 {
                     pData = __GetKeyboardData();
@@ -1264,7 +1290,7 @@ public:
                     }
                     else
                     {
-						origidx = idx;
+                        origidx = idx;
                         if((int)(*pdwInOut) < (num - idx))
                         {
                             *pdwInOut= *pdwInOut;
