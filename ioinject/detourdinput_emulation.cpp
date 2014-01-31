@@ -368,9 +368,7 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
-        {
-            hr = m_ptr->GetProperty(rguidProp,pdiph);
-        }
+        hr = m_ptr->GetProperty(rguidProp,pdiph);
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
@@ -378,21 +376,14 @@ public:
     COM_METHOD(HRESULT,SetProperty)(THIS_ REFGUID rguidProp,LPCDIPROPHEADER pdiph)
     {
         HRESULT hr;
+        LPDIPROPDWORD pWord=NULL;
         DIRECT_INPUT_DEVICE_8A_IN();
         hr = m_ptr->SetProperty(rguidProp,pdiph);
-        if(!FAILED(hr) && rguidProp == DIPROP_BUFFERSIZE)
+        if(SUCCEEDED(hr) && rguidProp == DIPROP_BUFFERSIZE)
         {
             EnterCriticalSection(&(this->m_CS));
-            if(this->m_BufSize != 0)
-            {
-                hr =  DIERR_ALREADYINITIALIZED;
-            }
-
-            else
-            {
-                this->m_BufSize = pdiph->dwData;
-                this->m_SeqId = 1;
-            }
+            pWord = (LPDIPROPDWORD)pdiph;
+            this->m_BufSize = pWord->dwData;
             LeaveCriticalSection(&(this->m_CS));
         }
         DIRECT_INPUT_DEVICE_8A_OUT();
@@ -512,10 +503,10 @@ public:
 
                     LeaveCriticalSection(&(this->m_CS));
 
-                    if(dwFlags == DIGDD_PEEK)
+                    if(dwFlags == DIGDD_PEEK && pData)
                     {
                         ret = __InsertKeyboardDinputData(pData,0);
-                        if(ret != 0)
+                        if(ret < 0)
                         {
                             assert(0!=0);
                             hr = DIERR_OUTOFMEMORY;
@@ -523,7 +514,10 @@ public:
                         }
                     }
                     /*to free data*/
-                    free(pData);
+                    if(pData)
+                    {
+                        free(pData);
+                    }
                     pData = NULL;
                 }
             }
@@ -543,6 +537,7 @@ public:
                     }
                     else
                     {
+                        *pdwInOut = *pdwInOut;
                         hr = DI_BUFFEROVERFLOW;
                     }
 
@@ -550,8 +545,8 @@ public:
                     {
                         for(i=0; i<(num-idx); i++)
                         {
-                            pData[idx+i].dwSequence = this->m_SeqId;
-                            pData[idx+i].uAppData = 0xffffffff;
+                            pData[i].dwSequence = this->m_SeqId;
+                            pData[i].uAppData = 0xffffffff;
                         }
                         CopyMemory(rgdod,pData,(*pdwInOut)* sizeof(*pData));
                     }
@@ -563,7 +558,7 @@ public:
 
                     LeaveCriticalSection(&(this->m_CS));
 
-                    if(dwFlags == DIGDD_PEEK)
+                    if(dwFlags == DIGDD_PEEK && pData)
                     {
                         ret = __InsertMouseDinputData(pData,num,0,0);
                         if(ret < 0)
@@ -573,8 +568,10 @@ public:
                             goto fail;
                         }
                     }
-
-                    free(pData);
+                    if(pData)
+                    {
+                        free(pData);
+                    }
                     pData = NULL;
                 }
             }
@@ -1068,15 +1065,15 @@ public:
     COM_METHOD(HRESULT,SetProperty)(THIS_ REFGUID rguidProp,LPCDIPROPHEADER pdiph)
     {
         HRESULT hr;
-		DIPROPDWORD* pWord;
+        DIPROPDWORD* pWord;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->SetProperty(rguidProp,pdiph);
         if(SUCCEEDED(hr) && rguidProp == DIPROP_BUFFERSIZE)
         {
-			EnterCriticalSection(&(this->m_CS));
-			pWord = (LPDIPROPDWORD)pdiph;
-			this->m_BufSize = pWord->dwData;
-			LeaveCriticalSection(&(this->m_CS));
+            EnterCriticalSection(&(this->m_CS));
+            pWord = (LPDIPROPDWORD)pdiph;
+            this->m_BufSize = pWord->dwData;
+            LeaveCriticalSection(&(this->m_CS));
         }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
@@ -1174,7 +1171,7 @@ public:
                 if(this->__IsKeyboardDevice())
                 {
                     pData = __GetKeyboardData();
-					EnterCriticalSection(&(this->m_CS));
+                    EnterCriticalSection(&(this->m_CS));
                     if(pData)
                     {
                         if(rgdod)
@@ -1193,13 +1190,13 @@ public:
                     {
                         this->m_SeqId ++;
                     }
-					LeaveCriticalSection(&(this->m_CS));
+                    LeaveCriticalSection(&(this->m_CS));
 
                 }
                 else if(this->__IsMouseDevice())
                 {
                     pData = __GetMouseData(&num,&idx);
-					EnterCriticalSection(&(this->m_CS));
+                    EnterCriticalSection(&(this->m_CS));
                     if(pData == NULL)
                     {
                         *pdwInOut = 0;
@@ -1212,7 +1209,7 @@ public:
                         }
                         else
                         {
-                        	hr = DI_BUFFEROVERFLOW;
+                            hr = DI_BUFFEROVERFLOW;
                             *pdwInOut = num - idx;
                         }
 
@@ -1225,7 +1222,7 @@ public:
                             this->m_SeqId ++;
                         }
                     }
-					LeaveCriticalSection(&(this->m_CS));
+                    LeaveCriticalSection(&(this->m_CS));
                 }
 
                 if(dwFlags == DIGDD_PEEK)
