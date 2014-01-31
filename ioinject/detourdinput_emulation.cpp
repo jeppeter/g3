@@ -259,8 +259,10 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
 
 
 
-#define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
-#define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+//#define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+//#define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DIRECT_INPUT_DEVICE_8A_IN()
+#define  DIRECT_INPUT_DEVICE_8A_OUT()
 
 
 #define  SET_BIT(c)  ((c)=0x80)
@@ -383,9 +385,10 @@ public:
     {
         HRESULT hr;
         LPDIPROPDWORD pWord=NULL;
+		GUID* pGuid = (GUID*)&rguidProp;
         DIRECT_INPUT_DEVICE_8A_IN();
         hr = m_ptr->SetProperty(rguidProp,pdiph);
-        if(SUCCEEDED(hr) && rguidProp == DIPROP_BUFFERSIZE)
+        if(SUCCEEDED(hr) && pGuid == (GUID*)1)
         {
             EnterCriticalSection(&(this->m_CS));
             pWord = (LPDIPROPDWORD)pdiph;
@@ -1021,7 +1024,9 @@ public:
         m_iid = riid;
         m_BufSize = 0;
         m_SeqId = 0;
-        InitializeCriticalSection(&(m_CS));
+		DEBUG_INFO("\n");
+        InitializeCriticalSection(&(m_CS));		
+		DEBUG_INFO("\n");
     };
     ~CDirectInputDevice8WHook()
     {
@@ -1096,14 +1101,20 @@ public:
     {
         HRESULT hr;
         DIPROPDWORD* pWord;
+		GUID* pGuid = (GUID*)(&rguidProp);
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->SetProperty(rguidProp,pdiph);
-        if(SUCCEEDED(hr) && rguidProp == DIPROP_BUFFERSIZE)
+        if(SUCCEEDED(hr) && pGuid == (GUID*)1)
         {
+        	DEBUG_INFO("\n");
             EnterCriticalSection(&(this->m_CS));
+        	DEBUG_INFO("\n");
             pWord = (LPDIPROPDWORD)pdiph;
+        	DEBUG_INFO("\n");
             this->m_BufSize = pWord->dwData;
+        	DEBUG_INFO("\n");
             LeaveCriticalSection(&(this->m_CS));
+        	DEBUG_INFO("\n");
         }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
