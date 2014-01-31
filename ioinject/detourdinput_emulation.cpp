@@ -473,15 +473,16 @@ public:
     COM_METHOD(HRESULT,GetDeviceData)(THIS_ DWORD cbObjectData,LPDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD dwFlags)
     {
         HRESULT hr = DI_OK;
-        LPDIDEVICEOBJECTDATA pData=NULL;
-        int idx=0,num=0,i;
+        LPDIDEVICEOBJECTDATA pData=NULL,pCopyData;
+        int idx=0,num=0,origidx=0;
+        int i;
         int ret;
         DIRECT_INPUT_DEVICE_8A_IN();
         if(cbObjectData != sizeof(*pData) || pdwInOut == NULL || *pdwInOut == 0)
         {
             hr = DIERR_INVALIDPARAM;
         }
-        else if (this->__IsKeyboardDevice() || this->__IsMouseDevice())
+        else if(this->__IsKeyboardDevice() || this->__IsMouseDevice())
         {
             if(this->__IsKeyboardDevice())
             {
@@ -538,34 +539,48 @@ public:
                 else
                 {
                     EnterCriticalSection(&(this->m_CS));
+                    origidx=  idx;
                     if((int)(*pdwInOut) >= (num - idx))
                     {
                         (*pdwInOut) = (num - idx);
+                        idx = num;
                     }
                     else
                     {
                         *pdwInOut = *pdwInOut;
-                        hr = DI_BUFFEROVERFLOW;
+                        idx += (*pdwInOut);
                     }
 
                     if(rgdod)
                     {
-                        for(i=0; i<(num-idx); i++)
+                        for(i=0; i<num; i++)
                         {
                             pData[i].dwSequence = this->m_SeqId;
                             pData[i].uAppData = 0xffffffff;
                         }
-                        CopyMemory(rgdod,pData,(*pdwInOut)* sizeof(*pData));
+                        pCopyData = pData + idx;
+                        CopyMemory(rgdod,pCopyData,(*pdwInOut)* sizeof(*pData));
                     }
 
-                    if(dwFlags != DIGDD_PEEK && pData)
+                    if(dwFlags != DIGDD_PEEK && pData && num == idx)
                     {
                         this->m_SeqId ++;
                     }
 
                     if(dwFlags == DIGDD_PEEK && pData)
                     {
-                        ret = __InsertMouseDinputData(pData,num,0,0);
+                        ret = __InsertMouseDinputData(pData,num,origidx,0);
+                        if(ret < 0)
+                        {
+                            LeaveCriticalSection(&(this->m_CS));
+                            assert(0!=0);
+                            hr = DIERR_OUTOFMEMORY;
+                            goto fail;
+                        }
+                    }
+                    else if(num != idx && pData)
+                    {
+                        ret = __InsertMouseDinputData(pData,num,idx,0);
                         if(ret < 0)
                         {
                             LeaveCriticalSection(&(this->m_CS));
@@ -1171,8 +1186,8 @@ public:
     COM_METHOD(HRESULT,GetDeviceData)(THIS_ DWORD cbObjectData,LPDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD dwFlags)
     {
         HRESULT hr=DI_OK;
-        LPDIDEVICEOBJECTDATA pData=NULL;
-        int ret,num=0,idx=0;
+        LPDIDEVICEOBJECTDATA pData=NULL,pCopyData;
+        int ret,num=0,idx=0,origidx=0;
         int i;
         DIRECT_INPUT_DEVICE_8W_IN();
         if(this->__IsMouseDevice() || this->__IsKeyboardDevice())
@@ -1238,30 +1253,44 @@ public:
                     }
                     else
                     {
+						origidx = idx;
                         if((int)(*pdwInOut) < (num - idx))
                         {
                             *pdwInOut= *pdwInOut;
+                            idx += (*pdwInOut);
                         }
                         else
                         {
-                            hr = DI_BUFFEROVERFLOW;
                             *pdwInOut = num - idx;
+                            idx = num;
                         }
 
                         if(rgdod)
                         {
-                            for(i=0; i<(num-idx); i++)
+                            for(i=0; i<num; i++)
                             {
                                 pData[i].dwSequence = this->m_SeqId;
                                 pData[i].uAppData = 0xffffffff;
                             }
-                            CopyMemory(rgdod,pData,(*pdwInOut)*sizeof(*pData));
+                            pCopyData = pData + origidx;
+                            CopyMemory(rgdod,pCopyData,(*pdwInOut)*sizeof(*pData));
                         }
-                        if(dwFlags != DIGDD_PEEK && pData)
+                        if(dwFlags != DIGDD_PEEK && pData && num == idx)
                         {
                             this->m_SeqId ++;
                         }
                         if(dwFlags == DIGDD_PEEK && pData)
+                        {
+                            ret = __InsertMouseDinputData(pData,num,origidx,0);
+                            if(ret < 0)
+                            {
+                                LeaveCriticalSection(&(this->m_CS));
+                                assert(0!=0);
+                                hr = DIERR_OUTOFMEMORY;
+                                goto fail;
+                            }
+                        }
+                        else if(num != idx && pData)
                         {
                             ret = __InsertMouseDinputData(pData,num,idx,0);
                             if(ret < 0)
@@ -2331,7 +2360,7 @@ LPDIDEVICEOBJECTDATA __GetMouseData(int *pNum,int *pIdx)
     int num,idx;
 
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-	MOUSE_DATA_EQUAL();
+    MOUSE_DATA_EQUAL();
     if(st_pMouseData.size() > 0)
     {
         pData = st_pMouseData[0];
@@ -2367,7 +2396,7 @@ int __InsertMouseDinputData(DIDEVICEOBJECTDATA *pData,int num,int idx,int back)
     CopyMemory(pInsert,pData,sizeof(*pData)*num);
 
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-	MOUSE_DATA_EQUAL();
+    MOUSE_DATA_EQUAL();
     if(back)
     {
         if(st_pMouseData.size() > 20)
