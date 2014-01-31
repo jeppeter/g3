@@ -1135,9 +1135,16 @@ public:
 
     COM_METHOD(HRESULT,GetDeviceData)(THIS_ DWORD cbObjectData,LPDIDEVICEOBJECTDATA rgdod,LPDWORD pdwInOut,DWORD dwFlags)
     {
-        HRESULT hr;
+        HRESULT hr=DI_OK;
         DIRECT_INPUT_DEVICE_8W_IN();
-        hr = m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
+        if(this->__IsMouseDevice() || this->__IsKeyboardDevice())
+        {
+        	
+        }
+        else
+        {
+            hr = m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
+        }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
