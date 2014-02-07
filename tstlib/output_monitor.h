@@ -3,7 +3,7 @@
 #define __OUTPUT_MONITOR_H__
 
 
-
+#include <injectctrl.h>
 
 class OutputMonitor
 {
@@ -19,6 +19,7 @@ private:
 	int __Start();
 	void __Stop();
 	int __GetStarted();
+	int __SetStarted(int started,int force);
 	static DWORD __ProcessMonitor(void* pParam);
 	DWORD __ProcessImpl();
 
@@ -31,6 +32,7 @@ private:
 	std::vector<void*> m_pBuffers;
 	std::vector<int> m_Pids;
 	int m_Started;
+	thread_control_t m_ThreadControl;
 	CRITICAL_SECTIONS m_CS;	
 };
 
