@@ -66,16 +66,43 @@ void OutputMonitor::__ClearBuffers()
     void* pBuffer = NULL;
     while(this->m_pBuffers.size() > 0)
     {
-    	pBuffer = this->m_pBuffers[0];
-		this->m_pBuffers.erase(this->m_pBuffers.begin());
-		free(pBuffer);
-		pBuffer = NULL;
+        pBuffer = this->m_pBuffers[0];
+        this->m_pBuffers.erase(this->m_pBuffers.begin());
+        free(pBuffer);
+        pBuffer = NULL;
     }
 
-	return ;
+    return ;
 }
 
+void OutputMonitor::__UnMapBuffer()
+{
+    UnMapFileBuffer(&(this->m_pDBWinBuffer));
+    CloseMapFileHandle(&(this->m_hDBWinMapBuffer));
+    return ;
+}
 
+void OutputMonitor::__CloseMutexEvent()
+{
+    if(this->m_hDBWinDataReady)
+    {
+        CloseHandle(this->m_hDBWinDataReady);
+    }
+    this->m_hDBWinDataReady = NULL;
+
+    if(this->m_hDBWinBufferReady)
+    {
+        CloseHandle(this->m_hDBWinBufferReady);
+    }
+    this->m_hDBWinBufferReady = NULL;
+
+    if(this->m_hDBWinMutex)
+    {
+        CloseHandle(this->m_hDBWinMutex);
+    }
+    this->m_hDBWinMutex = NULL;
+	return ;
+}
 
 void OutputMonitor::__Stop()
 {

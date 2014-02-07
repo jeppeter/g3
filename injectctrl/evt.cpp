@@ -60,3 +60,58 @@ fail:
 }
 
 
+HANDLE GetMutex(const char* pName,int create)
+{
+    HANDLE hMutex=NULL;
+    int ret;
+#ifdef _UNICODE
+    wchar_t* pNameW=NULL;
+    int namesize=0;
+    ret = AnsiToUnicode((char*)pName,&pNameW,&namesize);
+    if(ret < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+    if(create)
+    {
+        hMutex = CreateMutex(NULL,FALSE,pNameW);
+    }
+    else
+    {
+        hMutex = OpenMutex(SYNCHRONIZE,FALSE,pNameW);
+    }
+#else
+    if(create)
+    {
+        hMutex = CreateMutex(NULL,FALSE,pName);
+    }
+    else
+    {
+        hMutex = OpenMutex(SYNCHRONIZE,FALSE,pName);
+    }
+#endif
+
+    if(hMutex==NULL)
+    {
+        ret = LAST_ERROR_CODE();
+        goto fail;
+    }
+
+#ifdef _UNICODE
+    AnsiToUnicode(NULL,&pNameW,&namesize);
+#endif
+
+    return hMutex;
+fail:
+#ifdef _UNICODE
+    AnsiToUnicode(NULL,&pNameW,&namesize);
+#endif
+    if(hMutex)
+    {
+        CloseHandle(hMutex);
+    }
+    SetLastError(ret);
+    return NULL;
+}
+
