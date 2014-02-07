@@ -16,10 +16,11 @@ public:
 	int GetBuffer(std::vector<void*> pBuffers);
 
 private:
+	void __AssertStop();
 	int __Start();
 	void __Stop();
 	int __GetStarted();
-	int __SetStarted(int started,int force);
+	int __SetStarted(int started);
 	static DWORD __ProcessMonitor(void* pParam);
 	DWORD __ProcessImpl();
 

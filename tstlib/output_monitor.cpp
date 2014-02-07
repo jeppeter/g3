@@ -20,6 +20,7 @@ OutputMonitor::OutputMonitor()
 OutputMonitor::~OutputMonitor()
 {
     this->Stop();
+	this->m_Pids.clear();
     DeleteCriticalSection(&m_CS);
 }
 
@@ -32,34 +33,51 @@ int OutputMonitor::__GetStarted()
     return started;
 }
 
-int OutputMonitor::__SetStarted(int started,int force)
+int OutputMonitor::__SetStarted(int started)
 {
     int oldstate=0;
 
     EnterCriticalSection(&(this->m_CS));
     oldstate = this->m_Started;
-
-    if((oldstate == 1 && started == 0) ||
-            (oldstate == 2 && started == 1))
-    {
-        this->m_Started = started;
-    }
-    else if(force)
-    {
-        this->m_Started = started;
-    }
+	this->m_Started = started;
     LeaveCriticalSection(&(this->m_CS));
     return oldstate;
 }
+
+void OutputMonitor::__AssertStop()
+{
+	assert(this->m_hDBWinMutex == NULL);
+	assert(this->m_hDBWinBufferReady == NULL);
+	assert(this->m_hDBWinDataReady == NULL);
+	assert(this->m_hDBWinMapBuffer == NULL);
+	assert(this->m_pDBWinBuffer == NULL);
+	assert(this->m_pBuffers.size() == 0);
+	assert(this->m_Started == 0);
+	assert(this->m_ThreadControl.exited == 1);
+	assert(this->m_ThreadControl.exitevt == NULL);
+	assert(this->m_ThreadControl.running == 0);
+	assert(this->m_ThreadControl.thread == NULL);
+	assert(this->m_ThreadControl.threadid == 0);
+	return ;
+}
+
+
+
 
 void OutputMonitor::Stop()
 {
     int started = 0;
 
-    started = this->__SetStarted(-1,1);
+    started = this->__SetStarted(0);
     if(started == 0)
     {
         /*have already stopped ,so not running*/
+		this->__AssertStop();
         return ;
     }
+
+	/*now we should stop this function*/
+	this->__Stop();
+	this->__AssertStop();
+	return ;
 }
