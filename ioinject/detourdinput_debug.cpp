@@ -158,6 +158,10 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
         hr = m_ptr->GetDeviceState(cbData,lpvData);
+        if(SUCCEEDED(hr))
+        {
+            DEBUG_BUFFER_FMT(lpvData,cbData,"<0x%p>(0x%p) GetData:",this,this->m_ptr);
+        }
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
@@ -167,6 +171,15 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
         hr = m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
+        if(SUCCEEDED(hr) && rgdod)
+        {
+            DEBUG_BUFFER_FMT(rgdod,cbObjectData*(*pdwInOut),"<0x%p>(0x%p) dwFlags 0x%08x objdata 0x%08x inout (%d):",
+                             this,this->m_ptr,dwFlags,cbObjectData,*pdwInOut);
+        }
+        else if(SUCCEEDED(hr))
+        {
+            DEBUG_INFO("<0x%p>(0x%p) rgdod NULL dwFlags 0x%08x inout %d\n",this,this->m_ptr,dwFlags,*pdwInOut);
+        }
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
@@ -563,6 +576,10 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->GetDeviceState(cbData,lpvData);
+        if(SUCCEEDED(hr))
+        {
+            DEBUG_BUFFER_FMT(lpvData,cbData,"<0x%p>(0x%p) GetData:",this,this->m_ptr);
+        }
         if(hr == DI_OK)
         {
             if(this->m_iid == GUID_SysMouse)
@@ -622,6 +639,15 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->GetDeviceData(cbObjectData,rgdod,pdwInOut,dwFlags);
+        if(SUCCEEDED(hr) && rgdod)
+        {
+            DEBUG_BUFFER_FMT(rgdod,cbObjectData*(*pdwInOut),"<0x%p>(0x%p) dwFlags 0x%08x objdata 0x%08x inout (%d):",
+                             this,this->m_ptr,dwFlags,cbObjectData,*pdwInOut);
+        }
+        else if(SUCCEEDED(hr))
+        {
+            DEBUG_INFO("<0x%p>(0x%p) rgdod NULL dwFlags 0x%08x inout %d\n",this,this->m_ptr,dwFlags,*pdwInOut);
+        }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
