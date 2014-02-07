@@ -79,8 +79,8 @@ UINT WINAPI GetRawInputDataCallBack(
             }
             else if(pRaw->header.dwType == RIM_TYPEMOUSE)
             {
-                //DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"Mouse rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
-                //                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
+                DETOURRAWINPUT_DEBUG_BUFFER_FMT(pData,*pcbSize,"Mouse rawinput(0x%08x) uiCommand 0x%08x(%d) sizeheader(%d) uret(%d)",
+                                                hRawInput,uiCommand,uiCommand,cbSizeHeader,uret);
             }
             else
             {

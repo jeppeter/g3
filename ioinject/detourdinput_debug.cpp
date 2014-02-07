@@ -316,6 +316,7 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
         hr = m_ptr->Poll();
+		DEBUG_INFO("<0x%p>(0x%p) Poll result(0x%08x)\n",this,this->m_ptr,hr);
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
@@ -856,7 +857,7 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->Poll();
-        DINPUT_DEBUG_INFO("<0X%p> Poll Return 0x%08x\n",this->m_ptr,hr);
+		DEBUG_INFO("<0x%p>(0x%p) Poll result(0x%08x)\n",this,this->m_ptr,hr);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
