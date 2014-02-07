@@ -16,6 +16,12 @@ public:
 	int GetBuffer(std::vector<void*> pBuffers);
 
 private:
+	void __ClearBuffers();
+	void __UnMapBuffer();
+	void __CloseMutexEvent();
+	int __MapBuffer();
+	int __CreateMutexEvent();
+	
 	void __AssertStop();
 	int __Start();
 	void __Stop();
