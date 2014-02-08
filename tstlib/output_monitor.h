@@ -37,7 +37,10 @@ private:
 	int __SetStarted(int started);
 	static DWORD __ProcessMonitor(void* pParam);
 	DWORD __ProcessImpl();
+	int __HandleBufferIn();
+	int __IsInProcessPids();
 	PDBWIN_BUFFER_t __GetDbWinBuffer();
+	int __InsertDbWinBuffer(PDBWIN_BUFFER_t pBuffer);
 
 private:
 	HANDLE m_hDBWinMutex;

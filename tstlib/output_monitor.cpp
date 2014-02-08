@@ -230,7 +230,7 @@ int OutputMonitor::__CreateMutexEvent()
         }
     }
 
-	SETERRNO(0);
+    SETERRNO(0);
     return 0;
 fail:
     this->__CloseMutexEvent();
@@ -263,12 +263,117 @@ int OutputMonitor::__MapBuffer()
         goto fail;
     }
 
-	SETERRNO(0);
+    SETERRNO(0);
     return 0;
 fail:
     this->__UnMapBuffer();
     SETERRNO(ret);
     return -ret;
+}
+
+DWORD OutputMonitor::__ProcessMonitor(void * pParam)
+{
+    OutputMonitor* pThis = (OutputMonitor*)pParam;
+    return pThis->__ProcessImpl();
+}
+
+int OutputMonitor::__IsInProcessPids()
+{
+    int ret = 1;
+    UINT i;
+    PDBWIN_BUFFER_t pWaitbuffer=NULL;
+
+    pWaitbuffer = (PDBWIN_BUFFER_t)this->m_pDBWinBuffer;
+    EnterCriticalSection(&(this->m_CS));
+    if(this->m_Pids.size() > 0)
+    {
+        ret = 0;
+        for(i=0; i<this->m_Pids.size(); i++)
+        {
+            if(this->m_Pids[i] == pWaitbuffer->dwProcessId)
+            {
+                ret = 1;
+                break;
+            }
+        }
+    }
+    LeaveCriticalSection(&(this->m_CS));
+
+    return ret;
+}
+
+int OutputMonitor::__InsertDbWinBuffer(PDBWIN_BUFFER_t pBuffer)
+{
+    EnterCriticalSection(&(this->m_CS));
+    this->m_pAvailBuffers.push_back(pBuffer);
+    LeaveCriticalSection(&(this->m_CS));
+    return 1;
+}
+
+int OutputMonitor::__HandleBufferIn()
+{
+    PDBWIN_BUFFER_t pBuffer=NULL;
+    int ret;
+    BOOL bret;
+
+    ret = this->__IsInProcessPids();
+    if(ret == 0)
+    {
+        SetEvent(this->m_hDBWinBufferReady);
+        return 0;
+    }
+
+    /*now we should */
+    pBuffer = this->__GetDbWinBuffer();
+    if(pBuffer == NULL)
+    {
+        ret = GETERRNO();
+        SetEvent(this->m_hDBWinBufferReady);
+        return -ret;
+    }
+
+    CopyMemory(pBuffer,this->m_pDBWinBuffer,sizeof(*pBuffer));
+    this->__InsertDbWinBuffer(pBuffer);
+    SetEvent(this->m_hDBWinBufferReady);
+    return 1;
+}
+
+DWORD OutputMonitor::__ProcessImpl()
+{
+    DWORD dret;
+    int ret;
+    HANDLE hWaitHandle[2];
+
+    hWaitHandle[0] = this->m_hDBWinDataReady;
+    hWaitHandle[1] = this->m_ThreadControl.exitevt;
+
+    while(this->m_ThreadControl.running)
+    {
+        dret = WaitForMultipleObjectsEx(2,hWaitHandle,FALSE,INFINITE,TRUE);
+        if(dret == WAIT_OBJECT_0)
+        {
+            ret = this->__HandleBufferIn();
+            if(ret < 0)
+            {
+                ret = GETERRNO();
+				dret = -ret;
+                goto out;
+            }
+        }
+        else if(dret == WAIT_FAIL)
+        {
+            ret = GETERRNO();
+			dret = -ret;
+            goto out;
+        }
+    }
+
+    ret = 0;
+
+out:
+    this->m_ThreadControl.exited = 1;
+    SETERRNO(ret);
+    return dret;
 }
 
 int OutputMonitor::Start()
