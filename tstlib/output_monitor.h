@@ -5,6 +5,13 @@
 
 #include <injectctrl.h>
 
+typedef struct dbwin_buffer
+{
+	DWORD	dwProcessId;
+	char	data[4096-sizeof(DWORD)];
+} DBWIN_BUFFER_t,*PDBWIN_BUFFER_t;
+
+
 class OutputMonitor
 {
 public:
@@ -13,7 +20,8 @@ public:
 	int SetFilterPid(int pid);
 	int Start();
 	void Stop();
-	int GetBuffer(std::vector<void*> pBuffers);
+	int GetBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers);
+	void ReleaseBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers);
 
 private:
 	void __ClearBuffers();
@@ -29,6 +37,7 @@ private:
 	int __SetStarted(int started);
 	static DWORD __ProcessMonitor(void* pParam);
 	DWORD __ProcessImpl();
+	PDBWIN_BUFFER_t __GetDbWinBuffer();
 
 private:
 	HANDLE m_hDBWinMutex;
@@ -36,7 +45,8 @@ private:
 	HANDLE m_hDBWinDataReady;
 	HANDLE m_hDBWinMapBuffer;
 	void *m_pDBWinBuffer;
-	std::vector<void*> m_pBuffers;
+	std::vector<void*> m_pAvailBuffers;
+	std::vector<void*> m_pFreeBuffers;
 	std::vector<int> m_Pids;
 	int m_Started;
 	thread_control_t m_ThreadControl;

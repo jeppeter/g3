@@ -64,10 +64,18 @@ void OutputMonitor::__AssertStop()
 void OutputMonitor::__ClearBuffers()
 {
     void* pBuffer = NULL;
-    while(this->m_pBuffers.size() > 0)
+    while(this->m_pAvailBuffers.size() > 0)
     {
-        pBuffer = this->m_pBuffers[0];
-        this->m_pBuffers.erase(this->m_pBuffers.begin());
+        pBuffer = this->m_pAvailBuffers[0];
+        this->m_pAvailBuffers.erase(this->m_pAvailBuffers.begin());
+        free(pBuffer);
+        pBuffer = NULL;
+    }
+
+    while(this->m_pFreeBuffers.size() > 0)
+    {
+        pBuffer = this->m_pFreeBuffers[0];
+        this->m_pFreeBuffers.erase(this->m_pFreeBuffers.begin());
         free(pBuffer);
         pBuffer = NULL;
     }
@@ -101,7 +109,7 @@ void OutputMonitor::__CloseMutexEvent()
         CloseHandle(this->m_hDBWinMutex);
     }
     this->m_hDBWinMutex = NULL;
-	return ;
+    return ;
 }
 
 void OutputMonitor::__Stop()
@@ -134,4 +142,174 @@ void OutputMonitor::Stop()
     this->__Stop();
     this->__AssertStop();
     return ;
+}
+
+PDBWIN_BUFFER_t OutputMonitor::__GetDbWinBuffer()
+{
+    PDBWIN_BUFFER_t pRetBuffer=NULL;
+
+    EnterCriticalSection(&(this->m_CS));
+    if(this->m_pFreeBuffers.size() > 0)
+    {
+        pRetBuffer = this->m_pFreeBuffers[0];
+        this->m_pFreeBuffers.erase(this->m_pFreeBuffers.begin());
+    }
+    LeaveCriticalSection(&(this->m_CS));
+
+    if(pRetBuffer == NULL)
+    {
+        pRetBuffer = (PDBWIN_BUFFER_t)malloc(sizeof(*pRetBuffer));
+    }
+
+    return pRetBuffer;
+}
+
+void OutputMonitor::ReleaseBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers)
+{
+    int left= pBuffers.size();
+    PDBWIN_BUFFER_t pBuffer=NULL;
+
+    EnterCriticalSection(&(this->m_CS));
+    while(this->m_pFreeBuffers.size() < 50 && pBuffers.size() > 0)
+    {
+        assert(pBuffer);
+        pBuffer = pBuffers[0];
+        pBuffers.erase(pBuffers.begin());
+        this->m_pFreeBuffers.push_back(pBuffer);
+        pBuffer = NULL;
+        left --;
+    }
+    LeaveCriticalSection(&(this->m_CS));
+
+    while(pBuffers.size() > 0)
+    {
+        pBuffer = pBuffers[0];
+        pBuffers.erase(pBuffers.begin());
+        free(pBuffer);
+        pBuffer = NULL;
+    }
+
+    return ;
+}
+
+int OutputMonitor::__CreateMutexEvent()
+{
+    int ret;
+
+    assert(this->m_hDBWinMutex == NULL);
+    assert(this->m_hDBWinBufferReady == NULL);
+    assert(this->m_hDBWinDataReady == NULL);
+
+    /*now first to make sure that the*/
+    this->m_hDBWinMutex = GetMutex("DBWinMutex",0);
+    if(this->m_hDBWinMutex == NULL)
+    {
+        ret = GETERRNO();
+        goto fail;
+    }
+
+    this->m_hDBWinBufferReady = GetEvent("DBWIN_BUFFER_READY",0);
+    if(this->m_hDBWinBufferReady == NULL)
+    {
+        this->m_hDBWinBufferReady = GetEvent("DBWIN_BUFFER_READY",1);
+        if(this->m_hDBWinBufferReady == NULL)
+        {
+            ret = GETERRNO();
+            goto fail;
+        }
+    }
+
+    this->m_hDBWinDataReady = GetEvent("DBWIN_DATA_READY",0);
+    if(this->m_hDBWinDataReady == NULL)
+    {
+        this->m_hDBWinDataReady = GetEvent("DBWIN_DATA_READY",1);
+        if(this->m_hDBWinDataReady == NULL)
+        {
+            ret = GETERRNO();
+            goto fail;
+        }
+    }
+
+	SETERRNO(0);
+    return 0;
+fail:
+    this->__CloseMutexEvent();
+    SETERRNO(ret);
+    return -ret;
+}
+
+int OutputMonitor::__MapBuffer()
+{
+    int ret;
+
+    assert(this->m_hDBWinMapBuffer == NULL);
+    assert(this->m_pDBWinBuffer == NULL);
+
+    this->m_hDBWinMapBuffer = CreateMapFile("DBWIN_BUFFER",sizeof(DBWIN_BUFFER_t),0);
+    if(this->m_hDBWinMapBuffer == NULL)
+    {
+        this->m_hDBWinMapBuffer = CreateMapFile("DBWIN_BUFFER",sizeof(DBWIN_BUFFER_t),1);
+        if(this->m_hDBWinMapBuffer == NULL)
+        {
+            ret = GETERRNO();
+            goto fail;
+        }
+    }
+
+    this->m_pDBWinBuffer = MapFileBuffer(this->m_hDBWinMapBuffer,sizeof(DBWIN_BUFFER_t));
+    if(this->m_pDBWinBuffer == NULL)
+    {
+        ret = GETERRNO();
+        goto fail;
+    }
+
+	SETERRNO(0);
+    return 0;
+fail:
+    this->__UnMapBuffer();
+    SETERRNO(ret);
+    return -ret;
+}
+
+int OutputMonitor::Start()
+{
+    int started = 0;
+    int ret;
+
+    started = this->__SetStarted(1);
+    if(started > 0)
+    {
+        return 0;
+    }
+
+
+    /*now we should give it started*/
+    ret = this->__CreateMutexEvent();
+    if(ret < 0)
+    {
+        ret = GETERRNO();
+        this->Stop();
+        SETERRNO(ret);
+        return -ret;
+    }
+
+    ret = this->__MapBuffer();
+    if(ret < 0)
+    {
+        ret = GETERRNO();
+        this->Stop();
+        SETERRNO(ret);
+        return -ret;
+    }
+
+    ret = StartThreadControl(&(this->m_ThreadControl),OutputMonitor::__ProcessMonitor,this,1);
+    if(ret < 0)
+    {
+        ret = GETERRNO();
+        this->Stop();
+        SETERRNO(ret);
+        return -ret;
+    }
+
+    return 0;
 }
