@@ -12,7 +12,7 @@ OutputMonitor::OutputMonitor()
     m_hDBWinMapBuffer = NULL;
     m_pDBWinBuffer = NULL;
     assert(m_pAvailBuffers.size() == 0);
-	assert(m_pFreeBuffers.size() == 0);
+    assert(m_pFreeBuffers.size() == 0);
     assert(m_Pids.size() == 0);
     m_Started = 0;
 }
@@ -58,7 +58,7 @@ void OutputMonitor::__AssertStop()
     assert(this->m_hDBWinMapBuffer == NULL);
     assert(this->m_pDBWinBuffer == NULL);
     assert(this->m_pAvailBuffers.size() == 0);
-	assert(this->m_pFreeBuffers.size() == 0);
+    assert(this->m_pFreeBuffers.size() == 0);
     assert(this->m_Started == 0);
     return ;
 }
@@ -149,6 +149,7 @@ void OutputMonitor::Stop()
 PDBWIN_BUFFER_t OutputMonitor::__GetDbWinBuffer()
 {
     PDBWIN_BUFFER_t pRetBuffer=NULL;
+    int ret = 0;
 
     EnterCriticalSection(&(this->m_CS));
     if(this->m_pFreeBuffers.size() > 0)
@@ -161,8 +162,13 @@ PDBWIN_BUFFER_t OutputMonitor::__GetDbWinBuffer()
     if(pRetBuffer == NULL)
     {
         pRetBuffer = (PDBWIN_BUFFER_t)malloc(sizeof(*pRetBuffer));
+        if(pRetBuffer == NULL)
+        {
+            ret = GETERRNO();
+        }
     }
 
+    SETERRNO(ret);
     return pRetBuffer;
 }
 
@@ -172,9 +178,9 @@ void OutputMonitor::ReleaseBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers)
     PDBWIN_BUFFER_t pBuffer=NULL;
 
     EnterCriticalSection(&(this->m_CS));
-    while(this->m_pFreeBuffers.size() < 50 && pBuffers.size() > 0 && this->m_Started)
+    while(this->m_pFreeBuffers.size() < 50 && left > 0 && this->m_Started)
     {
-        assert(pBuffer);
+        assert(pBuffer== NULL);
         pBuffer = pBuffers[0];
         pBuffers.erase(pBuffers.begin());
         this->m_pFreeBuffers.push_back(pBuffer);
@@ -185,11 +191,15 @@ void OutputMonitor::ReleaseBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers)
 
     while(pBuffers.size() > 0)
     {
+        assert(pBuffer == NULL);
         pBuffer = pBuffers[0];
         pBuffers.erase(pBuffers.begin());
         free(pBuffer);
         pBuffer = NULL;
+        left --;
     }
+
+    assert(left == 0);
 
     return ;
 }
@@ -306,10 +316,16 @@ int OutputMonitor::__IsInProcessPids()
 
 int OutputMonitor::__InsertDbWinBuffer(PDBWIN_BUFFER_t pBuffer)
 {
+    int ret = -ERRROR_BAD_ENVIRONMENT;
     EnterCriticalSection(&(this->m_CS));
-    this->m_pAvailBuffers.push_back(pBuffer);
+    if(this->m_Started)
+    {
+        this->m_pAvailBuffers.push_back(pBuffer);
+        ret = 0;
+    }
     LeaveCriticalSection(&(this->m_CS));
-    return 1;
+    SETERRNO(-ret);
+    return ret;
 }
 
 int OutputMonitor::__HandleBufferIn()
@@ -335,7 +351,16 @@ int OutputMonitor::__HandleBufferIn()
     }
 
     CopyMemory(pBuffer,this->m_pDBWinBuffer,sizeof(*pBuffer));
-    this->__InsertDbWinBuffer(pBuffer);
+    ret = this->__InsertDbWinBuffer(pBuffer);
+    if(ret < 0)
+    {
+        ret = GETERRNO();
+        free(pBuffer);
+        pBuffer = NULL;
+        SetEvent(this->m_hDBWinBufferReady);
+        return -ret;
+    }
+    pBuffer = NULL;
     SetEvent(this->m_hDBWinBufferReady);
     return 1;
 }
