@@ -43,6 +43,8 @@ private:
 	int __InsertDbWinBuffer(PDBWIN_BUFFER_t pBuffer);
 
 private:
+	thread_control_t m_ThreadControl;
+	CRITICAL_SECTIONS m_CS;	
 	HANDLE m_hDBWinMutex;
 	HANDLE m_hDBWinBufferReady;
 	HANDLE m_hDBWinDataReady;
@@ -52,8 +54,6 @@ private:
 	std::vector<void*> m_pFreeBuffers;
 	std::vector<int> m_Pids;
 	int m_Started;
-	thread_control_t m_ThreadControl;
-	CRITICAL_SECTIONS m_CS;	
 };
 
 #endif /*__OUTPUT_MONITOR_H__*/
