@@ -50,6 +50,42 @@ BOOL WINAPI HandlerConsoleRoutine(DWORD dwCtrlType)
     return bret;
 }
 
+void Usage(int ec,const char* fmt,...)
+{
+    FILE* fp=stderr;
+    va_list ap;
+    if(ec == 0)
+    {
+        fp = stdout;
+    }
+
+    if(fmt)
+    {
+        va_start(ap,fmt);
+        vfprintf(fp,fmt,ap);
+    }
+
+	fprintf(fp,"outmon [OPTIONS]\n");
+	fprintf(fp,"\t-h|--help              to display this message\n");
+	fprintf(fp,"\t-a|--append filename   to specify the file of output and append it\n");
+	fprintf(fp,"\t-c|--create filename   to specify the file of output and create it\n");
+	fprintf(fp,"default output is stdout\n");
+
+    exit(ec);
+}
+
+
+int ParseParam(int argc,char* argv[])
+{
+    int i;
+    int ret=0;
+
+    for(i=1; i<argc; i++)
+    {
+
+    }
+}
+
 
 
 int main(int argc, char* argv[])
