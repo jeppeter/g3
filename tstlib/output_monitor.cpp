@@ -1,5 +1,8 @@
 
 #include "output_monitor.h"
+#include <assert.h>
+#include <memshare.h>
+#include <evt.h>
 
 OutputMonitor::OutputMonitor()
 {
@@ -87,7 +90,7 @@ void OutputMonitor::__ClearBuffers()
 
 void OutputMonitor::__UnMapBuffer()
 {
-    UnMapFileBuffer(&(this->m_pDBWinBuffer));
+    UnMapFileBuffer((unsigned char**)&(this->m_pDBWinBuffer));
     CloseMapFileHandle(&(this->m_hDBWinMapBuffer));
     return ;
 }
@@ -283,7 +286,7 @@ fail:
     return -ret;
 }
 
-DWORD OutputMonitor::__ProcessMonitor(void * pParam)
+DWORD WINAPI OutputMonitor::__ProcessMonitor(void * pParam)
 {
     OutputMonitor* pThis = (OutputMonitor*)pParam;
     return pThis->__ProcessImpl();
@@ -316,7 +319,7 @@ int OutputMonitor::__IsInProcessPids()
 
 int OutputMonitor::__InsertDbWinBuffer(PDBWIN_BUFFER_t pBuffer)
 {
-    int ret = -ERRROR_BAD_ENVIRONMENT;
+    int ret = -ERROR_BAD_ENVIRONMENT;
     EnterCriticalSection(&(this->m_CS));
     if(this->m_Started)
     {
@@ -332,7 +335,6 @@ int OutputMonitor::__HandleBufferIn()
 {
     PDBWIN_BUFFER_t pBuffer=NULL;
     int ret;
-    BOOL bret;
 
     ret = this->__IsInProcessPids();
     if(ret == 0)
@@ -387,7 +389,7 @@ DWORD OutputMonitor::__ProcessImpl()
                 goto out;
             }
         }
-        else if(dret == WAIT_FAIL)
+        else if(dret == WAIT_FAILED)
         {
             ret = GETERRNO();
             dret = -ret;
