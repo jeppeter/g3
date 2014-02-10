@@ -203,7 +203,7 @@ int OutputMonitorWriteFile()
             for(i=0; i<pBuffers.size(); i++)
             {
                 pBuffer = pBuffers[i];
-                ret = fprintf_s(fp,"[%d]%s\n",pBuffer->dwProcessId,pBuffer->data);
+                ret = fprintf_s(fp,"(%d)[%d]%s",GetTickCount(),pBuffer->dwProcessId,pBuffer->data);
                 if(ret < 0)
                 {
                     ret = GETERRNO();
