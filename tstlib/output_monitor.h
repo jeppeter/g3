@@ -6,11 +6,6 @@
 #include <injectctrl.h>
 #include <vector>
 
-#ifdef TSTLIB_EXPORT
-#define TSTLIB_CLASS  __declspec(dllexport)
-#else
-#define TSTLIB_CLASS  __declspec(dllimport) 
-#endif
 
 typedef struct dbwin_buffer
 {
@@ -19,7 +14,7 @@ typedef struct dbwin_buffer
 } DBWIN_BUFFER_t,*PDBWIN_BUFFER_t;
 
 
-class TSTLIB_CLASS OutputMonitor
+class OutputMonitor
 {
 public:
 	OutputMonitor();

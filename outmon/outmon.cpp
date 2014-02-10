@@ -1,7 +1,6 @@
 // outmon.cpp :
 //
 
-#include "stdafx.h"
 #include <output_monitor.h>
 #include <assert.h>
 
