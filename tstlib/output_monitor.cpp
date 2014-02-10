@@ -9,14 +9,15 @@ OutputMonitor::OutputMonitor()
     ZeroMemory(&m_ThreadControl,sizeof(m_ThreadControl));
     m_ThreadControl.exited = 1;
     InitializeCriticalSection(&(m_CS));
+    m_hNotifyEvt = NULL;
     m_hDBWinMutex = NULL;
     m_hDBWinBufferReady = NULL;
     m_hDBWinDataReady = NULL;
     m_hDBWinMapBuffer = NULL;
     m_pDBWinBuffer = NULL;
-    assert(m_pAvailBuffers.size() == 0);
-    assert(m_pFreeBuffers.size() == 0);
-    assert(m_Pids.size() == 0);
+    assert(m_pAvailBuffers == NULL);
+    assert(m_pFreeBuffers  == NULL);
+    assert(m_pPids == NULL);
     m_Started = 0;
 }
 
@@ -24,7 +25,12 @@ OutputMonitor::OutputMonitor()
 OutputMonitor::~OutputMonitor()
 {
     this->Stop();
-    this->m_Pids.clear();
+    if(this->m_pPids)
+    {
+        this->m_pPids->clear();
+        delete this->m_pPids;
+    }
+    this->m_pPids = NULL;
     DeleteCriticalSection(&m_CS);
 }
 
@@ -55,13 +61,14 @@ void OutputMonitor::__AssertStop()
     assert(this->m_ThreadControl.running == 0);
     assert(this->m_ThreadControl.thread == NULL);
     assert(this->m_ThreadControl.threadid == 0);
+    assert(this->m_hNotifyEvt == NULL);
     assert(this->m_hDBWinMutex == NULL);
     assert(this->m_hDBWinBufferReady == NULL);
     assert(this->m_hDBWinDataReady == NULL);
     assert(this->m_hDBWinMapBuffer == NULL);
     assert(this->m_pDBWinBuffer == NULL);
-    assert(this->m_pAvailBuffers.size() == 0);
-    assert(this->m_pFreeBuffers.size() == 0);
+    assert(this->m_pAvailBuffers == NULL);
+    assert(this->m_pFreeBuffers == NULL);
     assert(this->m_Started == 0);
     return ;
 }
@@ -69,21 +76,31 @@ void OutputMonitor::__AssertStop()
 void OutputMonitor::__ClearBuffers()
 {
     void* pBuffer = NULL;
-    while(this->m_pAvailBuffers.size() > 0)
+    if(this->m_pAvailBuffers)
     {
-        pBuffer = this->m_pAvailBuffers[0];
-        this->m_pAvailBuffers.erase(this->m_pAvailBuffers.begin());
-        free(pBuffer);
-        pBuffer = NULL;
+        while(this->m_pAvailBuffers->size() > 0)
+        {
+            pBuffer = this->m_pAvailBuffers->at(0);
+            this->m_pAvailBuffers->erase(this->m_pAvailBuffers->begin());
+            free(pBuffer);
+            pBuffer = NULL;
+        }
+        delete this->m_pAvailBuffers;
     }
+    this->m_pAvailBuffers = NULL;
 
-    while(this->m_pFreeBuffers.size() > 0)
+    if(this->m_pFreeBuffers)
     {
-        pBuffer = this->m_pFreeBuffers[0];
-        this->m_pFreeBuffers.erase(this->m_pFreeBuffers.begin());
-        free(pBuffer);
-        pBuffer = NULL;
+        while(this->m_pFreeBuffers->size() > 0)
+        {
+            pBuffer = this->m_pFreeBuffers->at(0);
+            this->m_pFreeBuffers->erase(this->m_pFreeBuffers->begin());
+            free(pBuffer);
+            pBuffer = NULL;
+        }
+        delete this->m_pFreeBuffers;
     }
+    this->m_pFreeBuffers = NULL;
 
     return ;
 }
@@ -114,6 +131,12 @@ void OutputMonitor::__CloseMutexEvent()
         CloseHandle(this->m_hDBWinMutex);
     }
     this->m_hDBWinMutex = NULL;
+
+    if(this->m_hNotifyEvt)
+    {
+        CloseHandle(this->m_hNotifyEvt);
+    }
+    this->m_hNotifyEvt = NULL;
     return ;
 }
 
@@ -155,10 +178,10 @@ PDBWIN_BUFFER_t OutputMonitor::__GetDbWinBuffer()
     int ret = 0;
 
     EnterCriticalSection(&(this->m_CS));
-    if(this->m_pFreeBuffers.size() > 0)
+    if(this->m_pFreeBuffers && this->m_pFreeBuffers->size() > 0)
     {
-        pRetBuffer = this->m_pFreeBuffers[0];
-        this->m_pFreeBuffers.erase(this->m_pFreeBuffers.begin());
+        pRetBuffer = this->m_pFreeBuffers->at(0);
+        this->m_pFreeBuffers->erase(this->m_pFreeBuffers->begin());
     }
     LeaveCriticalSection(&(this->m_CS));
 
@@ -175,20 +198,72 @@ PDBWIN_BUFFER_t OutputMonitor::__GetDbWinBuffer()
     return pRetBuffer;
 }
 
+int OutputMonitor::GetBuffer(std::vector < PDBWIN_BUFFER_t > & pBuffers)
+{
+    int ret=0;
+    PDBWIN_BUFFER_t pBuffer=NULL;
+
+    if(pBuffers.size() != 0)
+    {
+        ret= ERROR_INVALID_PARAMETER;
+        SETERRNO(ret);
+        return -ret;
+    }
+
+    EnterCriticalSection(&(this->m_CS));
+    if(this->m_Started== 0)
+    {
+        ret = -ERROR_BAD_ENVIRONMENT;
+    }
+    else
+    {
+        if(this->m_pAvailBuffers)
+        {
+            while(this->m_pAvailBuffers->size() > 0)
+            {
+                ret ++;
+                assert(pBuffer == NULL);
+                pBuffer = this->m_pAvailBuffers->at(0);
+                this->m_pAvailBuffers->erase(this->m_pAvailBuffers->begin());
+                pBuffers.push_back(pBuffer);
+                pBuffer = NULL;
+            }
+        }
+        else
+        {
+            ret = -ERROR_BAD_ENVIRONMENT;
+        }
+    }
+    LeaveCriticalSection(&(this->m_CS));
+
+    if(ret < 0)
+    {
+        SETERRNO(-ret);
+    }
+    else
+    {
+        SETERRNO(0);
+    }
+    return ret;
+}
+
 void OutputMonitor::ReleaseBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers)
 {
     int left= pBuffers.size();
     PDBWIN_BUFFER_t pBuffer=NULL;
 
     EnterCriticalSection(&(this->m_CS));
-    while(this->m_pFreeBuffers.size() < 50 && left > 0 && this->m_Started)
+    if(this->m_Started && this->m_pFreeBuffers)
     {
-        assert(pBuffer== NULL);
-        pBuffer = pBuffers[0];
-        pBuffers.erase(pBuffers.begin());
-        this->m_pFreeBuffers.push_back(pBuffer);
-        pBuffer = NULL;
-        left --;
+        while(this->m_pFreeBuffers->size() < 50 && left > 0)
+        {
+            assert(pBuffer== NULL);
+            pBuffer = pBuffers[0];
+            pBuffers.erase(pBuffers.begin());
+            this->m_pFreeBuffers->push_back(pBuffer);
+            pBuffer = NULL;
+            left --;
+        }
     }
     LeaveCriticalSection(&(this->m_CS));
 
@@ -207,13 +282,49 @@ void OutputMonitor::ReleaseBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers)
     return ;
 }
 
+
+int OutputMonitor::__CreateBuffers()
+{
+    int ret=0;
+
+    assert(this->m_pFreeBuffers == NULL);
+    assert(this->m_pAvailBuffers == NULL);
+
+    this->m_pAvailBuffers = new std::vector<PDBWIN_BUFFER_t>();
+    if(this->m_pAvailBuffers == NULL)
+    {
+        ret = GETERRNO();
+        goto fail;
+    }
+    this->m_pFreeBuffers = new std::vector<PDBWIN_BUFFER_t>();
+    if(this->m_pFreeBuffers == NULL)
+    {
+        ret = GETERRNO();
+        goto fail;
+    }
+
+    return 0;
+fail:
+    this->__ClearBuffers();
+    SETERRNO(ret);
+    return -ret;
+}
+
 int OutputMonitor::__CreateMutexEvent()
 {
     int ret;
 
+    assert(this->m_hNotifyEvt == NULL);
     assert(this->m_hDBWinMutex == NULL);
     assert(this->m_hDBWinBufferReady == NULL);
     assert(this->m_hDBWinDataReady == NULL);
+
+    this->m_hNotifyEvt = GetEvent(NULL,1);
+    if(this->m_hNotifyEvt == NULL)
+    {
+        ret = GETERRNO();
+        goto fail;
+    }
 
     /*now first to make sure that the*/
     this->m_hDBWinMutex = GetMutex("DBWinMutex",0);
@@ -300,12 +411,12 @@ int OutputMonitor::__IsInProcessPids()
 
     pWaitbuffer = (PDBWIN_BUFFER_t)this->m_pDBWinBuffer;
     EnterCriticalSection(&(this->m_CS));
-    if(this->m_Pids.size() > 0)
+    if(this->m_pPids && this->m_pPids->size() > 0)
     {
         ret = 0;
-        for(i=0; i<this->m_Pids.size(); i++)
+        for(i=0; i<this->m_pPids->size(); i++)
         {
-            if(this->m_Pids[i] == pWaitbuffer->dwProcessId)
+            if(this->m_pPids->at(i) == pWaitbuffer->dwProcessId)
             {
                 ret = 1;
                 break;
@@ -321,14 +432,24 @@ int OutputMonitor::__InsertDbWinBuffer(PDBWIN_BUFFER_t pBuffer)
 {
     int ret = -ERROR_BAD_ENVIRONMENT;
     EnterCriticalSection(&(this->m_CS));
-    if(this->m_Started)
+    if(this->m_Started && this->m_pAvailBuffers)
     {
-        this->m_pAvailBuffers.push_back(pBuffer);
+        this->m_pAvailBuffers->push_back(pBuffer);
         ret = 0;
     }
     LeaveCriticalSection(&(this->m_CS));
+
+    if(ret >= 0)
+    {
+        SetEvent(this->m_hNotifyEvt);
+    }
     SETERRNO(-ret);
     return ret;
+}
+
+HANDLE OutputMonitor::GetNotifyHandle()
+{
+    return this->m_hNotifyEvt;
 }
 
 int OutputMonitor::__HandleBufferIn()
@@ -389,7 +510,7 @@ DWORD OutputMonitor::__ProcessImpl()
                 goto out;
             }
         }
-        else if(dret == WAIT_FAILED)
+        else if(dret == WAIT_FAILED || dret == WAIT_ABANDONED)
         {
             ret = GETERRNO();
             dret = -ret;
@@ -416,6 +537,14 @@ int OutputMonitor::Start()
         return 0;
     }
 
+    ret = this->__CreateBuffers();
+    if(ret < 0)
+    {
+        ret = GETERRNO();
+        this->Stop();
+        SETERRNO(ret);
+        return -ret;
+    }
 
     /*now we should give it started*/
     ret = this->__CreateMutexEvent();
@@ -456,19 +585,30 @@ int OutputMonitor::SetFilterPid(int pid)
     UINT i;
 
     EnterCriticalSection(&(this->m_CS));
-    for(i=0; i<this->m_Pids.size(); i++)
+    if(this->m_pPids == NULL)
     {
-        if(this->m_Pids[i] == pid)
+        this->m_pPids = new std::vector<int>();
+    }
+    if(this->m_pPids == NULL)
+    {
+        ret = -GETERRNO();
+        goto unlock;
+    }
+    for(i=0; i<this->m_pPids->size(); i++)
+    {
+        if(this->m_pPids->at(i) == pid)
         {
             findidx = i;
+			ret = 0;
             break;
         }
     }
 
     if(findidx < 0)
     {
-        this->m_Pids.push_back(pid);
+        this->m_pPids->push_back(pid);
     }
+unlock:
     LeaveCriticalSection(&(this->m_CS));
     return ret;
 }

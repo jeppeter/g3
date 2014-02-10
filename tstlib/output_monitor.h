@@ -6,6 +6,12 @@
 #include <injectctrl.h>
 #include <vector>
 
+#ifdef TSTLIB_EXPORT
+#define TSTLIB_CLASS  __declspec(dllexport)
+#else
+#define TSTLIB_CLASS  __declspec(dllimport) 
+#endif
+
 typedef struct dbwin_buffer
 {
 	DWORD	dwProcessId;
@@ -13,7 +19,7 @@ typedef struct dbwin_buffer
 } DBWIN_BUFFER_t,*PDBWIN_BUFFER_t;
 
 
-class OutputMonitor
+class TSTLIB_CLASS OutputMonitor
 {
 public:
 	OutputMonitor();
@@ -23,11 +29,13 @@ public:
 	void Stop();
 	int GetBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers);
 	void ReleaseBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers);
+	HANDLE GetNotifyHandle();
 
 private:
 	void __ClearBuffers();
 	void __UnMapBuffer();
 	void __CloseMutexEvent();
+	int __CreateBuffers();
 	int __MapBuffer();
 	int __CreateMutexEvent();
 	
@@ -46,14 +54,15 @@ private:
 private:
 	thread_control_t m_ThreadControl;
 	CRITICAL_SECTION m_CS;
+	HANDLE m_hNotifyEvt;
 	HANDLE m_hDBWinMutex;
 	HANDLE m_hDBWinBufferReady;
 	HANDLE m_hDBWinDataReady;
 	HANDLE m_hDBWinMapBuffer;
 	void *m_pDBWinBuffer;
-	std::vector<PDBWIN_BUFFER_t> m_pAvailBuffers;
-	std::vector<PDBWIN_BUFFER_t> m_pFreeBuffers;
-	std::vector<int> m_Pids;
+	std::vector<PDBWIN_BUFFER_t>* m_pAvailBuffers;
+	std::vector<PDBWIN_BUFFER_t>* m_pFreeBuffers;
+	std::vector<int>* m_pPids;
 	int m_Started;
 };
 
