@@ -4,6 +4,10 @@
 #include <memshare.h>
 #include <evt.h>
 
+#define  ERROROUT(...) do{fprintf(stderr,"%s:%d\t",__FILE__,__LINE__);fprintf(stderr,__VA_ARGS__);}while(0)
+#define  INFOOUT(...) do{fprintf(stderr,"%s:%d\t",__FILE__,__LINE__);fprintf(stderr,__VA_ARGS__);}while(0)
+
+
 OutputMonitor::OutputMonitor()
 {
     ZeroMemory(&m_ThreadControl,sizeof(m_ThreadControl));
@@ -15,6 +19,9 @@ OutputMonitor::OutputMonitor()
     m_hDBWinDataReady = NULL;
     m_hDBWinMapBuffer = NULL;
     m_pDBWinBuffer = NULL;
+	m_pAvailBuffers = NULL;
+	m_pFreeBuffers = NULL;
+	m_pPids = NULL;
     assert(m_pAvailBuffers == NULL);
     assert(m_pFreeBuffers  == NULL);
     assert(m_pPids == NULL);

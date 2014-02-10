@@ -3,6 +3,7 @@
 
 #include <output_monitor.h>
 #include <assert.h>
+#include <evt.h>
 
 
 #define  ERROROUT(...) do{fprintf(stderr,"%s:%d\t",__FILE__,__LINE__);fprintf(stderr,__VA_ARGS__);}while(0)
@@ -15,6 +16,7 @@
 static char* st_pFile=NULL;
 static int st_FileMode=FILE_CREATE;
 static int st_Running=1;
+static HANDLE st_hExitEvt=NULL;
 
 BOOL WINAPI HandlerConsoleRoutine(DWORD dwCtrlType)
 {
@@ -45,6 +47,11 @@ BOOL WINAPI HandlerConsoleRoutine(DWORD dwCtrlType)
         INFOOUT("ctrltype %d\n",dwCtrlType);
         bret = FALSE;
         break;
+    }
+
+    if(bret && st_hExitEvt)
+    {
+        SetEvent(st_hExitEvt);
     }
 
     return bret;
@@ -129,6 +136,15 @@ int OutputMonitorWriteFile()
     std::vector<PDBWIN_BUFFER_t> pBuffers;
     PDBWIN_BUFFER_t pBuffer=NULL;
     UINT i;
+    HANDLE hWaits[2];
+
+    st_hExitEvt = GetEvent(NULL,1);
+    if(st_hExitEvt == NULL)
+    {
+        ret = GETERRNO();
+        ERROROUT("can not make exitevent Error(%d)\n",ret);
+        goto out;
+    }
 
     if(st_pFile)
     {
@@ -166,9 +182,12 @@ int OutputMonitorWriteFile()
     hEvt = pMonitor->GetNotifyHandle();
     assert(hEvt);
 
+    hWaits[0] = hEvt;
+    hWaits[1] = st_hExitEvt;
+
     while(st_Running)
     {
-        dret = WaitForSingleObjectEx(hEvt,INFINITE,TRUE);
+        dret = WaitForMultipleObjectsEx(2,hWaits,FALSE,INFINITE,TRUE);
         if(dret == WAIT_OBJECT_0)
         {
             assert(pBuffers.size() == 0);
@@ -201,6 +220,10 @@ int OutputMonitorWriteFile()
             }
 
         }
+        else if(dret == (WAIT_OBJECT_0+1))
+        {
+            INFOOUT("Exit notify\n");
+        }
         else if(dret == WAIT_FAILED || dret == WAIT_ABANDONED)
         {
             ret=  GETERRNO();
@@ -231,6 +254,12 @@ out:
         fclose(fp);
     }
     fp = NULL;
+
+    if(st_hExitEvt)
+    {
+        CloseHandle(st_hExitEvt);
+    }
+    st_hExitEvt = NULL;
     SETERRNO(ret);
     return -ret;
 }
@@ -268,7 +297,7 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-	ret = 0;
+    ret = 0;
 
 out:
     SETERRNO(ret);

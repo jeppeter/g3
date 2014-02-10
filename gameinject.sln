@@ -72,7 +72,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tstlib", "tstlib\tstlib.vcx
 		{313E4E00-2487-433C-9FEB-669F78E5B271} = {313E4E00-2487-433C-9FEB-669F78E5B271}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "outmon", "outmon\outmon.vcxproj", "{435DA8FF-C14C-43D6-A80D-6ECF2D208208}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "outmon", "outmon\outmon.vcxproj", "{14774457-E340-49D9-A166-D49E197D6966}"
 	ProjectSection(ProjectDependencies) = postProject
 		{4F9AF072-4CD2-4B97-98B8-8F49990FC762} = {4F9AF072-4CD2-4B97-98B8-8F49990FC762}
 	EndProjectSection
@@ -139,10 +139,10 @@ Global
 		{4F9AF072-4CD2-4B97-98B8-8F49990FC762}.Debug|Win32.Build.0 = Debug|Win32
 		{4F9AF072-4CD2-4B97-98B8-8F49990FC762}.Release|Win32.ActiveCfg = Release|Win32
 		{4F9AF072-4CD2-4B97-98B8-8F49990FC762}.Release|Win32.Build.0 = Release|Win32
-		{435DA8FF-C14C-43D6-A80D-6ECF2D208208}.Debug|Win32.ActiveCfg = Debug|Win32
-		{435DA8FF-C14C-43D6-A80D-6ECF2D208208}.Debug|Win32.Build.0 = Debug|Win32
-		{435DA8FF-C14C-43D6-A80D-6ECF2D208208}.Release|Win32.ActiveCfg = Release|Win32
-		{435DA8FF-C14C-43D6-A80D-6ECF2D208208}.Release|Win32.Build.0 = Release|Win32
+		{14774457-E340-49D9-A166-D49E197D6966}.Debug|Win32.ActiveCfg = Debug|Win32
+		{14774457-E340-49D9-A166-D49E197D6966}.Debug|Win32.Build.0 = Debug|Win32
+		{14774457-E340-49D9-A166-D49E197D6966}.Release|Win32.ActiveCfg = Release|Win32
+		{14774457-E340-49D9-A166-D49E197D6966}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
