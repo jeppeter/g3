@@ -1132,14 +1132,14 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
         {
-            if(pDevEvent->event.mouse.x == -1 && pDevEvent->event.mouse.y == -1)
+            if(pDevEvent->event.mouse.x == IO_MOUSE_RESET_X && pDevEvent->event.mouse.y == IO_MOUSE_RESET_Y)
             {
                 /*now first to move the upper top-left point*/
                 pMouseInput->data.mouse.usButtonFlags = 0;
                 pMouseInput->data.mouse.usButtonData = 0;
                 pMouseInput->data.mouse.ulRawButtons = 0;
-                pMouseInput->data.mouse.lLastX = -30000;
-                pMouseInput->data.mouse.lLastY = -30000;
+                pMouseInput->data.mouse.lLastX = IO_MOUSE_RESET_X_MOV;
+                pMouseInput->data.mouse.lLastY = IO_MOUSE_RESET_Y_MOV;
                 pMouseInput->data.mouse.ulExtraInformation = 0;
 
 
@@ -1174,12 +1174,12 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
                 if((st_RawInputMouseLastPoint.x) != pt.x)
                 {
                     movx = pt.x - st_RawInputMouseLastPoint.x;
-                    ERROR_INFO("Adjust rawinput AbsMouseX %d => %d\n",st_RawInputMouseLastPoint.x,movx);
+                    ERROR_INFO("Adjust rawinput AbsMouseX %d => %d\n",st_RawInputMouseLastPoint.x,pt.x);
                 }
                 if((st_RawInputMouseLastPoint.y) != pt.y)
                 {
                     movy = pt.y - st_RawInputMouseLastPoint.y;
-                    ERROR_INFO("Adjust rawinput AbsMouseY %d => %d\n",st_RawInputMouseLastPoint.y,movy);
+                    ERROR_INFO("Adjust rawinput AbsMouseY %d => %d\n",st_RawInputMouseLastPoint.y,pt.y);
                 }
                 LeaveCriticalSection(&st_EmulationRawinputCS);
                 pMouseInput->data.mouse.usButtonFlags = 0;
@@ -1246,8 +1246,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.usButtonFlags = RI_MOUSE_RIGHT_BUTTON_DOWN;
             pMouseInput->data.mouse.usButtonData = 0;
             pMouseInput->data.mouse.ulRawButtons = 0;
-            pMouseInput->data.mouse.lLastX = pt.x;
-            pMouseInput->data.mouse.lLastY = pt.y;
+            pMouseInput->data.mouse.lLastX = 0;
+            pMouseInput->data.mouse.lLastY = 0;
             pMouseInput->data.mouse.ulExtraInformation = 0;
             vk = VK_RBUTTON;
             down = 1;
@@ -1257,8 +1257,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.usButtonFlags = RI_MOUSE_RIGHT_BUTTON_UP;
             pMouseInput->data.mouse.usButtonData = 0;
             pMouseInput->data.mouse.ulRawButtons = 0;
-            pMouseInput->data.mouse.lLastX = pt.x;
-            pMouseInput->data.mouse.lLastY = pt.y;
+            pMouseInput->data.mouse.lLastX = 0;
+            pMouseInput->data.mouse.lLastY = 0;
             pMouseInput->data.mouse.ulExtraInformation = 0;
             vk = VK_RBUTTON;
             down = 0;
@@ -1278,8 +1278,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.usButtonFlags = RI_MOUSE_MIDDLE_BUTTON_DOWN;
             pMouseInput->data.mouse.usButtonData = 0;
             pMouseInput->data.mouse.ulRawButtons = 0;
-            pMouseInput->data.mouse.lLastX = pt.x;
-            pMouseInput->data.mouse.lLastY = pt.y;
+            pMouseInput->data.mouse.lLastX = 0;
+            pMouseInput->data.mouse.lLastY = 0;
             pMouseInput->data.mouse.ulExtraInformation = 0;
             vk = VK_MBUTTON;
             down = 1;
@@ -1289,8 +1289,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.usButtonFlags = RI_MOUSE_MIDDLE_BUTTON_UP;
             pMouseInput->data.mouse.usButtonData = 0;
             pMouseInput->data.mouse.ulRawButtons = 0;
-            pMouseInput->data.mouse.lLastX = pt.x;
-            pMouseInput->data.mouse.lLastY = pt.y;
+            pMouseInput->data.mouse.lLastX = 0;
+            pMouseInput->data.mouse.lLastY = 0;
             pMouseInput->data.mouse.ulExtraInformation = 0;
             vk = VK_MBUTTON;
             down = 0;
@@ -1302,6 +1302,13 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
                        pDevEvent->event.mouse.event);
             goto fail;
         }
+    }
+    else
+    {
+        ret =ERROR_INVALID_PARAMETER;
+        ERROR_INFO("<0x%p> Mouse Invalid Input event(%d) code(%d)\n",pDevEvent,pDevEvent->event.mouse.event,
+                   pDevEvent->event.mouse.code);
+        goto fail;
     }
 
     EnterCriticalSection(&st_EmulationRawinputCS);

@@ -259,6 +259,12 @@ typedef struct
 
 #define  IO_NAME_MAX_SIZE          256
 
+#define  IO_MOUSE_RESET_X          -1
+#define  IO_MOUSE_RESET_Y          -1
+
+#define  IO_MOUSE_RESET_X_MOV      -30000
+#define  IO_MOUSE_RESET_Y_MOV      -30000
+
 
 typedef struct
 {

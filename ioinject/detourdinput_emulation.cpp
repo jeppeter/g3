@@ -8,6 +8,7 @@
 
 #define MAX_HWND_SIZE   20
 
+#define MOUSE_NOT_SET_STATE             -1
 #define MOUSE_NORMAL_STATE              0
 #define MOUSE_RESET_MOST_LEFTTOP        1
 #define MOUSE_RESET_WNDCLIENT_LEFTTOP   2
@@ -95,8 +96,6 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     ZeroMemory(pMouseState,cbSize);
 
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-
-
     if(st_MouseGetState == MOUSE_NORMAL_STATE)
     {
 
@@ -109,8 +108,8 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     else if(st_MouseGetState == MOUSE_RESET_MOST_LEFTTOP)
     {
         /*to move the mouse pointer to the most left-top pointer*/
-        pMouseState->lX = -30000;
-        pMouseState->lY = -30000;
+        pMouseState->lX = IO_MOUSE_RESET_X_MOV;
+        pMouseState->lY = IO_MOUSE_RESET_Y_MOV;
         /*do not make any lz moving ,this will be do when the last one here*/
         pMouseState->lZ = 0;
         st_MouseGetState = MOUSE_RESET_WNDCLIENT_LEFTTOP;
@@ -132,7 +131,6 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
             pMouseState->rgbButtons[i] = 0x80;
         }
     }
-
     st_LastDiMousePoint = mousepoint;
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return sizeof(*pMouseState);
@@ -2565,6 +2563,7 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
     DIDEVICEOBJECTDATA data[4];
     int num=0,idx=0;
     POINT pt;
+    int origstate=MOUSE_NOT_SET_STATE;
 
     if(pDevEvent->event.mouse.event >= MOUSE_EVENT_MAX)
     {
@@ -2668,16 +2667,16 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
         break;
     case MOUSE_EVENT_ABS_MOVING:
         EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-        if(pDevEvent->event.mouse.x == -1 && pDevEvent->event.mouse.y == -1)
+        if(pDevEvent->event.mouse.x == IO_MOUSE_RESET_X && pDevEvent->event.mouse.y == IO_MOUSE_RESET_Y)
         {
             /*it is reset mouse ,so we should do this moving move to the most top-left point*/
             data[num].dwOfs = DIMOFS_X;
-            data[num].dwData = -30000;
+            data[num].dwData = IO_MOUSE_RESET_X_MOV;
             data[num].dwTimeStamp = GetTickCount();
             num ++;
 
             data[num].dwOfs = DIMOFS_Y;
-            data[num].dwData = -30000;
+            data[num].dwData = IO_MOUSE_RESET_Y_MOV;
             data[num].dwTimeStamp = GetTickCount();
             num ++;
 
@@ -2691,6 +2690,8 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             data[num].dwData = pt.y;
             data[num].dwTimeStamp = GetTickCount() + 1;
             num ++;
+			origstate = st_MouseGetState;
+			st_MouseGetState = MOUSE_RESET_MOST_LEFTTOP;
         }
         else
         {
@@ -2738,13 +2739,13 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
     }
     else
     {
-    	/*this is reset use*/
+        /*this is reset use*/
         assert(num == 4);
         assert(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING);
-        assert(pDevEvent->event.mouse.x == -1);
-        assert(pDevEvent->event.mouse.y == -1);
+        assert(pDevEvent->event.mouse.x == IO_MOUSE_RESET_X);
+        assert(pDevEvent->event.mouse.y == IO_MOUSE_RESET_Y);
 
-        /*now first to insert mouse data for the data of input*/		
+        /*now first to insert mouse data for the data of input*/
         ret = __InsertMouseDinputData(data,2,0,1);
         if(ret < 0)
         {
@@ -2752,14 +2753,20 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             goto fail;
         }
 
-		ret = __InsertMouseDinputData(&(data[2]),2,0,1);
-		assert(ret >= 0);
+        ret = __InsertMouseDinputData(&(data[2]),2,0,1);
+        assert(ret >= 0);
     }
 
 succ:
     SetLastError(0);
     return 0;
 fail:
+    EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
+    if(origstate != MOUSE_NOT_SET_STATE)
+    {
+        st_MouseGetState = origstate;
+    }
+    LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     SetLastError(ret);
     return -ret;
 }

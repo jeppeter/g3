@@ -853,7 +853,7 @@ int __MoveMouseRelativeNoLock(int x,int y)
 int __MoveMouseAbsoluteNoLock(int clientx,int clienty)
 {
     int ret = 0;
-    if(clientx == -1 && clienty == -1)
+    if(clientx == IO_MOUSE_RESET_X && clienty == IO_MOUSE_RESET_Y)
     {
     	/*this mean just reset the key board*/
     	st_MousePoint.x = st_MaxRect.left + 1;
