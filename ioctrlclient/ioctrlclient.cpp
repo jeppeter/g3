@@ -1743,6 +1743,9 @@ BOOL StartConnect(HWND hwnd)
         InsertDevEvent(&evt,1);
     }
 
+	/*we pretend to make last send ok*/
+	g_AbsLastSend = 1;
+
     return TRUE;
 fail:
     StopConnect(hwnd);
