@@ -1143,7 +1143,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
                 pMouseInput->data.mouse.ulExtraInformation = 0;
 
 
-                pMouseAddition = calloc(1,sizeof(*pMouseAddition));
+                pMouseAddition = (RAWINPUT*)calloc(1,sizeof(*pMouseAddition));
                 if(pMouseAddition == NULL)
                 {
                     ret = GETERRNO();
