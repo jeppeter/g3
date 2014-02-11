@@ -32,6 +32,7 @@ static CRITICAL_SECTION st_DevEventCS;
 static std::vector<DEVICEEVENT> st_DevEvent;
 static thread_control_t st_SockThreadCtrl= {0};
 static SOCKET g_Socket=INVALID_SOCKET;
+static int g_ResetMouse=0;
 
 LPDIRECTINPUT8          g_pKeyDirectInput      = NULL;
 LPDIRECTINPUT8          g_pMouseDirectInput    = NULL;
@@ -530,7 +531,7 @@ SOCKET ConnectSocket(char* pIp,int port,int *pConnected)
         ERROR_INFO("set no delay Error(%d)\n",ret);
         goto fail;
     }
-	DEBUG_INFO("Set Nodelay\n");
+    DEBUG_INFO("Set Nodelay\n");
 
     ZeroMemory(&saddr,sizeof(saddr));
     saddr.sin_family = AF_INET;
@@ -574,6 +575,7 @@ int InsertDevEvent(DEVICEEVENT *pDevEvent,int back)
     if(st_DevEvent.size() > 20)
     {
         ret = -ERROR_SHARING_BUFFER_EXCEEDED;
+		ERROR_INFO("Event not send more than 20\n");
         goto unlock;
     }
     if(back)
@@ -1238,6 +1240,7 @@ BOOL SetComboSel(HWND hwndDlg,int nIDDlgItem,int idx)
 }
 
 
+
 int GetComboSel(HWND hwndDlg,int nIDDlgItem)
 {
     HWND hCtrlItem=NULL;
@@ -1355,6 +1358,7 @@ BOOL InitializeConnectDialog(HWND hwnd)
         goto fail;
     }
     SetComboSel(hwnd,IDC_COMBO_ESCAPE,0);
+    SetCheckSel(hwnd,IDC_CHK_RESETMOUSE,1);
 
     SetLastError(0);
     return TRUE;
@@ -1370,6 +1374,7 @@ BOOL GetConnectParam(HWND hwnd)
     char* pHostAnsi=NULL;
     int hostansisize=0;
     int port;
+    int resetmouse=0;
 #ifdef _UNICODE
     std::auto_ptr<wchar_t> pChar2(new wchar_t[256]),pErrStr2(new wchar_t[256]);
     wchar_t* pChar = pChar2.get();
@@ -1455,6 +1460,8 @@ BOOL GetConnectParam(HWND hwnd)
     {
         g_EscapeKey = DIK_RSHIFT;
     }
+
+	g_ResetMouse = GetCheckSel(hwnd,IDC_CHK_RESETMOUSE);
 
 
 
@@ -1712,6 +1719,8 @@ void StopConnect(HWND hwnd)
 BOOL StartConnect(HWND hwnd)
 {
     int ret;
+    int resetmouse =0;
+    DEVICEEVENT evt;
     StopConnect(hwnd);
     ret = StartThreadControl(&st_SockThreadCtrl,SocketThreadImpl,&st_SockThreadCtrl,1);
     if(ret < 0)
@@ -1719,6 +1728,19 @@ BOOL StartConnect(HWND hwnd)
         ret = LAST_ERROR_CODE();
         ERROR_INFO("Start Connect Thread Error(%d)\n",ret);
         goto fail;
+    }
+
+	/*to reset mouse ,just insert dev event*/
+    if(g_ResetMouse)
+    {
+        ZeroMemory(&evt,sizeof(evt));
+        evt.devtype = DEVICE_TYPE_MOUSE;
+        evt.devid = 0;
+        evt.event.mouse.code = MOUSE_CODE_MOUSE;
+        evt.event.mouse.event = MOUSE_EVENT_ABS_MOVING;
+        evt.event.mouse.x = IO_MOUSE_RESET_X;
+        evt.event.mouse.y = IO_MOUSE_RESET_Y;
+        InsertDevEvent(&evt,1);
     }
 
     return TRUE;

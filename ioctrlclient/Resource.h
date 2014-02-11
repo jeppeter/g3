@@ -22,6 +22,8 @@
 #define IDC_EDT_XPOS                    1004
 #define IDC_EDT_XPOS2                   1005
 #define IDC_EDT_YPOS                    1005
+#define IDC_CHECK1                      1005
+#define IDC_CHK_RESETMOUSE              1005
 #define ID_CONTROL_CONNECT              32771
 #define ID_CONTROL_DISCONNECT           32772
 #define ID_CONTROL_EXIT                 32773
@@ -34,7 +36,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        131
 #define _APS_NEXT_COMMAND_VALUE         32774
-#define _APS_NEXT_CONTROL_VALUE         1005
+#define _APS_NEXT_CONTROL_VALUE         1006
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif
