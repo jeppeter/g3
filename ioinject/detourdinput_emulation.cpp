@@ -8,11 +8,16 @@
 
 #define MAX_HWND_SIZE   20
 
+#define MOUSE_NORMAL_STATE              0
+#define MOUSE_RESET_MOST_LEFTTOP        1
+#define MOUSE_RESET_WNDCLIENT_LEFTTOP   2
+
 
 static CRITICAL_SECTION st_Dinput8KeyMouseStateCS;
 static POINT st_LastDiMousePoint= {1,1};
 static POINT st_PrevDiMousePoint= {1,1};
 static UINT st_LastDiMouseZ;
+static int st_MouseGetState=MOUSE_NORMAL_STATE;
 static std::vector<LPDIDEVICEOBJECTDATA> st_pMouseData;
 static std::vector<int> st_MouseDataNums;
 static std::vector<int> st_MouseDataIdx;
@@ -35,6 +40,7 @@ int __DetourDinput8Init(void)
 {
     st_LastDiMousePoint = {0,0};
     st_LastDiMouseZ = 0;
+    st_MouseGetState = MOUSE_NORMAL_STATE;
     return 0;
 }
 
@@ -64,6 +70,7 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     UINT mousez=0;
     POINT mousepoint;
     DIMOUSESTATE *pMouseState=NULL;
+    int copied=0;
 
 
     if(cbSize < sizeof(*pMouseState))
@@ -74,6 +81,8 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     }
 
     pMouseState = (DIMOUSESTATE*)pData;
+
+
 
     /*we do not call GetBaseMouseState in the critical section ,because if this is disorder ,the final state will not disturb*/
     ret = GetBaseMouseState(mousekeybtns,3,&mousepoint,&mousez);
@@ -87,10 +96,34 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
 
     EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
 
-    /*now to compare the state*/
-    pMouseState->lX = (mousepoint.x - st_LastDiMousePoint.x);
-    pMouseState->lY = (mousepoint.y - st_LastDiMousePoint.y);
-    pMouseState->lZ = (mousez - st_LastDiMouseZ);
+
+    if(st_MouseGetState == MOUSE_NORMAL_STATE)
+    {
+
+        /*now to compare the state*/
+        pMouseState->lX = (mousepoint.x - st_LastDiMousePoint.x);
+        pMouseState->lY = (mousepoint.y - st_LastDiMousePoint.y);
+        pMouseState->lZ = (mousez - st_LastDiMouseZ);
+        st_LastDiMouseZ = mousez;
+    }
+    else if(st_MouseGetState == MOUSE_RESET_MOST_LEFTTOP)
+    {
+        /*to move the mouse pointer to the most left-top pointer*/
+        pMouseState->lX = -30000;
+        pMouseState->lY = -30000;
+        /*do not make any lz moving ,this will be do when the last one here*/
+        pMouseState->lZ = 0;
+        st_MouseGetState = MOUSE_RESET_WNDCLIENT_LEFTTOP;
+    }
+    else if(st_MouseGetState == MOUSE_RESET_WNDCLIENT_LEFTTOP)
+    {
+        /*to move to the top pointer*/
+        pMouseState->lX = mousepoint.x ;
+        pMouseState->lY = mousepoint.y ;
+        /*do not make any lz moving ,this will be do when the last one here*/
+        pMouseState->lZ = 0;
+        st_MouseGetState = MOUSE_NORMAL_STATE;
+    }
 
     for(i=0; i<3; i++)
     {
@@ -101,7 +134,6 @@ int __CopyDiMouseState(PVOID pData, UINT cbSize)
     }
 
     st_LastDiMousePoint = mousepoint;
-    st_LastDiMouseZ = mousez;
     LeaveCriticalSection(&st_Dinput8KeyMouseStateCS);
     return sizeof(*pMouseState);
 }
@@ -497,7 +529,7 @@ public:
             LeaveCriticalSection(&(this->m_CS));
             if(hr != DI_OK)
             {
-				ERROR_INFO("not initialized for buffer\n");
+                ERROR_INFO("not initialized for buffer\n");
                 goto fail;
             }
 
@@ -2530,7 +2562,7 @@ fail:
 int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
 {
     int ret;
-    DIDEVICEOBJECTDATA data[2];
+    DIDEVICEOBJECTDATA data[4];
     int num=0,idx=0;
     POINT pt;
 
@@ -2636,19 +2668,46 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
         break;
     case MOUSE_EVENT_ABS_MOVING:
         EnterCriticalSection(&st_Dinput8KeyMouseStateCS);
-        if(st_PrevDiMousePoint.x != pt.x)
+        if(pDevEvent->event.mouse.x == -1 && pDevEvent->event.mouse.y == -1)
         {
+            /*it is reset mouse ,so we should do this moving move to the most top-left point*/
             data[num].dwOfs = DIMOFS_X;
-            data[num].dwData = (st_PrevDiMousePoint.x - pt.x);
+            data[num].dwData = -30000;
             data[num].dwTimeStamp = GetTickCount();
+            num ++;
+
+            data[num].dwOfs = DIMOFS_Y;
+            data[num].dwData = -30000;
+            data[num].dwTimeStamp = GetTickCount();
+            num ++;
+
+            /*now move back for it points*/
+            data[num].dwOfs = DIMOFS_X;
+            data[num].dwData = pt.x;
+            data[num].dwTimeStamp = GetTickCount() +1;
+            num ++;
+
+            data[num].dwOfs = DIMOFS_Y;
+            data[num].dwData = pt.y;
+            data[num].dwTimeStamp = GetTickCount() + 1;
             num ++;
         }
-        if(st_PrevDiMousePoint.y != pt.y)
+        else
         {
-            data[num].dwOfs = DIMOFS_Y;
-            data[num].dwData = (st_PrevDiMousePoint.y - pt.y);
-            data[num].dwTimeStamp = GetTickCount();
-            num ++;
+            if(st_PrevDiMousePoint.x != pt.x)
+            {
+                data[num].dwOfs = DIMOFS_X;
+                data[num].dwData = (st_PrevDiMousePoint.x - pt.x);
+                data[num].dwTimeStamp = GetTickCount();
+                num ++;
+            }
+            if(st_PrevDiMousePoint.y != pt.y)
+            {
+                data[num].dwOfs = DIMOFS_Y;
+                data[num].dwData = (st_PrevDiMousePoint.y - pt.y);
+                data[num].dwTimeStamp = GetTickCount();
+                num ++;
+            }
         }
         st_PrevDiMousePoint.x = pt.x;
         st_PrevDiMousePoint.y = pt.y;
@@ -2668,11 +2727,33 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
     }
 
     /*num equals 0*/
-    ret = __InsertMouseDinputData(data,num,idx,1);
-    if(ret < 0)
+    if(num <= 2)
     {
-        ret = LAST_ERROR_CODE();
-        goto fail;
+        ret = __InsertMouseDinputData(data,num,idx,1);
+        if(ret < 0)
+        {
+            ret = LAST_ERROR_CODE();
+            goto fail;
+        }
+    }
+    else
+    {
+    	/*this is reset use*/
+        assert(num == 4);
+        assert(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING);
+        assert(pDevEvent->event.mouse.x == -1);
+        assert(pDevEvent->event.mouse.y == -1);
+
+        /*now first to insert mouse data for the data of input*/		
+        ret = __InsertMouseDinputData(data,2,0,1);
+        if(ret < 0)
+        {
+            ret = GETERRNO();
+            goto fail;
+        }
+
+		ret = __InsertMouseDinputData(&(data[2]),2,0,1);
+		assert(ret >= 0);
     }
 
 succ:

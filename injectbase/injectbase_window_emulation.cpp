@@ -853,9 +853,19 @@ int __MoveMouseRelativeNoLock(int x,int y)
 int __MoveMouseAbsoluteNoLock(int clientx,int clienty)
 {
     int ret = 0;
-    st_MousePoint.x = st_MaxRect.left + clientx;
-    st_MousePoint.y = st_MaxRect.top + clienty;
-    __ReCalculateMousePointNoLock(1);
+    if(clientx == -1 && clienty == -1)
+    {
+    	/*this mean just reset the key board*/
+    	st_MousePoint.x = st_MaxRect.left + 1;
+		st_MousePoint.y = st_MaxRect.top + 1;
+		__ReCalculateMousePointNoLock(0);
+    }
+    else
+    {
+        st_MousePoint.x = st_MaxRect.left + clientx;
+        st_MousePoint.y = st_MaxRect.top + clienty;
+		__ReCalculateMousePointNoLock(1);
+    }
     return ret;
 }
 
@@ -1663,8 +1673,8 @@ HWND GetCurrentProcessActiveWindow()
                 }
                 if(exstyle & WS_EX_TOPMOST)
                 {
-                	findidx = i;
-					bestidx = findidx;
+                    findidx = i;
+                    bestidx = findidx;
                 }
                 else if(style & WS_VISIBLE)
                 {

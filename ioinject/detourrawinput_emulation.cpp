@@ -42,6 +42,7 @@ static uint16_t st_AsyncKeyStateArray[KEY_STATE_SIZE]= {0};
 static int st_KeyLastStateArray[KEY_STATE_SIZE]= {0};
 static BYTE st_UcharKeyboardStateArray[KEY_STATE_SIZE]= {0};
 static BYTE st_UcharLastKeyDown=0;
+static POINT st_RawInputMouseLastPoint= {0,0};
 
 RegisterRawInputDevicesFunc_t RegisterRawInputDevicesNext=RegisterRawInputDevices;
 GetRawInputDataFunc_t GetRawInputDataNext=GetRawInputData;
@@ -697,7 +698,7 @@ int MapVirtualKeyEmulation(int scancode)
 int IsExtendedKey(int vk,int down)
 {
     int ret =NO_EXTENDED_KEY;
-	return ret;
+    return ret;
     EnterCriticalSection(&st_EmulationRawinputCS);
     if(down)
     {
@@ -1077,7 +1078,8 @@ LONG __InsertMouseInput(RAWINPUT * pInput,HWND *pHwnd)
 
 int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
 {
-    RAWINPUT* pMouseInput=NULL;
+    RAWINPUT* pMouseInput=NULL,*pMouseAddition=NULL;
+
     int ret;
     LONG lparam;
     MSG InputMsg= {0};
@@ -1085,6 +1087,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     POINT pt;
     UINT vk=0;
     int down=0;
+    int movx,movy;
 
 
     pMouseInput = (RAWINPUT*)calloc(1,sizeof(*pMouseInput));
@@ -1097,29 +1100,103 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
     pMouseInput->header.dwType = RIM_TYPEMOUSE;
     pMouseInput->header.dwSize = sizeof(pMouseInput->header) + sizeof(pMouseInput->data.mouse);
 
-    pMouseInput->data.mouse.usFlags = MOUSE_MOVE_ABSOLUTE;
+    pMouseInput->data.mouse.usFlags = MOUSE_MOVE_RELATIVE;
     pMouseInput->data.mouse.ulButtons = 0;
     BaseGetMousePointAbsolution(&pt);
     if(pDevEvent->event.mouse.code == MOUSE_CODE_MOUSE)
     {
         /*no buttons push*/
-        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING ||
-                pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
+        if(pDevEvent->event.mouse.event == MOUSE_EVNET_MOVING)
         {
+            movx = pDevEvent->event.mouse.x;
+            movy = pDevEvent->event.mouse.y;
+            EnterCriticalSection(&st_EmulationRawinputCS);
+            if((st_RawInputMouseLastPoint.x + movx) != pt.x)
+            {
+                movx = pt.x - st_RawInputMouseLastPoint.x;
+                ERROR_INFO("Adjust rawinput RelMouseX %d => %d\n",pDevEvent->event.mouse.x,movx);
+            }
+            if((st_RawInputMouseLastPoint.y + movy) != pt.y)
+            {
+                movy = pt.y - st_RawInputMouseLastPoint.y;
+                ERROR_INFO("Adjust rawinput RelMouseY %d => %d\n",pDevEvent->event.mouse.y,movy);
+            }
+            LeaveCriticalSection(&st_EmulationRawinputCS);
             pMouseInput->data.mouse.usButtonFlags = 0;
             pMouseInput->data.mouse.usButtonData = 0;
             pMouseInput->data.mouse.ulRawButtons = 0;
-            pMouseInput->data.mouse.lLastX = pt.x;
-            pMouseInput->data.mouse.lLastY = pt.y;
+            pMouseInput->data.mouse.lLastX = movx;
+            pMouseInput->data.mouse.lLastY = movy;
             pMouseInput->data.mouse.ulExtraInformation = 0;
+
+        }
+        else if(pDevEvent->event.mouse.event == MOUSE_EVENT_ABS_MOVING)
+        {
+            if(pDevEvent->event.mouse.x == -1 && pDevEvent->event.mouse.y == -1)
+            {
+                /*now first to move the upper top-left point*/
+                pMouseInput->data.mouse.usButtonFlags = 0;
+                pMouseInput->data.mouse.usButtonData = 0;
+                pMouseInput->data.mouse.ulRawButtons = 0;
+                pMouseInput->data.mouse.lLastX = -30000;
+                pMouseInput->data.mouse.lLastY = -30000;
+                pMouseInput->data.mouse.ulExtraInformation = 0;
+
+
+                pMouseAddition = calloc(1,sizeof(*pMouseAddition));
+                if(pMouseAddition == NULL)
+                {
+                    ret = GETERRNO();
+                    goto fail;
+                }
+
+                /*now to give header ok*/
+                pMouseAddition->header.dwType = RIM_TYPEMOUSE;
+                pMouseAddition->header.dwSize = sizeof(pMouseAddition->header) + sizeof(pMouseAddition->data.mouse);
+                pMouseAddition->data.mouse.usFlags = MOUSE_MOVE_RELATIVE;
+                pMouseAddition->data.mouse.ulButtons = 0;
+
+
+                /*to set for the reset ok*/
+                pMouseAddition->data.mouse.usButtonFlags = 0;
+                pMouseAddition->data.mouse.usButtonData = 0;
+                pMouseAddition->data.mouse.ulRawButtons = 0;
+                pMouseAddition->data.mouse.lLastX = pt.x;
+                pMouseAddition->data.mouse.lLastY = pt.y;
+                pMouseAddition->data.mouse.ulExtraInformation = 0;
+            }
+            else
+            {
+                /*now it is ok just move for the absolution poition*/
+                movx = 0;
+                movy = 0;
+                EnterCriticalSection(&st_EmulationRawinputCS);
+                if((st_RawInputMouseLastPoint.x) != pt.x)
+                {
+                    movx = pt.x - st_RawInputMouseLastPoint.x;
+                    ERROR_INFO("Adjust rawinput AbsMouseX %d => %d\n",st_RawInputMouseLastPoint.x,movx);
+                }
+                if((st_RawInputMouseLastPoint.y) != pt.y)
+                {
+                    movy = pt.y - st_RawInputMouseLastPoint.y;
+                    ERROR_INFO("Adjust rawinput AbsMouseY %d => %d\n",st_RawInputMouseLastPoint.y,movy);
+                }
+                LeaveCriticalSection(&st_EmulationRawinputCS);
+                pMouseInput->data.mouse.usButtonFlags = 0;
+                pMouseInput->data.mouse.usButtonData = 0;
+                pMouseInput->data.mouse.ulRawButtons = 0;
+                pMouseInput->data.mouse.lLastX = movx;
+                pMouseInput->data.mouse.lLastY = movy;
+                pMouseInput->data.mouse.ulExtraInformation = 0;
+            }
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_SLIDE)
         {
             pMouseInput->data.mouse.usButtonFlags = RI_MOUSE_WHEEL;
             pMouseInput->data.mouse.usButtonData = pDevEvent->event.mouse.x;
             pMouseInput->data.mouse.ulRawButtons = 0;
-            pMouseInput->data.mouse.lLastX = pt.x;
-            pMouseInput->data.mouse.lLastY = pt.y;
+            pMouseInput->data.mouse.lLastX = 0;
+            pMouseInput->data.mouse.lLastY = 0;
             pMouseInput->data.mouse.ulExtraInformation = 0;
         }
         else
@@ -1137,8 +1214,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.usButtonFlags = RI_MOUSE_LEFT_BUTTON_DOWN;
             pMouseInput->data.mouse.usButtonData = 0;
             pMouseInput->data.mouse.ulRawButtons = 0;
-            pMouseInput->data.mouse.lLastX = pt.x;
-            pMouseInput->data.mouse.lLastY = pt.y;
+            pMouseInput->data.mouse.lLastX = 0;
+            pMouseInput->data.mouse.lLastY = 0;
             pMouseInput->data.mouse.ulExtraInformation = 0;
             vk = VK_LBUTTON;
             down = 1;
@@ -1148,8 +1225,8 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
             pMouseInput->data.mouse.usButtonFlags = RI_MOUSE_LEFT_BUTTON_UP;
             pMouseInput->data.mouse.usButtonData = 0;
             pMouseInput->data.mouse.ulRawButtons = 0;
-            pMouseInput->data.mouse.lLastX = pt.x;
-            pMouseInput->data.mouse.lLastY = pt.y;
+            pMouseInput->data.mouse.lLastX = 0;
+            pMouseInput->data.mouse.lLastY = 0;
             pMouseInput->data.mouse.ulExtraInformation = 0;
             vk = VK_LBUTTON;
             down = 0;
@@ -1227,6 +1304,11 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         }
     }
 
+    EnterCriticalSection(&st_EmulationRawinputCS);
+    /*to set for the last point */
+    st_RawInputMouseLastPoint = pt;
+    LeaveCriticalSection(&st_EmulationRawinputCS);
+
     lparam = __InsertMouseInput(pMouseInput,&hwnd);
     if(lparam == 0)
     {
@@ -1235,6 +1317,7 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
     pMouseInput = NULL;
+
 
 
     InputMsg.hwnd = hwnd ;
@@ -1256,11 +1339,49 @@ int __RawInputInsertMouseEvent(LPDEVICEEVENT pDevEvent)
         goto fail;
     }
 
+    if(pMouseAddition)
+    {
+        hwnd = NULL;
+        lparam = __InsertMouseInput(pMouseAddition,&hwnd);
+        if(lparam == 0)
+        {
+            ret = ERROR_DEV_NOT_EXIST;
+            goto fail;
+        }
+        pMouseAddition = NULL;
+
+        InputMsg.hwnd = hwnd ;
+        InputMsg.message = WM_INPUT;
+        InputMsg.wParam = RIM_INPUT;
+        InputMsg.lParam = lparam;
+        InputMsg.time = GetTickCount();
+        InputMsg.pt.x = 0;
+        InputMsg.pt.y = 0;
+        //DEBUG_INFO("Message (0x%08x:%d) wparam (0x%08x:%d) lparam (0x%08x:%d)\n",
+        //           InputMsg.message,
+        //           InputMsg.wParam,InputMsg.wParam,
+        //           InputMsg.lParam,InputMsg.lParam);
+
+        ret = InsertEmulationMessageQueue(&InputMsg,1);
+        if(ret < 0)
+        {
+            ret = GETERRNO();
+            goto fail;
+        }
+
+    }
+
+
     SetKeyState(vk,down);
 
     return 0;
 fail:
     assert(ret > 0);
+    if(pMouseAddition)
+    {
+        free(pMouseAddition);
+    }
+    pMouseAddition = NULL;
     if(pMouseInput)
     {
         free(pMouseInput);
@@ -2616,12 +2737,12 @@ UINT WINAPI GetRawInputDataCallBack(
             RAWKEYBOARD *pKeyboard=NULL;
 
             pKeyboard = &(pRawinput->data.keyboard);
-			ERROR_INFO("(0x%08x)Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",GetTickCount(),
-					   pKeyboard->MakeCode,pKeyboard->MakeCode,
-					   pKeyboard->Flags,
-					   pKeyboard->VKey,
-					   pKeyboard->Message,pKeyboard->Message,
-					   pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
+            ERROR_INFO("(0x%08x)Insert Keyboard MakeCode(0x%04x:%d) Flags(0x%04x) VKey(0x%04x) Message (0x%08x:%d) ExtraInformation(0x%08x:%d)\n",GetTickCount(),
+                       pKeyboard->MakeCode,pKeyboard->MakeCode,
+                       pKeyboard->Flags,
+                       pKeyboard->VKey,
+                       pKeyboard->Message,pKeyboard->Message,
+                       pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
         }
     }
     return uret;
