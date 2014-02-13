@@ -18,6 +18,7 @@
 
 static CRITICAL_SECTION st_hWndCS;
 static std::vector<HWND> st_hWndBaseVecs;
+static HWND st_CaptureWnd=NULL;
 static std::vector<RECT> st_hWndBaseRectVecs;
 static std::vector<HCURSOR> st_hWndClassCursorVecs;
 static unsigned char st_BaseKeyState[MAX_STATE_BUFFER_SIZE] = {0};
@@ -53,6 +54,8 @@ typedef ULONG_PTR(WINAPI *SetClassLongPtrFunc_t)(HWND hWnd,int nIndex,LONG_PTR d
 typedef ULONG_PTR(WINAPI *GetClassLongPtrFunc_t)(HWND hWnd,int nIndex);
 typedef BOOL (WINAPI *SetCursorPosFunc_t)(int x,int y);
 typedef BOOL (WINAPI *GetCursorPosFunc_t)(LPPOINT lpPoint);
+typedef HWND (WINAPI *SetCaptureFunc_t)(HWND hWnd);
+typedef BOOL (WINAPI *ReleaseCaptureFunc_t)(void);
 
 
 ShowCursorFunc_t ShowCursorNext=ShowCursor;
@@ -63,6 +66,8 @@ GetClassLongPtrFunc_t GetClassLongPtrANext=GetClassLongPtrA;
 GetClassLongPtrFunc_t GetClassLongPtrWNext=GetClassLongPtrW;
 SetCursorPosFunc_t SetCursorPosNext=SetCursorPos;
 GetCursorPosFunc_t GetCursorPosNext=GetCursorPos;
+SetCaptureFunc_t SetCaptureNext=SetCapture;
+ReleaseCaptureFunc_t ReleaseCaptureNext=ReleaseCapture;
 
 #define  EQUAL_WINDOW_STATE() \
 do\
@@ -855,16 +860,16 @@ int __MoveMouseAbsoluteNoLock(int clientx,int clienty)
     int ret = 0;
     if(clientx == IO_MOUSE_RESET_X && clienty == IO_MOUSE_RESET_Y)
     {
-    	/*this mean just reset the key board*/
-    	st_MousePoint.x = st_MaxRect.left + 1;
-		st_MousePoint.y = st_MaxRect.top + 1;
-		__ReCalculateMousePointNoLock(0);
+        /*this mean just reset the key board*/
+        st_MousePoint.x = st_MaxRect.left + 1;
+        st_MousePoint.y = st_MaxRect.top + 1;
+        __ReCalculateMousePointNoLock(0);
     }
     else
     {
         st_MousePoint.x = st_MaxRect.left + clientx;
         st_MousePoint.y = st_MaxRect.top + clienty;
-		__ReCalculateMousePointNoLock(1);
+        __ReCalculateMousePointNoLock(1);
     }
     return ret;
 }
@@ -1613,6 +1618,44 @@ int DisableSetCursorPos(void)
     return ret;
 }
 
+HWND WINAPI SetCaptureCallBack(HWND hWnd)
+{
+    HWND hRetWnd=NULL;
+    HWND hRealRetWnd=NULL;
+
+    hRealRetWnd = SetCaptureNext(hWnd);
+    if(st_ShowCursorInit)
+    {
+        EnterCriticalSection(&st_hWndCS);
+        hRetWnd = st_CaptureWnd;
+        st_CaptureWnd = hWnd;
+        LeaveCriticalSection(&st_hWndCS);
+		DEBUG_INFO("SetCapture 0x%08x RetWnd 0x%08x\n",hWnd,hRetWnd);
+        if(hRealRetWnd != hRetWnd)
+        {
+            ERROR_INFO("SetCapture Ret (0x%08x) != should(0x%08x)\n",hRealRetWnd,hRetWnd);
+        }
+    }
+
+
+    return hRealRetWnd;
+}
+
+
+BOOL WINAPI ReleaseCaptureCallBack(void)
+{
+    BOOL bret;
+
+    bret = ReleaseCaptureNext();
+    if(bret && st_ShowCursorInit)
+    {
+    	DEBUG_INFO("ReleaseCapture\n");
+        EnterCriticalSection(&st_hWndCS);
+        st_CaptureWnd = NULL;
+        LeaveCriticalSection(&st_hWndCS);
+    }
+    return bret;
+}
 
 
 int DetourShowCursorFunction(void)
@@ -1626,6 +1669,8 @@ int DetourShowCursorFunction(void)
     DEBUG_BUFFER_FMT(GetClassLongPtrWNext,10,"Before GetClassLongPtrWNext (0x%p)",GetClassLongPtrWNext);
     DEBUG_BUFFER_FMT(GetCursorPosNext,10,"Before GetCursorPosNext (0x%p)",GetCursorPosNext);
     DEBUG_BUFFER_FMT(SetCursorPosNext,10,"Before SetCursorPosNext (0x%p)",SetCursorPosNext);
+    DEBUG_BUFFER_FMT(SetCaptureNext,10,"Before SetCaptureNext (0x%p)",SetCaptureNext);
+    DEBUG_BUFFER_FMT(ReleaseCaptureNext,10,"Before ReleaseCaptureNext (0x%p)",ReleaseCaptureNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&ShowCursorNext,ShowCursorCallBack);
@@ -1636,6 +1681,8 @@ int DetourShowCursorFunction(void)
     DetourAttach((PVOID*)&GetClassLongPtrWNext,GetClassLongPtrWCallBack);
     DetourAttach((PVOID*)&SetCursorPosNext,SetCursorPosCallBack);
     DetourAttach((PVOID*)&GetCursorPosNext,GetCursorPosCallBack);
+    DetourAttach((PVOID*)&SetCaptureNext,SetCaptureCallBack);
+    DetourAttach((PVOID*)&ReleaseCaptureNext,ReleaseCaptureCallBack);
     DetourTransactionCommit();
     DEBUG_BUFFER_FMT(ShowCursorNext,10,"After ShowCursorNext (0x%p)",ShowCursorNext);
     DEBUG_BUFFER_FMT(SetCursorNext,10,"After SetCursorNext (0x%p)",SetCursorNext);
@@ -1645,12 +1692,17 @@ int DetourShowCursorFunction(void)
     DEBUG_BUFFER_FMT(GetClassLongPtrWNext,10,"After GetClassLongPtrWNext (0x%p)",GetClassLongPtrWNext);
     DEBUG_BUFFER_FMT(GetCursorPosNext,10,"After GetCursorPosNext (0x%p)",GetCursorPosNext);
     DEBUG_BUFFER_FMT(SetCursorPosNext,10,"After SetCursorPosNext (0x%p)",SetCursorPosNext);
+    DEBUG_BUFFER_FMT(SetCaptureNext,10,"After SetCaptureNext (0x%p)",SetCaptureNext);
+    DEBUG_BUFFER_FMT(ReleaseCaptureNext,10,"After ReleaseCaptureNext (0x%p)",ReleaseCaptureNext);
 
 
     st_ShowCursorInit = 1;
     return 0;
 }
 
+
+
+#if 0
 HWND GetCurrentProcessActiveWindow()
 {
     HWND hwnd=NULL;
@@ -1660,6 +1712,12 @@ HWND GetCurrentProcessActiveWindow()
     if(st_ShowCursorInit)
     {
         EnterCriticalSection(&st_hWndCS);
+
+        if(st_CaptureWnd)
+        {
+            hwnd = st_CaptureWnd;
+            goto unlock;
+        }
         if(st_hWndBaseVecs.size() > 0)
         {
             for(i=0; i<st_hWndBaseVecs.size(); i++)
@@ -1704,9 +1762,77 @@ HWND GetCurrentProcessActiveWindow()
                 hwnd = st_hWndBaseVecs[bestidx];
             }
         }
+unlock:
         LeaveCriticalSection(&st_hWndCS);
     }
     return hwnd;
 }
+#else
+HWND GetCurrentProcessActiveWindow()
+{
+    HWND hwnd=NULL;
+    LONG style,exstyle;
+    UINT i;
+    int findidx=-1,bestidx=-1;
+    if(st_ShowCursorInit)
+    {
+        EnterCriticalSection(&st_hWndCS);
+
+        if(st_hWndBaseVecs.size() > 0)
+        {
+            for(i=0; i<st_hWndBaseVecs.size(); i++)
+            {
+                style = GetWindowLong(st_hWndBaseVecs[i],GWL_STYLE);
+                exstyle = GetWindowLong(st_hWndBaseVecs[i],GWL_EXSTYLE);
+                if(1)
+                {
+                    DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndBaseVecs[i],
+                               style,exstyle);
+                }
+                if(exstyle & WS_EX_TOPMOST)
+                {
+                    findidx = i;
+                    bestidx = findidx;
+                    if(exstyle & WS_EX_APPWINDOW)
+                    {
+                    	/*if it is the app window ,so do this*/
+                        break;
+                    }
+                }
+                else if(style & WS_VISIBLE)
+                {
+                    findidx = i;
+                    if(bestidx == -1)
+                    {
+                        bestidx = findidx;
+                    }
+#if 0
+                    bret = GetClientRect(st_hWndBaseVecs[i],&rRect);
+                    if(bret)
+                    {
+                        DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d)\n",
+                                   st_hWndBaseVecs[i],
+                                   rRect.left,rRect.top,
+                                   rRect.right,rRect.bottom);
+                        DEBUG_INFO("MaxRect (%d:%d)=>(%d:%d) MousePoint (%d:%d)\n",
+                                   st_MaxRect.left,
+                                   st_MaxRect.top,st_MaxRect.right,st_MaxRect.bottom,
+                                   st_MousePoint.x,st_MousePoint.y);
+                    }
+#endif
+                }
+            }
+            if(bestidx >= 0)
+            {
+                hwnd = st_hWndBaseVecs[bestidx];
+            }
+        }
+        LeaveCriticalSection(&st_hWndCS);
+    }
+    return hwnd;
+}
+
+
+#endif
 
 #endif /*IOCAP_EMULATION*/

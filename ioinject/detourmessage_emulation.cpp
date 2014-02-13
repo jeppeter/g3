@@ -468,12 +468,12 @@ int __InsertMouseMessageDevEvent(LPDEVICEEVENT pDevEvent)
         if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYDOWN)
         {
             message = WM_LBUTTONDOWN;
-            DEBUG_INFO("message leftdown 0x%08x\n",message);
+            //DEBUG_INFO("message leftdown 0x%08x\n",message);
         }
         else if(pDevEvent->event.mouse.event == MOUSE_EVENT_KEYUP)
         {
             message = WM_LBUTTONUP;
-            DEBUG_INFO("message leftup 0x%08x\n",message);
+            //DEBUG_INFO("message leftup 0x%08x\n",message);
         }
         else
         {
@@ -683,10 +683,10 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         if(!(remove & PM_REMOVE) && lGetMsg->message != WM_QUIT)
         {
             /*not remove ,so we put back*/
-            DEBUG_INFO("ReInsertMsg hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
-                       lGetMsg->hwnd,lGetMsg->message,lGetMsg->message,
-                       lGetMsg->wParam,lGetMsg->wParam,
-                       lGetMsg->lParam,lGetMsg->lParam);
+            //DEBUG_INFO("ReInsertMsg hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
+            //           lGetMsg->hwnd,lGetMsg->message,lGetMsg->message,
+            //           lGetMsg->wParam,lGetMsg->wParam,
+            //           lGetMsg->lParam,lGetMsg->lParam);
             res = InsertEmulationMessageQueue(lGetMsg,0);
             assert(res >= 0);
         }
@@ -749,12 +749,15 @@ out:
         {
             lpMsg->hwnd = GetCurrentProcessActiveWindow();
         }
-        //DEBUG_INFO("[%d] hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time(%d) pt.x(%d) pt.y(%d)\n",
-        //           st_GetMessageCount,lpMsg->hwnd,
-        //           lpMsg->message,lpMsg->message,
-        //           lpMsg->wParam,lpMsg->wParam,
-        //           lpMsg->lParam,lpMsg->lParam,
-        //           lpMsg->time,lpMsg->pt.x,lpMsg->pt.y);
+        if(lpMsg->message == WM_LBUTTONDOWN)
+        {
+            DEBUG_INFO("[%d] hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time(%d) pt.x(%d) pt.y(%d)\n",
+                       st_GetMessageCount,lpMsg->hwnd,
+                       lpMsg->message,lpMsg->message,
+                       lpMsg->wParam,lpMsg->wParam,
+                       lpMsg->lParam,lpMsg->lParam,
+                       lpMsg->time,lpMsg->pt.x,lpMsg->pt.y);
+        }
     }
     if(lGetMsg)
     {
@@ -804,7 +807,7 @@ BOOL WINAPI GetMessageACallBack(
     }
 
     __SetWindowRect(hWnd);
-	ShowCursorHandle();
+    ShowCursorHandle();
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -866,7 +869,7 @@ BOOL WINAPI PeekMessageACallBack(
         return FALSE;
     }
     __SetWindowRect(hWnd);
-	ShowCursorHandle();
+    ShowCursorHandle();
 
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
@@ -935,7 +938,7 @@ BOOL WINAPI GetMessageWCallBack(
     }
 
     __SetWindowRect(hWnd);
-	ShowCursorHandle();
+    ShowCursorHandle();
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,PM_REMOVE);
     if(ret > 0)
@@ -997,7 +1000,7 @@ BOOL WINAPI PeekMessageWCallBack(
     }
 
     __SetWindowRect(hWnd);
-	ShowCursorHandle();
+    ShowCursorHandle();
 try_again:
     ret = __GetKeyMouseMessage(lpMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     if(ret > 0)
