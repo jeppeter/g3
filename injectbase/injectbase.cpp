@@ -362,7 +362,7 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
     if(!InsertDlls(pi.hProcess))
     {
         ret = LAST_ERROR_CODE();
-		ERROR_INFO("[%d]InsertDlls Error(%d)\n",GetProcessId(pi.hProcess),ret);
+        ERROR_INFO("[%d]InsertDlls Error(%d)\n",GetProcessId(pi.hProcess),ret);
         bret = TerminateProcess(pi.hProcess,3);
         if(!bret)
         {
@@ -384,8 +384,8 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
                         res = LAST_ERROR_CODE();
                         ERROR_INFO("could not Terminate Process %d\n",res);
                     }
-					CloseHandle(hdupproc);
-					hdupproc = NULL;
+                    CloseHandle(hdupproc);
+                    hdupproc = NULL;
                 }
                 else
                 {
@@ -394,8 +394,8 @@ BOOL WINAPI CreateProcessWCallBack(LPCWSTR lpApplicationName,
                 }
             }
         }
-		CloseHandle(pi.hProcess);
-		pi.hProcess = NULL;
+        CloseHandle(pi.hProcess);
+        pi.hProcess = NULL;
         SetLastError(ret);
         return FALSE;
     }
@@ -436,9 +436,9 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
     DWORD dwMyCreationFlags = (dwCreationFlags | CREATE_SUSPENDED);
     PROCESS_INFORMATION pi;
     int ret;
-	BOOL bret;
-	int pid,res;
-	HANDLE hdupproc = NULL;
+    BOOL bret;
+    int pid,res;
+    HANDLE hdupproc = NULL;
 
     DEBUG_INFO("Current  Process (%d)\n",GetCurrentProcessId());
     if(!CreateProcessANext(lpApplicationName,
@@ -463,7 +463,7 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
     if(!InsertDlls(pi.hProcess))
     {
         ret = LAST_ERROR_CODE();
-		ERROR_INFO("[%d]InsertDlls Error(%d)\n",GetProcessId(pi.hProcess),ret);
+        ERROR_INFO("[%d]InsertDlls Error(%d)\n",GetProcessId(pi.hProcess),ret);
         bret = TerminateProcess(pi.hProcess,3);
         if(!bret)
         {
@@ -485,8 +485,8 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
                         res = LAST_ERROR_CODE();
                         ERROR_INFO("could not Terminate Process %d\n",res);
                     }
-					CloseHandle(hdupproc);
-					hdupproc = NULL;
+                    CloseHandle(hdupproc);
+                    hdupproc = NULL;
                 }
                 else
                 {
@@ -495,8 +495,8 @@ BOOL WINAPI CreateProcessACallBack(LPCSTR lpApplicationName,
                 }
             }
         }
-		CloseHandle(pi.hProcess);
-		pi.hProcess = NULL;
+        CloseHandle(pi.hProcess);
+        pi.hProcess = NULL;
         SetLastError(ret);
         return FALSE;
     }
@@ -838,7 +838,8 @@ HWND WINAPI CreateWindowExACallBack(
                               );
     if(hWnd != NULL)
     {
-        DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
+        DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) hInstance(0x%08x) NULLmodule(0x%08x) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
+                   hInstance,GetModuleHandle(NULL),
                    dwStyle,dwExStyle);
         /*only visible window ,we put it when call*/
         InsertHwnd(hWnd);
@@ -879,7 +880,8 @@ HWND WINAPI CreateWindowExWCallBack(
                               );
     if(hWnd != NULL)
     {
-        DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
+        DEBUG_INFO("hWnd (0x%08x) ThreadId(%d) hInstance(0x%08x) NULLmodule(0x%08x) dwStyle 0x%08x dwExStyle 0x%08x\n",hWnd,GetCurrentThreadId(),
+                   hInstance,GetModuleHandle(NULL),
                    dwStyle,dwExStyle);
         /*only visible window, we put it ok*/
         InsertHwnd(hWnd);

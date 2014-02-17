@@ -15,8 +15,8 @@
 #define  MOUSE_MAX_BTN       3
 
 
-#define  IOCAP_DEBUG         1
-//#define  IOCAP_EMULATION     1
+//#define  IOCAP_DEBUG         1
+#define  IOCAP_EMULATION     1
 
 typedef enum IO_DEVICE_TYPE
 {
