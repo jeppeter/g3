@@ -1369,6 +1369,7 @@ int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
         {
             pPoint->x = (st_MousePoint.x - st_hWndBaseRectVecs[findidx].left);
             pPoint->y = (st_MousePoint.y - st_hWndBaseRectVecs[findidx].top);
+			DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
         }
         else
         {
@@ -1404,6 +1405,7 @@ int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
             {
                 pPoint->y = (st_MousePoint.y -st_hWndBaseRectVecs[findidx].top);
             }
+			DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
         }
     }
     else
@@ -1434,6 +1436,7 @@ int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
         {
             pPoint->y = (st_MousePoint.y - st_MaxRect.top);
         }
+		DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
     }
     LeaveCriticalSection(&st_hWndCS);
 

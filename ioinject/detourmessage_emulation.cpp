@@ -714,25 +714,27 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     }
 
     /*now we should get the mouse value*/
-    if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST && ret > 0)
+    if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST && ret > 1)
     {
         /*we put the mouse pointer here */
         lpMsg->lParam = 0;
-        res = BaseScreenMousePoint(hWnd,&pt);
+		pt.x = pt.y = 0;
+        res = BaseScreenMousePoint(NULL,&pt);
         if(res < 0)
         {
             ret = LAST_ERROR_CODE();
             ERROR_INFO("hWnd(0x%08x) Could not GetScreen mouse point Error(%d)\n",hWnd,ret);
             goto fail;
         }
+		DEBUG_INFO("pt.x(%d) pt.y (%d)\n",pt.x,pt.y);
         lpMsg->lParam |= (0xffff & pt.x);
         lpMsg->lParam |= ((0xffff & pt.y) << 16);
         lpMsg->pt.x = pt.x;
         lpMsg->pt.y = pt.y;
     }
-    else if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST && ret > 0)
+    else if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST && ret > 1)
     {
-        res = BaseScreenMousePoint(hWnd,&pt);
+        res = BaseScreenMousePoint(NULL,&pt);
         if(res < 0)
         {
             ret = LAST_ERROR_CODE();
@@ -749,7 +751,7 @@ out:
         {
             lpMsg->hwnd = GetCurrentProcessActiveWindow();
         }
-        if(lpMsg->message == WM_LBUTTONDOWN)
+        //if(lpMsg->message == WM_LBUTTONDOWN)
         {
             DEBUG_INFO("[%d] hwnd(0x%08x) message(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d) time(%d) pt.x(%d) pt.y(%d)\n",
                        st_GetMessageCount,lpMsg->hwnd,
