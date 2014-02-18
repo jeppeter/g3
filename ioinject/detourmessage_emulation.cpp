@@ -671,11 +671,11 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         EMULATIONMESSAGE_DEBUG_INFO("LBUTTONUP\n");
     }
 
-    //EMULATIONMESSAGE_DEBUG_INFO("lGetMsg 0x%p Message Code(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
-    //                            lGetMsg,lGetMsg->message,lGetMsg->message,
-    //                            lGetMsg->wParam,lGetMsg->wParam,
-    //                            lGetMsg->lParam,lGetMsg->lParam);
-
+    DEBUG_INFO("lGetMsg 0x%p Message Code(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
+                                lGetMsg,lGetMsg->message,lGetMsg->message,
+                                lGetMsg->wParam,lGetMsg->wParam,
+                                lGetMsg->lParam,lGetMsg->lParam);
+	DEBUG_INFO("filtermin %d filtermax %d remove %d\n",wMsgFilterMin,wMsgFilterMax,remove);
     /*now to compare whether it is the ok*/
     if(wMsgFilterMin == 0 && wMsgFilterMax == 0)
     {
@@ -718,7 +718,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     {
         /*we put the mouse pointer here */
         lpMsg->lParam = 0;
-		pt.x = pt.y = 0;
+        pt.x = pt.y = 0;
         res = BaseScreenMousePoint(NULL,&pt);
         if(res < 0)
         {
@@ -726,7 +726,7 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
             ERROR_INFO("hWnd(0x%08x) Could not GetScreen mouse point Error(%d)\n",hWnd,ret);
             goto fail;
         }
-		DEBUG_INFO("pt.x(%d) pt.y (%d)\n",pt.x,pt.y);
+        DEBUG_INFO("pt.x(%d) pt.y (%d)\n",pt.x,pt.y);
         lpMsg->lParam |= (0xffff & pt.x);
         lpMsg->lParam |= ((0xffff & pt.y) << 16);
         lpMsg->pt.x = pt.x;
