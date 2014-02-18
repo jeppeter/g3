@@ -47,7 +47,7 @@ int SetShowCursorHide()
 }
 
 
-BOOL InsertHwnd(HWND hwnd)
+BOOL InsertHwnd(HWND hwnd,HINSTANCE hInst)
 {
 	int ret=ERROR_NOT_SUPPORTED;
 	SetLastError(ret);

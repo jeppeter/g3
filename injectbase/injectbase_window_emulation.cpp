@@ -541,7 +541,7 @@ HCURSOR WINAPI SetCursorCallBack(HCURSOR hCursor)
 
 
 
-BOOL InsertHwnd(HWND hwnd)
+BOOL InsertHwnd(HWND hwnd,HINSTANCE hInst)
 {
     BOOL bret=FALSE;
     int findidx=-1;
@@ -552,39 +552,42 @@ BOOL InsertHwnd(HWND hwnd)
     if(st_ShowCursorInit)
     {
         findidx = -1;
-        EnterCriticalSection(&st_hWndCS);
-        EQUAL_WINDOW_STATE();
-        for(i=0; i<st_hWndBaseVecs.size() ; i++)
+        if(hInst == GetModuleHandle(NULL))
         {
-            if(st_hWndBaseVecs[i] == hwnd)
+            EnterCriticalSection(&st_hWndCS);
+            EQUAL_WINDOW_STATE();
+            for(i=0; i<st_hWndBaseVecs.size() ; i++)
             {
-                findidx = i;
-                break;
+                if(st_hWndBaseVecs[i] == hwnd)
+                {
+                    findidx = i;
+                    break;
+                }
             }
-        }
 
-        if(findidx < 0)
-        {
-            /*make the dummy rect*/
-            rRect = {0,0,2,2};
-            st_hWndBaseVecs.push_back(hwnd);
-            hCursor = (HCURSOR) GetClassLongPtrANext(hwnd,GCLP_HCURSOR);
-            st_hWndClassCursorVecs.push_back(hCursor);
-            st_hWndBaseRectVecs.push_back(rRect);
-            if(st_ShowCursorHideMode > 0)
+            if(findidx < 0)
             {
-                /*this means we should hid cursor ,because when st_ShowCursorHideMode > 0 we have create hNoMouseCursor ,so assert it*/
-                assert(st_hNoMouseCursor);
-                SetClassLongPtrANext(hwnd,GCLP_HCURSOR,(LONG)st_hNoMouseCursor);
+                /*make the dummy rect*/
+                rRect = {0,0,2,2};
+                st_hWndBaseVecs.push_back(hwnd);
+                hCursor = (HCURSOR) GetClassLongPtrANext(hwnd,GCLP_HCURSOR);
+                st_hWndClassCursorVecs.push_back(hCursor);
+                st_hWndBaseRectVecs.push_back(rRect);
+                if(st_ShowCursorHideMode > 0)
+                {
+                    /*this means we should hid cursor ,because when st_ShowCursorHideMode > 0 we have create hNoMouseCursor ,so assert it*/
+                    assert(st_hNoMouseCursor);
+                    SetClassLongPtrANext(hwnd,GCLP_HCURSOR,(LONG)st_hNoMouseCursor);
+                }
+                bret = TRUE;
+                ret = 0;
             }
-            bret = TRUE;
-            ret = 0;
+            else
+            {
+                ret = ERROR_DUP_NAME;
+            }
+            LeaveCriticalSection(&st_hWndCS);
         }
-        else
-        {
-            ret = ERROR_DUP_NAME;
-        }
-        LeaveCriticalSection(&st_hWndCS);
     }
     SetLastError(ret);
     return bret;
@@ -1630,7 +1633,7 @@ HWND WINAPI SetCaptureCallBack(HWND hWnd)
         hRetWnd = st_CaptureWnd;
         st_CaptureWnd = hWnd;
         LeaveCriticalSection(&st_hWndCS);
-		DEBUG_INFO("SetCapture 0x%08x RetWnd 0x%08x\n",hWnd,hRetWnd);
+        DEBUG_INFO("SetCapture 0x%08x RetWnd 0x%08x\n",hWnd,hRetWnd);
         if(hRealRetWnd != hRetWnd)
         {
             ERROR_INFO("SetCapture Ret (0x%08x) != should(0x%08x)\n",hRealRetWnd,hRetWnd);
@@ -1649,7 +1652,7 @@ BOOL WINAPI ReleaseCaptureCallBack(void)
     bret = ReleaseCaptureNext();
     if(bret && st_ShowCursorInit)
     {
-    	DEBUG_INFO("ReleaseCapture\n");
+        DEBUG_INFO("ReleaseCapture\n");
         EnterCriticalSection(&st_hWndCS);
         st_CaptureWnd = NULL;
         LeaveCriticalSection(&st_hWndCS);
@@ -1703,71 +1706,7 @@ int DetourShowCursorFunction(void)
 
 
 #if 0
-HWND GetCurrentProcessActiveWindow()
-{
-    HWND hwnd=NULL;
-    LONG style,exstyle;
-    UINT i;
-    int findidx=-1,bestidx=-1;
-    if(st_ShowCursorInit)
-    {
-        EnterCriticalSection(&st_hWndCS);
 
-        if(st_CaptureWnd)
-        {
-            hwnd = st_CaptureWnd;
-            goto unlock;
-        }
-        if(st_hWndBaseVecs.size() > 0)
-        {
-            for(i=0; i<st_hWndBaseVecs.size(); i++)
-            {
-                style = GetWindowLong(st_hWndBaseVecs[i],GWL_STYLE);
-                exstyle = GetWindowLong(st_hWndBaseVecs[i],GWL_EXSTYLE);
-                if(0)
-                {
-                    DEBUG_INFO("hwnd(0x%08x)style = 0x%08x exstyle 0x%08x\n",st_hWndBaseVecs[i],
-                               style,exstyle);
-                }
-                if(exstyle & WS_EX_TOPMOST)
-                {
-                    findidx = i;
-                    bestidx = findidx;
-                }
-                else if(style & WS_VISIBLE)
-                {
-                    findidx = i;
-                    if(bestidx == -1)
-                    {
-                        bestidx = findidx;
-                    }
-#if 0
-                    bret = GetClientRect(st_hWndBaseVecs[i],&rRect);
-                    if(bret)
-                    {
-                        DEBUG_INFO("hwnd(0x%08x) (%d:%d)=>(%d:%d)\n",
-                                   st_hWndBaseVecs[i],
-                                   rRect.left,rRect.top,
-                                   rRect.right,rRect.bottom);
-                        DEBUG_INFO("MaxRect (%d:%d)=>(%d:%d) MousePoint (%d:%d)\n",
-                                   st_MaxRect.left,
-                                   st_MaxRect.top,st_MaxRect.right,st_MaxRect.bottom,
-                                   st_MousePoint.x,st_MousePoint.y);
-                    }
-#endif
-                }
-            }
-            if(bestidx >= 0)
-            {
-                hwnd = st_hWndBaseVecs[bestidx];
-            }
-        }
-unlock:
-        LeaveCriticalSection(&st_hWndCS);
-    }
-    return hwnd;
-}
-#else
 HWND GetCurrentProcessActiveWindow()
 {
     HWND hwnd=NULL;
@@ -1795,7 +1734,7 @@ HWND GetCurrentProcessActiveWindow()
                     bestidx = findidx;
                     if(exstyle & WS_EX_APPWINDOW)
                     {
-                    	/*if it is the app window ,so do this*/
+                        /*if it is the app window ,so do this*/
                         break;
                     }
                 }
@@ -1831,8 +1770,129 @@ HWND GetCurrentProcessActiveWindow()
     }
     return hwnd;
 }
+#else
 
+#include <TlHelp32.h>
+
+
+HWND __FindCurrentActiveWindow()
+{
+    HWND curwnd=NULL;
+    DWORD pid;
+    HANDLE hSnap=INVALID_HANDLE_VALUE;
+    int ret;
+    THREADENTRY32 t32;
+    BOOL bret;
+    std::vector<DWORD> thids;
+    UINT i;
+    GUITHREADINFO guiinfo;
+
+    pid = GetCurrentProcessId();
+
+    hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD,pid);
+    if(hSnap == INVALID_HANDLE_VALUE)
+    {
+        ret = GETERRNO();
+        goto fail;
+    }
+
+    ZeroMemory(&t32,sizeof(t32));
+    t32.dwSize = sizeof(t32);
+
+    SETERRNO(0);
+    for(bret = Thread32First(hSnap,&t32); bret; bret = Thread32Next(hSnap,&t32))
+    {
+        if(t32.th32OwnerProcessID == pid)
+        {
+            thids.push_back(t32.th32ThreadID);
+        }
+        ZeroMemory(&t32,sizeof(t32));
+        t32.dwSize = sizeof(t32);
+    }
+
+    ret = GETERRNO();
+    if(ret != ERROR_NO_MORE_FILES)
+    {
+        ERROR_INFO("(0x%08x)process thread error(%d)\n",pid,ret);
+        goto fail;
+    }
+
+    DEBUG_INFO("threadsize(%d)\n",thids.size());
+    for(i=0; i<thids.size(); i++)
+    {
+        guiinfo.cbSize = sizeof(guiinfo);
+        bret = GetGUIThreadInfo(thids[i],&guiinfo);
+        if(bret)
+        {
+            //DEBUG_INFO("[%d](0x%08x) flags(0x%08x) activewindow (0x%08x) focuswindow (0x%08x) capturewindow (0x%08x) menuowner(0x%08x) movesize(0x%08x) caret(0x%08x)\n",
+            //           i,
+            //           thids[i],
+            //           guiinfo.flags,
+            //           guiinfo.hwndActive,
+            //           guiinfo.hwndFocus,
+            //           guiinfo.hwndCapture,
+            //           guiinfo.hwndMenuOwner,
+            //           guiinfo.hwndMoveSize,
+            //           guiinfo.hwndCaret);
+            curwnd = guiinfo.hwndActive;
+            if(guiinfo.hwndCapture)
+            {
+                curwnd = guiinfo.hwndCapture;
+            }
+        }
+        else
+        {
+            ret = GETERRNO();
+            //ERROR_INFO("[%d](0x%08x) Get GuiInfo Error(%d)\n",i,thids[i],ret);
+        }
+    }
+
+    if(hSnap != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hSnap);
+    }
+    hSnap= INVALID_HANDLE_VALUE;
+    SETERRNO(0);
+    return curwnd;
+fail:
+
+    if(hSnap != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hSnap);
+    }
+    hSnap= INVALID_HANDLE_VALUE;
+    SETERRNO(ret);
+    return NULL;
+}
+
+
+HWND GetCurrentProcessActiveWindow()
+{
+    HWND hwnd=NULL;
+    LONG style,exstyle;
+    UINT i;
+    int findidx=-1,bestidx=-1;
+    if(st_ShowCursorInit)
+    {
+        EnterCriticalSection(&st_hWndCS);
+        if(st_hWndBaseVecs.size() > 0)
+        {
+            bestidx = 0;
+            hwnd = st_hWndBaseVecs[bestidx];
+        }
+        else
+        {
+            hwnd = __FindCurrentActiveWindow();
+        }
+        LeaveCriticalSection(&st_hWndCS);
+    }
+    return hwnd;
+}
 
 #endif
+
+
+
+
 
 #endif /*IOCAP_EMULATION*/

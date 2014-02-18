@@ -3,7 +3,7 @@
 #define __INJECTBASE_WINDOW_H__
 #include <Windows.h>
 
-BOOL InsertHwnd(HWND hwnd);
+BOOL InsertHwnd(HWND hwnd,HINSTANCE hInst);
 BOOL RemoveHwnd(HWND hwnd);
 int DetourShowCursorFunction(void);
 

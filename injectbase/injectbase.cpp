@@ -842,7 +842,7 @@ HWND WINAPI CreateWindowExACallBack(
                    hInstance,GetModuleHandle(NULL),
                    dwStyle,dwExStyle);
         /*only visible window ,we put it when call*/
-        InsertHwnd(hWnd);
+        InsertHwnd(hWnd,hInstance);
         st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
@@ -884,7 +884,7 @@ HWND WINAPI CreateWindowExWCallBack(
                    hInstance,GetModuleHandle(NULL),
                    dwStyle,dwExStyle);
         /*only visible window, we put it ok*/
-        InsertHwnd(hWnd);
+        InsertHwnd(hWnd,hInstance);
         st_CreateWindowFuncList.CallList(hWnd);
     }
     return hWnd;
