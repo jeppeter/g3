@@ -672,10 +672,10 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     }
 
     DEBUG_INFO("lGetMsg 0x%p Message Code(0x%08x:%d) wParam(0x%08x:%d) lParam(0x%08x:%d)\n",
-                                lGetMsg,lGetMsg->message,lGetMsg->message,
-                                lGetMsg->wParam,lGetMsg->wParam,
-                                lGetMsg->lParam,lGetMsg->lParam);
-	DEBUG_INFO("filtermin %d filtermax %d remove %d\n",wMsgFilterMin,wMsgFilterMax,remove);
+               lGetMsg,lGetMsg->message,lGetMsg->message,
+               lGetMsg->wParam,lGetMsg->wParam,
+               lGetMsg->lParam,lGetMsg->lParam);
+    DEBUG_INFO("filtermin %d filtermax %d remove %d\n",wMsgFilterMin,wMsgFilterMax,remove);
     /*now to compare whether it is the ok*/
     if(wMsgFilterMin == 0 && wMsgFilterMax == 0)
     {
@@ -713,10 +713,15 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         goto out;
     }
 
+    DEBUG_INFO("message (0x%08x:%d)ret = %d WM_MOUSEFIRST (0x%08x:%d) WM_MOUSELAST (0x%08x:%d)\n",lpMsg->message,lpMsg->message,ret,
+		WM_MOUSEFIRST,WM_MOUSEFIRST,
+		WM_MOUSELAST,WM_MOUSELAST);
+
     /*now we should get the mouse value*/
-    if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST && ret > 1)
+    if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST && ret > 0)
     {
         /*we put the mouse pointer here */
+		DEBUG_INFO("mouse handle\n");
         lpMsg->lParam = 0;
         pt.x = pt.y = 0;
         res = BaseScreenMousePoint(NULL,&pt);
@@ -729,21 +734,16 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         DEBUG_INFO("pt.x(%d) pt.y (%d)\n",pt.x,pt.y);
         lpMsg->lParam |= (0xffff & pt.x);
         lpMsg->lParam |= ((0xffff & pt.y) << 16);
-        lpMsg->pt.x = pt.x;
-        lpMsg->pt.y = pt.y;
     }
-    else if(lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST && ret > 1)
-    {
-        res = BaseScreenMousePoint(NULL,&pt);
-        if(res < 0)
-        {
-            ret = LAST_ERROR_CODE();
-            ERROR_INFO("hWnd(0x%08x) Could not GetScreen mouse point Error(%d)\n",hWnd,ret);
-            goto fail;
-        }
-        lpMsg->pt.x = pt.x;
-        lpMsg->pt.y = pt.y;
-    }
+	res = BaseGetMousePointAbsolution(&pt);
+	if(res < 0)
+	{
+		ret = LAST_ERROR_CODE();
+		ERROR_INFO("BaseGetMousePointAbsolution Error(%d)\n",hWnd,ret);
+		goto fail;
+	}
+	lpMsg->pt.x = pt.x;
+	lpMsg->pt.y = pt.y;
 out:
     if(ret > 0)
     {
@@ -759,6 +759,10 @@ out:
                        lpMsg->wParam,lpMsg->wParam,
                        lpMsg->lParam,lpMsg->lParam,
                        lpMsg->time,lpMsg->pt.x,lpMsg->pt.y);
+            if(remove)
+            {
+                st_GetMessageCount ++;
+            }
         }
     }
     if(lGetMsg)
