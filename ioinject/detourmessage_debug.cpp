@@ -6,6 +6,7 @@ GetMessageFunc_t GetMessageANext= GetMessageA;
 PeekMessageFunc_t PeekMessageANext=PeekMessageA;
 GetMessageFunc_t GetMessageWNext= GetMessageW;
 PeekMessageFunc_t PeekMessageWNext=PeekMessageW;
+GetMessagePosFunc_t GetMessagePosNext=GetMessagePos;
 
 
 HWND FindCurrentActiveWindow()
@@ -370,6 +371,16 @@ BOOL WINAPI PeekMessageWCallBack(
     return bret;
 }
 
+DWORD WINAPI GetMessagePosCallBack(void)
+{
+    DWORD dret;
+
+    dret = GetMessagePosNext();
+    DEBUG_INFO("GetMessagePos (0x%08x:%d)\n",dret,dret);
+    return dret;
+}
+
+
 
 int __MessageDetour(void)
 {
@@ -377,17 +388,20 @@ int __MessageDetour(void)
     DEBUG_BUFFER_FMT(PeekMessageANext,10,"Before PeekMessageANext(0x%p)",PeekMessageANext);
     DEBUG_BUFFER_FMT(GetMessageWNext,10,"Before GetMessageWNext(0x%p)",GetMessageWNext);
     DEBUG_BUFFER_FMT(PeekMessageWNext,10,"Before PeekMessageWNext(0x%p)",PeekMessageWNext);
+    DEBUG_BUFFER_FMT(GetMessagePosNext,10,"Before GetMessagePosNext(0x%p)",GetMessagePosNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&PeekMessageANext,PeekMessageACallBack);
     DetourAttach((PVOID*)&GetMessageANext,GetMessageACallBack);
     DetourAttach((PVOID*)&PeekMessageWNext,PeekMessageWCallBack);
     DetourAttach((PVOID*)&GetMessageWNext,GetMessageWCallBack);
+	DetourAttach((PVOID*)&GetMessagePosNext,GetMessagePosCallBack);
     DetourTransactionCommit();
     DEBUG_BUFFER_FMT(GetMessageANext,10,"After GetMessageANext(0x%p)",GetMessageANext);
     DEBUG_BUFFER_FMT(PeekMessageANext,10,"After PeekMessageANext(0x%p)",PeekMessageANext);
     DEBUG_BUFFER_FMT(GetMessageWNext,10,"After GetMessageWNext(0x%p)",GetMessageWNext);
     DEBUG_BUFFER_FMT(PeekMessageWNext,10,"After PeekMessageWNext(0x%p)",PeekMessageWNext);
+    DEBUG_BUFFER_FMT(GetMessagePosNext,10,"After GetMessagePosNext(0x%p)",GetMessagePosNext);
     return 0;
 }
 

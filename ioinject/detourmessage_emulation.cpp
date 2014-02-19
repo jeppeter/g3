@@ -15,11 +15,13 @@ static GetMessageFunc_t GetMessageANext= GetMessageA;
 static PeekMessageFunc_t PeekMessageANext=PeekMessageA;
 static GetMessageFunc_t GetMessageWNext= GetMessageW;
 static PeekMessageFunc_t PeekMessageWNext=PeekMessageW;
+static GetMessagePosFunc_t GetMessagePosNext=GetMessagePos;
 
 static CRITICAL_SECTION st_MessageEmulationCS;
 static std::vector<LPMSG> st_MessageEmulationQueue;
 static int st_MessageQuit=0;
 static UINT st_MaxMessageEmulationQueue=100;
+static UINT st_MessagePoint=0;
 
 
 
@@ -96,7 +98,6 @@ int __InsertMessageQueue(LPMSG lpMsg,int back)
     LPMSG lpRemove=NULL;
     if(st_MessageEmualtionInited)
     {
-        uint32_t curtick = GetTickCount();
         ret = 0;
         EnterCriticalSection(&st_MessageEmulationCS);
         if(back)
@@ -227,6 +228,23 @@ int InsertEmulationMessageQueue(LPMSG lpMsg,int back)
     ret = ERROR_NOT_SUPPORTED;
     SetLastError(ret);
     return -ret;
+}
+
+
+int __InsertMessagePoint(POINT* pPoint)
+{
+    int ret = 0;
+    if(st_MessageEmualtionInited)
+    {
+        ret = 1;
+        EnterCriticalSection(&st_MessageEmulationCS);
+        st_MessagePoint = 0;
+        st_MessagePoint |= (pPoint->x & 0xffff);
+        st_MessagePoint |= ((pPoint->y & 0xffff) << 16);
+        LeaveCriticalSection(&st_MessageEmulationCS);
+
+    }
+    return ret;
 }
 
 int __PrepareMouseButtonMessage(LPMSG lpMsg,UINT message)
@@ -714,14 +732,14 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
     }
 
     DEBUG_INFO("message (0x%08x:%d)ret = %d WM_MOUSEFIRST (0x%08x:%d) WM_MOUSELAST (0x%08x:%d)\n",lpMsg->message,lpMsg->message,ret,
-		WM_MOUSEFIRST,WM_MOUSEFIRST,
-		WM_MOUSELAST,WM_MOUSELAST);
+               WM_MOUSEFIRST,WM_MOUSEFIRST,
+               WM_MOUSELAST,WM_MOUSELAST);
 
     /*now we should get the mouse value*/
     if(lpMsg->message >= WM_MOUSEFIRST && lpMsg->message <= WM_MOUSELAST && ret > 0)
     {
         /*we put the mouse pointer here */
-		DEBUG_INFO("mouse handle\n");
+        DEBUG_INFO("mouse handle\n");
         lpMsg->lParam = 0;
         pt.x = pt.y = 0;
         res = BaseScreenMousePoint(NULL,&pt);
@@ -735,15 +753,16 @@ int __GetKeyMouseMessage(LPMSG lpMsg,HWND hWnd,UINT wMsgFilterMin,UINT wMsgFilte
         lpMsg->lParam |= (0xffff & pt.x);
         lpMsg->lParam |= ((0xffff & pt.y) << 16);
     }
-	res = BaseGetMousePointAbsolution(&pt);
-	if(res < 0)
-	{
-		ret = LAST_ERROR_CODE();
-		ERROR_INFO("BaseGetMousePointAbsolution Error(%d)\n",hWnd,ret);
-		goto fail;
-	}
-	lpMsg->pt.x = pt.x;
-	lpMsg->pt.y = pt.y;
+    res = BaseGetMousePointAbsolution(&pt);
+    if(res < 0)
+    {
+        ret = LAST_ERROR_CODE();
+        ERROR_INFO("BaseGetMousePointAbsolution Error(%d)\n",hWnd,ret);
+        goto fail;
+    }
+    lpMsg->pt.x = pt.x;
+    lpMsg->pt.y = pt.y;
+    __InsertMessagePoint(&pt);
 out:
     if(ret > 0)
     {
@@ -1057,6 +1076,21 @@ try_again:
     return bret;
 }
 
+DWORD WINAPI GetMessagePosCallBack(void)
+{
+    DWORD dret;
+    if(st_MessageEmualtionInited)
+    {
+        EnterCriticalSection(&st_MessageEmulationCS);
+        dret = st_MessagePoint;
+        LeaveCriticalSection(&st_MessageEmulationCS);
+    }
+    else
+    {
+        dret = GetMessagePosNext();
+    }
+	return dret;
+}
 
 
 int __MessageDetour(void)
@@ -1091,17 +1125,20 @@ int __MessageDetour(void)
     DEBUG_BUFFER_FMT(PeekMessageANext,10,"Before PeekMessageANext(0x%p)",PeekMessageANext);
     DEBUG_BUFFER_FMT(GetMessageWNext,10,"Before GetMessageWNext(0x%p)",GetMessageWNext);
     DEBUG_BUFFER_FMT(PeekMessageWNext,10,"Before PeekMessageWNext(0x%p)",PeekMessageWNext);
+    DEBUG_BUFFER_FMT(GetMessagePosNext,10,"Before GetMessagePosNext(0x%p)",GetMessagePosNext);
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)&PeekMessageANext,PeekMessageACallBack);
     DetourAttach((PVOID*)&GetMessageANext,GetMessageACallBack);
     DetourAttach((PVOID*)&PeekMessageWNext,PeekMessageWCallBack);
     DetourAttach((PVOID*)&GetMessageWNext,GetMessageWCallBack);
+    DetourAttach((PVOID*)&GetMessagePosNext,GetMessagePosCallBack);
     DetourTransactionCommit();
     DEBUG_BUFFER_FMT(GetMessageANext,10,"After GetMessageANext(0x%p)",GetMessageANext);
     DEBUG_BUFFER_FMT(PeekMessageANext,10,"After PeekMessageANext(0x%p)",PeekMessageANext);
     DEBUG_BUFFER_FMT(GetMessageWNext,10,"After GetMessageWNext(0x%p)",GetMessageWNext);
     DEBUG_BUFFER_FMT(PeekMessageWNext,10,"After PeekMessageWNext(0x%p)",PeekMessageWNext);
+    DEBUG_BUFFER_FMT(GetMessagePosNext,10,"After GetMessagePosNext(0x%p)",GetMessagePosNext);
     st_MessageEmualtionInited = 1;
     return 0;
 }

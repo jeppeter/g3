@@ -28,6 +28,8 @@ typedef BOOL (WINAPI *PeekMessageFunc_t)(
     UINT wRemoveMsg
 );
 
+typedef DWORD (WINAPI *GetMessagePosFunc_t)();
+
 #if defined(DETOUR_MESSAGE_DEBUG) && defined(DETOUR_MESSAGE_EMULATION)
 #error "Either define DETOUR_MESSAGE_DEBUG or DETOUR_MESSAGE_EMULATION can not both"
 #endif

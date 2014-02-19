@@ -957,6 +957,11 @@ int BaseSetWindowRectState(HWND hwnd)
 
             wRect.right = pt.x;
             wRect.bottom = pt.y;
+            DEBUG_INFO("clientrect(%d:%d-%d:%d) => windowrect(%d:%d-%d:%d)\n",
+                       rRect.left,rRect.top,
+                       rRect.right,rRect.bottom,
+                       wRect.left,wRect.top,
+                       wRect.right,wRect.bottom);
             if(st_hWndBaseRectVecs[findidx].top != wRect.top  ||
                     st_hWndBaseRectVecs[findidx].left != wRect.left ||
                     st_hWndBaseRectVecs[findidx].right != wRect.right ||
@@ -1369,7 +1374,7 @@ int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
         {
             pPoint->x = (st_MousePoint.x - st_hWndBaseRectVecs[findidx].left);
             pPoint->y = (st_MousePoint.y - st_hWndBaseRectVecs[findidx].top);
-			DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
+            DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
         }
         else
         {
@@ -1405,7 +1410,7 @@ int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
             {
                 pPoint->y = (st_MousePoint.y -st_hWndBaseRectVecs[findidx].top);
             }
-			DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
+            DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
         }
     }
     else
@@ -1436,7 +1441,7 @@ int BaseScreenMousePoint(HWND hwnd,POINT* pPoint)
         {
             pPoint->y = (st_MousePoint.y - st_MaxRect.top);
         }
-		DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
+        DEBUG_INFO("pPoint->x %d pPoint->y %d\n",pPoint->x,pPoint->y);
     }
     LeaveCriticalSection(&st_hWndCS);
 
