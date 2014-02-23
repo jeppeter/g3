@@ -640,6 +640,7 @@ public:
 
                     if(pData)
                     {
+                    	DEBUG_BUFFER_FMT(rgdod,sizeof(*rgdod)*(*pdwInOut),"Mouse Data (%d)",(*pdwInOut));
                         free(pData);
                     }
                     pData = NULL;

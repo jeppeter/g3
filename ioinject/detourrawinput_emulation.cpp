@@ -2751,6 +2751,13 @@ UINT WINAPI GetRawInputDataCallBack(
                        pKeyboard->Message,pKeyboard->Message,
                        pKeyboard->ExtraInformation,pKeyboard->ExtraInformation);
         }
+        else if(uiCommand == RID_INPUT && pRawinput->header.dwType == RIM_TYPEMOUSE)
+        {
+            RAWMOUSE *pMouse=NULL;
+            pMouse = &(pRawinput->data.mouse);
+            DEBUG_BUFFER_FMT(pRawinput,*pcbSize,"usFlags 0x%04x lLastX 0x%08x lLastY 0x%08x",pMouse->usFlags,
+                             pMouse->lLastX,pMouse->lLastY);
+        }
     }
     return uret;
 }

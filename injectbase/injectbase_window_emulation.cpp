@@ -1877,8 +1877,6 @@ fail:
 HWND GetCurrentProcessActiveWindow()
 {
     HWND hwnd=NULL;
-    LONG style,exstyle;
-    UINT i;
     int findidx=-1,bestidx=-1;
     if(st_ShowCursorInit)
     {
