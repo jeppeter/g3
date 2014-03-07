@@ -1899,6 +1899,38 @@ HWND GetCurrentProcessActiveWindow()
 
 
 
+SetForegroundWindowFunc_t SetForegroundWindowNext=SetForegroundWindow;
+GetForegroundWindowFunc_t GetForegroundWindowNext=GetForegroundWindow;
+
+BOOL WINAPI SetForegroundWindowCallBack(HWND hwnd)
+{
+	DEBUG_INFO("SetForegroundWindow(0x%08x)\n",hwnd);
+	return TRUE;
+}
+
+HWND WINAPI GetForegroundWindowCallBack()
+{
+    HWND hwnd=NULL;
+    hwnd = GetCurrentProcessActiveWindow();
+    DEBUG_INFO("GetForegroundWindow(0x%08x)\n",hwnd);
+    return hwnd;
+}
+
+int DetourForegroundWindow()
+{
+    DEBUG_BUFFER_FMT(SetForegroundWindowNext,10,"Before SetForegroundWindowNext (0x%p)",SetForegroundWindowNext);
+    DEBUG_BUFFER_FMT(GetForegroundWindowNext,10,"Before GetForegroundWindowNext (0x%p)",GetForegroundWindowNext);
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DetourAttach((PVOID*)&SetForegroundWindowNext,SetForegroundWindowCallBack);
+    DetourAttach((PVOID*)&GetForegroundWindowNext,GetForegroundWindowCallBack);
+    DetourTransactionCommit();
+    DEBUG_BUFFER_FMT(SetForegroundWindowNext,10,"After SetForegroundWindowNext (0x%p)",SetForegroundWindowNext);
+    DEBUG_BUFFER_FMT(GetForegroundWindowNext,10,"After GetForegroundWindowNext (0x%p)",GetForegroundWindowNext);
+    return 0;
+}
+
+
 
 
 #endif /*IOCAP_EMULATION*/

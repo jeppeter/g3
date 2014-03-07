@@ -694,6 +694,7 @@ LONG WINAPI DetourApplicationCrashHandler(EXCEPTION_POINTERS *pException)
 static int DetourDestroyWindow();
 static int DetourCreateWindow();
 
+
 int InjectBaseModuleInit(HMODULE hModule)
 {
     int ret;
@@ -721,6 +722,12 @@ int InjectBaseModuleInit(HMODULE hModule)
     }
 
     ret = DetourCreateWindow();
+    if(ret < 0)
+    {
+        return 0;
+    }
+
+    ret = DetourForegroundWindow();
     if(ret < 0)
     {
         return 0;
