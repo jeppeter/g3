@@ -1916,6 +1916,8 @@ HWND WINAPI GetForegroundWindowCallBack()
     return hwnd;
 }
 
+#if 0
+
 int DetourForegroundWindow()
 {
     DEBUG_BUFFER_FMT(SetForegroundWindowNext,10,"Before SetForegroundWindowNext (0x%p)",SetForegroundWindowNext);
@@ -1929,7 +1931,13 @@ int DetourForegroundWindow()
     DEBUG_BUFFER_FMT(GetForegroundWindowNext,10,"After GetForegroundWindowNext (0x%p)",GetForegroundWindowNext);
     return 0;
 }
+#else
+int DetourForegroundWindow()
+{
+	return 0;
+}
 
+#endif
 
 
 

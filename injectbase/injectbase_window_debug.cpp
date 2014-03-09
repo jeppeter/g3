@@ -3,6 +3,7 @@
 
 #ifdef IOCAP_DEBUG
 #include <injectbase.h>
+#include <injectbase_window.h>
 
 
 int EnableSetCursorPos(void)
