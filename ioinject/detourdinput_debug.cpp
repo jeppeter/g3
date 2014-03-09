@@ -5,6 +5,9 @@ static std::vector<IDirectInputDevice8A*> st_DIDevice8AVecs;
 static std::vector<CDirectInputDevice8AHook*> st_CDIDevice8AHookVecs;
 static CRITICAL_SECTION st_DIDevice8ACS;
 
+
+
+
 #define EQUAL_DI_DEVICE_8A_VECS() \
 do\
 {\
@@ -48,6 +51,32 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     return uret;
 }
 
+
+class CDirectInputJoyConfig8Hook : public IDirectInputJoyConfig8
+{
+private:
+    IDirectInputJoyConfig8 *m_ptr;
+    GUID m_guid;
+public:
+    CDirectInputJoyConfig8Hook(IDirectInputJoyConfig8 *ptr,REFGUID guid)
+    {
+        m_ptr = ptr;
+        m_guid = guid;
+    }
+
+    ~CDirectInputJoyConfig8Hook()
+    {
+        m_ptr = NULL;
+        m_guid = GUID_NULL;
+    }
+
+    COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid, LPVOID * ppvObj)
+    {
+    	
+    }
+
+
+}
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
 #define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
@@ -316,7 +345,7 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
         hr = m_ptr->Poll();
-		DEBUG_INFO("<0x%p>(0x%p) Poll result(0x%08x)\n",this,this->m_ptr,hr);
+        DEBUG_INFO("<0x%p>(0x%p) Poll result(0x%08x)\n",this,this->m_ptr,hr);
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
@@ -857,7 +886,7 @@ public:
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
         hr = m_ptr->Poll();
-		DEBUG_INFO("<0x%p>(0x%p) Poll result(0x%08x)\n",this,this->m_ptr,hr);
+        DEBUG_INFO("<0x%p>(0x%p) Poll result(0x%08x)\n",this,this->m_ptr,hr);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
