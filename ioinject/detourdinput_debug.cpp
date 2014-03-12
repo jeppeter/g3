@@ -51,6 +51,16 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     return uret;
 }
 
+ULONG UnRegisterJoyConfig(CDirectInputJoyConfig8Hook* pHook)
+{
+    ULONG uret=1;
+
+    return uret;
+}
+
+
+#define  DINPUT_JOYCONFIG8_IN()
+#define  DINPUT_JOYCONFIG8_OUT()
 
 class CDirectInputJoyConfig8Hook : public IDirectInputJoyConfig8
 {
@@ -72,7 +82,47 @@ public:
 
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid, LPVOID * ppvObj)
     {
-    	
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->QueryInterface(riid,ppvObj);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(ULONG,AddRef)(THIS)
+    {
+        ULONG uret;
+        DINPUT_JOYCONFIG8_IN();
+        uret = this->m_ptr->AddRef();
+        DINPUT_JOYCONFIG8_OUT();
+        return uret;
+    }
+
+    COM_METHOD(ULONG,Release)(THIS)
+    {
+        ULONG uret;
+        DINPUT_JOYCONFIG8_IN();
+        uret = this->m_ptr->Release();
+        if(uret == 1)
+        {
+            uret = UnRegisterJoyConfig(this);
+            if(uret == 0)
+            {
+                delete this;
+            }
+        }
+
+        DINPUT_JOYCONFIG8_OUT();
+        return uret;
+    }
+
+    COM_METHOD(HRESULT,Acquire)(THIS)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->Acquire();
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
     }
 
 
