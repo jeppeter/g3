@@ -126,6 +126,42 @@ public:
     }
 
 
+    COM_METHOD(HRESULT,Unacquire)(THIS)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->Unacquire();
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetCooperativeLevel)(THIS_ HWND hwnd,DWORD level)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SetCooperativeLevel(hwnd,level);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SendNotify)(THIS)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SendNotify();
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,EnumTypes)(THIS_ LPDIJOYTYPECALLBACK lpCallback,LPVOID pvRef)
+    {
+        HRESULT hr;
+
+		return hr;
+    }
+
+
+
 }
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
