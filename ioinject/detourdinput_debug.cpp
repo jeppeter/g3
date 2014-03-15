@@ -189,6 +189,28 @@ public:
     COM_METHOD(HRESULT,GetTypeInfo)(LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags)
     {
         HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->GetTypeInfo(pwszTypeName,pjti,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetTypeInfo)(LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SetTypeInfo(pwszTypeName,pjti,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,DeleteType)(THIS_ LPCWSTR pwszTypeName)
+    {
+    	HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->DeleteType(pwszTypeName);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
     }
 
 
