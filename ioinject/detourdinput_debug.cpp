@@ -181,11 +181,14 @@ public:
         DINPUT_JOYCONFIG8_IN();
         this->m_pEnumFunc = lpCallback;
         this->m_pEnumVoid = pvRef;
-
         hr = this->m_ptr->EnumTypes(CDirectInputJoyConfig8Hook::DIEnumJoyTypeProc,this);
-
         DINPUT_JOYCONFIG8_OUT();
         return hr;
+    }
+
+    COM_METHOD(HRESULT,GetTypeInfo)(LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags)
+    {
+        HRESULT hr;
     }
 
 
