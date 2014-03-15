@@ -206,13 +206,83 @@ public:
 
     COM_METHOD(HRESULT,DeleteType)(THIS_ LPCWSTR pwszTypeName)
     {
-    	HRESULT hr;
+        HRESULT hr;
         DINPUT_JOYCONFIG8_IN();
         hr = this->m_ptr->DeleteType(pwszTypeName);
         DINPUT_JOYCONFIG8_OUT();
         return hr;
     }
 
+    COM_METHOD(HRESULT,GetConfig)(THIS_ UINT uiJoy,LPDIJOYCONFIG pjc,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->GetConfig(uiJoy,pjc,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetConfig)(THIS_ UINT uiJoy,LPDIJOYCONFIG pjc,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SetConfig(uiJoy,pjc,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,DeleteConfig)(THIS_ UINT uiJoy)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->DeleteConfig(uiJoy);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+    COM_METHOD(HRESULT,GetUserValues)(THIS_ LPDIJOYUSERVALUES pjuv,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->GetUserValues(pjuv,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetUserValues)(THIS_ LPCDIJOYUSERVALUES pjuv,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SetUserValues(pjuv,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,AddNewHardware)(THIS_ HWND hwndOwner,REFGUID rguidClass)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->AddNewHardware(hwndOwner,rguidClass);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,OpenTypeKey)(THIS_ LPCWSTR pwszType,REGSAM regsam,PHKEY phk)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->OpenTypeKey(pwszType,regsam,phk);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,OpenAppStatusKey(THIS_ PHKEY phKey)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->OpenAppStatusKey(phKey);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
 
 
 }
