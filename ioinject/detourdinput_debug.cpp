@@ -735,6 +735,23 @@ class CDirectInputDevice8WHook : public IDirectInputDevice8W
 private:
     IDirectInputDevice8W* m_ptr;
     IID m_iid;
+    LPDIENUMDEVICEOBJECTSCALLBACK m_pEnumDeviceCallback;
+    LPVOID m_pEnumDeviceVoid;
+private:
+    BOOL __DIEnumDeviceObjectsImpl(LPCDIDEVICEOBJECTINSTANCE lpddoi)
+    {
+        BOOL bret = DIENUM_CONTINUE;
+        if(this->m_pEnumDeviceCallback)
+        {
+            bret = this->m_pEnumDeviceCallback(lpddoi,this->m_pEnumDeviceVoid);
+        }
+        return bret;
+    }
+    static BOOL DIEnumDeviceObjectsCallback(LPCDIDEVICEOBJECTINSTANCE lpddoi,LPVOID pvRef)
+    {
+        CDirectInputDevice8AHook* pThis=(CDirectInputDevice8AHook*)pvRef;
+        return pThis->__DIEnumDeviceObjectsImpl(lpddoi);
+    }
 public:
     CDirectInputDevice8WHook(IDirectInputDevice8W* ptr,REFIID riid) : m_ptr(ptr)
     {
@@ -788,7 +805,9 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
-        hr = m_ptr->EnumObjects(lpCallback,pvRef,dwFlags);
+        this->m_pEnumDeviceCallback = lpCallback;
+        this->m_pEnumDeviceVoid = pvRef;
+        hr = m_ptr->EnumObjects(CDirectInputDevice8WHook::DIEnumDeviceObjectsCallback,this,dwFlags);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
