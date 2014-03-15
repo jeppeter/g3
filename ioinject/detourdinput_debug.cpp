@@ -67,19 +67,25 @@ class CDirectInputJoyConfig8Hook : public IDirectInputJoyConfig8
 private:
     IDirectInputJoyConfig8 *m_ptr;
     GUID m_guid;
-	LPDIJOYTYPECALLBACK m_pEnumFunc;
-	LPVOID m_pEnumVoid;
+    LPDIJOYTYPECALLBACK m_pEnumFunc;
+    LPVOID m_pEnumVoid;
 private:
 
     BOOL __DIEnumJoyTypeProcImpl(LPCWSTR pwszTypeName)
     {
-    	if ()
-    		{
-    		}
+        BOOL bret;
+        if(this->m_pEnumFunc)
+        {
+            bret = this->m_pEnumFunc(pwszTypeName,this->m_pEnumVoid);
+            return bret;
+        }
+        return DIENUM_CONTINUE,;
     }
 
     static BOOL DIEnumJoyTypeProc(LPCWSTR pwszTypeName, LPVOID pvRef)
     {
+        CDirectInputJoyConfig8Hook *pThis=(CDirectInputJoyConfig8Hook*)pvRef;
+        return pThis->__DIEnumJoyTypeProcImpl(pwszTypeName);
     }
 
 public:
@@ -172,6 +178,13 @@ public:
     {
         HRESULT hr;
 
+        DINPUT_JOYCONFIG8_IN();
+        this->m_pEnumFunc = lpCallback;
+        this->m_pEnumVoid = pvRef;
+
+        hr = this->m_ptr->EnumTypes(CDirectInputJoyConfig8Hook::DIEnumJoyTypeProc,this);
+
+        DINPUT_JOYCONFIG8_OUT();
         return hr;
     }
 
