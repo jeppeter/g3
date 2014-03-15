@@ -1,8 +1,11 @@
 
 class CDirectInputDevice8AHook;
+class CDirectInputJoyConfig8Hook;
 
 static std::vector<IDirectInputDevice8A*> st_DIDevice8AVecs;
 static std::vector<CDirectInputDevice8AHook*> st_CDIDevice8AHookVecs;
+static std::vector<IDirectInputJoyConfig8*> st_DIJoyConfig8Vecs;
+static std::vector<CDirectInputJoyConfig8Hook*> st_CDIJoyConfig8HookVecs;
 static CRITICAL_SECTION st_DIDevice8ACS;
 
 
@@ -66,7 +69,6 @@ class CDirectInputJoyConfig8Hook : public IDirectInputJoyConfig8
 {
 private:
     IDirectInputJoyConfig8 *m_ptr;
-    GUID m_guid;
     LPDIJOYTYPECALLBACK m_pEnumFunc;
     LPVOID m_pEnumVoid;
 private:
@@ -89,10 +91,9 @@ private:
     }
 
 public:
-    CDirectInputJoyConfig8Hook(IDirectInputJoyConfig8 *ptr,REFGUID guid)
+    CDirectInputJoyConfig8Hook(IDirectInputJoyConfig8 *ptr)
     {
         m_ptr = ptr;
-        m_guid = guid;
     }
 
     ~CDirectInputJoyConfig8Hook()
@@ -283,8 +284,44 @@ public:
         DINPUT_JOYCONFIG8_OUT();
         return hr;
     }
+}
 
+#define  JOY_CONFIG8_ASSERT()  \
+do\
+{\
+	assert(st_CDIJoyConfig8HookVecs.size() == st_DIJoyConfig8Vecs.size());\
+}while(0)
 
+CDirectInputJoyConfig8Hook* RegisterJoyConfig8Hook(IDirectInputJoyConfig8* pJoyConfig8)
+{
+    CDirectInputJoyConfig8Hook* pHook=NULL;
+    UINT i;
+    int findidx=-1;
+    EnterCriticalSection(&st_DIDevice8ACS);
+    JOY_CONFIG8_ASSERT();
+    for(i=0; i<st_CDIJoyConfig8HookVecs.size(); i++)
+    {
+        if(st_DIJoyConfig8Vecs[i] == pJoyConfig8)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        pHook = st_CDIJoyConfig8HookVecs[findidx];
+    }
+    else
+    {
+        pHook = new CDirectInputJoyConfig8Hook(pJoyConfig8);
+        pHook->AddRef();
+        st_CDIJoyConfig8HookVecs.push_back(pHook);
+        st_DIJoyConfig8Vecs.push_back(pJoyConfig8);
+    }
+    LeaveCriticalSection(&st_DIDevice8ACS);
+
+    return pHook;
 }
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
@@ -1354,6 +1391,14 @@ public:
         HRESULT hr;
         DIRECT_INPUT_8A_IN();
         hr = m_ptr->QueryInterface(riid,ppvObject);
+        if(SUCCEEDED(hr))
+        {
+            if(riid == IID_IDirectInputJoyConfig8 && ppvObject)
+            {
+                IDirectInputJoyConfig8* pJoyConfig8 = (IDirectInputJoyConfig8*)*ppvObject;
+                CDirectInputJoyConfig8Hook* pHook=NULL;
+            }
+        }
         DIRECT_INPUT_8A_OUT();
         return hr;
     }
