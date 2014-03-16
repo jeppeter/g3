@@ -101,8 +101,8 @@ ULONG UnRegisterJoyConfig(CDirectInputJoyConfig8Hook* pHook)
 }
 
 
-#define  DINPUT_JOYCONFIG8_IN()
-#define  DINPUT_JOYCONFIG8_OUT()
+#define  DINPUT_JOYCONFIG8_IN()  do{DEBUG_INFO("DirectInputJoyConfig8::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DINPUT_JOYCONFIG8_OUT() do{DEBUG_INFO("DirectInputJoyConfig8::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
 
 class CDirectInputJoyConfig8Hook : public IDirectInputJoyConfig8
 {
@@ -168,11 +168,11 @@ public:
             uret = UnRegisterJoyConfig(this);
             if(uret == 0)
             {
+				DEBUG_INFO("Delete <0x%p>\n",this->m_ptr);
                 delete this;
             }
         }
 
-        DINPUT_JOYCONFIG8_OUT();
         return uret;
     }
 
