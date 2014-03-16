@@ -54,9 +54,48 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
     return uret;
 }
 
+#define  JOY_CONFIG8_ASSERT()  \
+do\
+{\
+	assert(st_CDIJoyConfig8HookVecs.size() == st_DIJoyConfig8Vecs.size());\
+}while(0)
+
+
 ULONG UnRegisterJoyConfig(CDirectInputJoyConfig8Hook* pHook)
 {
     ULONG uret=1;
+    int findidx=-1;
+    UINT i;
+    IDirectInputJoyConfig8* pConfig=NULL;
+    EnterCriticalSection(&st_DIDevice8ACS);
+    JOY_CONFIG8_ASSERT();
+
+    for(i=0; i<st_CDIJoyConfig8HookVecs.size(); i++)
+    {
+        if(st_CDIJoyConfig8HookVecs[i] == pHook)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        st_CDIJoyConfig8HookVecs.erase(st_CDIJoyConfig8HookVecs.begin() + findidx);
+        pConfig = st_DIJoyConfig8Vecs[findidx];
+        st_DIJoyConfig8Vecs.erase(st_CDIJoyConfig8HookVecs.begin() + findidx);
+    }
+    else
+    {
+        ERROR_INFO("<0x%08x> not found in the hook\n",pHook);
+    }
+
+    LeaveCriticalSection(&st_DIDevice8ACS);
+
+    if(pConfig)
+    {
+        uret = pConfig->Release();
+    }
 
     return uret;
 }
@@ -99,7 +138,6 @@ public:
     ~CDirectInputJoyConfig8Hook()
     {
         m_ptr = NULL;
-        m_guid = GUID_NULL;
     }
 
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid, LPVOID * ppvObj)
@@ -286,11 +324,6 @@ public:
     }
 }
 
-#define  JOY_CONFIG8_ASSERT()  \
-do\
-{\
-	assert(st_CDIJoyConfig8HookVecs.size() == st_DIJoyConfig8Vecs.size());\
-}while(0)
 
 CDirectInputJoyConfig8Hook* RegisterJoyConfig8Hook(IDirectInputJoyConfig8* pJoyConfig8)
 {
