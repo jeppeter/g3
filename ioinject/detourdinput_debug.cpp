@@ -133,11 +133,15 @@ public:
     CDirectInputJoyConfig8Hook(IDirectInputJoyConfig8 *ptr)
     {
         m_ptr = ptr;
+        this->m_pEnumFunc = NULL;
+        this->m_pEnumVoid = NULL;
     }
 
     ~CDirectInputJoyConfig8Hook()
     {
         m_ptr = NULL;
+        this->m_pEnumFunc = NULL;
+        this->m_pEnumVoid = NULL;
     }
 
     COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid, LPVOID * ppvObj)
@@ -168,7 +172,7 @@ public:
             uret = UnRegisterJoyConfig(this);
             if(uret == 0)
             {
-				DEBUG_INFO("Delete <0x%p>\n",this->m_ptr);
+                DEBUG_INFO("Delete <0x%p>\n",this->m_ptr);
                 delete this;
             }
         }
@@ -332,7 +336,7 @@ CDirectInputJoyConfig8Hook* RegisterJoyConfig8Hook(IDirectInputJoyConfig8* pJoyC
     int findidx=-1;
     EnterCriticalSection(&st_DIDevice8ACS);
     JOY_CONFIG8_ASSERT();
-    for(i=0; i<st_CDIJoyConfig8HookVecs.size(); i++)
+    for(i=0; i<st_DIJoyConfig8Vecs.size(); i++)
     {
         if(st_DIJoyConfig8Vecs[i] == pJoyConfig8)
         {
@@ -348,7 +352,7 @@ CDirectInputJoyConfig8Hook* RegisterJoyConfig8Hook(IDirectInputJoyConfig8* pJoyC
     else
     {
         pHook = new CDirectInputJoyConfig8Hook(pJoyConfig8);
-        pHook->AddRef();
+        pJoyConfig8->AddRef();
         st_CDIJoyConfig8HookVecs.push_back(pHook);
         st_DIJoyConfig8Vecs.push_back(pJoyConfig8);
     }
@@ -368,6 +372,8 @@ private:
     IID m_iid;
     LPDIENUMDEVICEOBJECTSCALLBACK m_pEnumDeviceCallback;
     LPVOID m_pEnumDeviceVoid;
+    LPDIENUMEFFECTSCALLBACK m_pEnumEffectsCallback;
+    LPVOID m_pEnumEffectsVoid;
 private:
 
     BOOL __DIEnumDeviceObjectsImpl(LPCDIDEVICEOBJECTINSTANCE lpddoi)
@@ -383,6 +389,22 @@ private:
     {
         CDirectInputDevice8AHook* pThis=(CDirectInputDevice8AHook*)pvRef;
         return pThis->__DIEnumDeviceObjectsImpl(lpddoi);
+    }
+
+    BOOL __DIEnumEffectsImpl(LPCDIEffectInfo pdei)
+    {
+        BOOL bret =DIENUM_CONTINUE;
+        if(this->m_pEnumEffectsCallback)
+        {
+            bret=  this->m_pEnumEffectsCallback(pdei,this->m_pEnumEffectsVoid);
+        }
+		return bret;
+    }
+
+    static BOOL DIEnumEffectsCallback(LPCDIEffectInfo pdei,LPVOID pvRef)
+    {
+        CDirectInputDevice8AHook* pThis = (CDirectInputDevice8AHook*)pvRef;
+        return pThis->__DIEnumEffectsImpl(pdei);
     }
 public:
     CDirectInputDevice8AHook(IDirectInputDevice8A* ptr,REFIID riid) : m_ptr(ptr)
@@ -588,7 +610,9 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
-        hr = m_ptr->EnumEffects(lpCallback,pvRef,dwEffType);
+		this->m_pEnumEffectsCallback = lpCallback;
+		this->m_pEnumEffectsVoid = pvRef;
+        hr = m_ptr->EnumEffects(CDirectInputJoyConfig8Hook::DIEnumEffectsCallback,this,dwEffType);
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
