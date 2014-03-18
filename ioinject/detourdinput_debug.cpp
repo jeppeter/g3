@@ -374,6 +374,8 @@ private:
     LPVOID m_pEnumDeviceVoid;
     LPDIENUMEFFECTSCALLBACK m_pEnumEffectsCallback;
     LPVOID m_pEnumEffectsVoid;
+    LPDIENUMCREATEDEFFECTOBJECTSCALLBACK m_pEnumCreatedEffectObjectsCallback;
+    LPVOID m_pEnumCreatedEffectObjectsVoid;
 private:
 
     BOOL __DIEnumDeviceObjectsImpl(LPCDIDEVICEOBJECTINSTANCE lpddoi)
@@ -398,13 +400,29 @@ private:
         {
             bret=  this->m_pEnumEffectsCallback(pdei,this->m_pEnumEffectsVoid);
         }
-		return bret;
+        return bret;
     }
 
     static BOOL DIEnumEffectsCallback(LPCDIEffectInfo pdei,LPVOID pvRef)
     {
         CDirectInputDevice8AHook* pThis = (CDirectInputDevice8AHook*)pvRef;
         return pThis->__DIEnumEffectsImpl(pdei);
+    }
+
+    BOOL __DIEnumCreatedEffectObjectsImpl(LPDIRECTINPUTEFFECT peff)
+    {
+        BOOL bret=DIENUM_CONTINUE;
+        if(this->m_pEnumCreatedEffectObjectsCallback)
+        {
+            bret = this->m_pEnumCreatedEffectObjectsCallback(peff,this->m_pEnumCreatedEffectObjectsVoid);
+        }
+        return bret;
+    }
+
+    static BOOL DIEnumCreatedEffectObjectsCallback(LPDIRECTINPUTEFFECT peff,LPVOID pvRef)
+    {
+    	CDirectInputDevice8AHook* pThis = (CDirectInputDevice8AHook*)pvRef;
+		return pThis->__DIEnumCreatedEffectObjectsImpl(peff);
     }
 public:
     CDirectInputDevice8AHook(IDirectInputDevice8A* ptr,REFIID riid) : m_ptr(ptr)
@@ -610,8 +628,8 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
-		this->m_pEnumEffectsCallback = lpCallback;
-		this->m_pEnumEffectsVoid = pvRef;
+        this->m_pEnumEffectsCallback = lpCallback;
+        this->m_pEnumEffectsVoid = pvRef;
         hr = m_ptr->EnumEffects(CDirectInputJoyConfig8Hook::DIEnumEffectsCallback,this,dwEffType);
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
@@ -649,7 +667,9 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8A_IN();
-        hr = m_ptr->EnumCreatedEffectObjects(lpCallback,pvRef,fl);
+		this->m_pEnumCreatedEffectObjectsCallback = lpCallback;
+		this->m_pEnumCreatedEffectObjectsVoid = pvRef;
+        hr = m_ptr->EnumCreatedEffectObjects(CDirectInputDevice8AHook::DIEnumCreatedEffectObjectsCallback,this,fl);
         DIRECT_INPUT_DEVICE_8A_OUT();
         return hr;
     }
