@@ -83,7 +83,7 @@ ULONG UnRegisterJoyConfig(CDirectInputJoyConfig8Hook* pHook)
     {
         st_CDIJoyConfig8HookVecs.erase(st_CDIJoyConfig8HookVecs.begin() + findidx);
         pConfig = st_DIJoyConfig8Vecs[findidx];
-        st_DIJoyConfig8Vecs.erase(st_CDIJoyConfig8HookVecs.begin() + findidx);
+        st_DIJoyConfig8Vecs.erase(st_DIJoyConfig8Vecs.begin() + findidx);
     }
     else
     {
@@ -120,10 +120,10 @@ private:
             bret = this->m_pEnumFunc(pwszTypeName,this->m_pEnumVoid);
             return bret;
         }
-        return DIENUM_CONTINUE,;
+        return DIENUM_CONTINUE;
     }
 
-    static BOOL DIEnumJoyTypeProc(LPCWSTR pwszTypeName, LPVOID pvRef)
+    static BOOL FAR PASCAL  DIEnumJoyTypeCallback(LPCWSTR pwszTypeName, LPVOID pvRef)
     {
         CDirectInputJoyConfig8Hook *pThis=(CDirectInputJoyConfig8Hook*)pvRef;
         return pThis->__DIEnumJoyTypeProcImpl(pwszTypeName);
@@ -224,7 +224,7 @@ public:
         DINPUT_JOYCONFIG8_IN();
         this->m_pEnumFunc = lpCallback;
         this->m_pEnumVoid = pvRef;
-        hr = this->m_ptr->EnumTypes(CDirectInputJoyConfig8Hook::DIEnumJoyTypeProc,this);
+        hr = this->m_ptr->EnumTypes(CDirectInputJoyConfig8Hook::DIEnumJoyTypeCallback,this);
         DINPUT_JOYCONFIG8_OUT();
         return hr;
     }
@@ -238,11 +238,11 @@ public:
         return hr;
     }
 
-    COM_METHOD(HRESULT,SetTypeInfo)(LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags)
+    COM_METHOD(HRESULT,SetTypeInfo)(THIS_ LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags,LPWSTR pwszExtName)
     {
         HRESULT hr;
         DINPUT_JOYCONFIG8_IN();
-        hr = this->m_ptr->SetTypeInfo(pwszTypeName,pjti,dwFlags);
+        hr = this->m_ptr->SetTypeInfo(pwszTypeName,pjti,dwFlags,pwszExtName);
         DINPUT_JOYCONFIG8_OUT();
         return hr;
     }
@@ -318,7 +318,7 @@ public:
         return hr;
     }
 
-    COM_METHOD(HRESULT,OpenAppStatusKey(THIS_ PHKEY phKey)
+    COM_METHOD(HRESULT,OpenAppStatusKey)(THIS_ PHKEY phKey)
     {
         HRESULT hr;
         DINPUT_JOYCONFIG8_IN();
@@ -326,7 +326,7 @@ public:
         DINPUT_JOYCONFIG8_OUT();
         return hr;
     }
-}
+};
 
 
 CDirectInputJoyConfig8Hook* RegisterJoyConfig8Hook(IDirectInputJoyConfig8* pJoyConfig8)

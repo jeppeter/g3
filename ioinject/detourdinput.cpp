@@ -5,6 +5,7 @@
 *****************************************/
 #define  DIRECTINPUT_VERSION   0x800
 #include <dinput.h>
+#include <dinputd.h>
 #include <vector>
 #include <assert.h>
 #include <output_debug.h>
