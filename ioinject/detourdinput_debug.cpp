@@ -238,7 +238,7 @@ public:
         return hr;
     }
 
-	COM_METHOD(HRESULT,SetTypeInfo)(THIS_ LPCWSTR pwszTypeName,LPCDIJOYTYPEINFO pjti,DWORD dwFlags,LPWSTR pwszName)
+    COM_METHOD(HRESULT,SetTypeInfo)(THIS_ LPCWSTR pwszTypeName,LPCDIJOYTYPEINFO pjti,DWORD dwFlags,LPWSTR pwszName)
     //COM_METHOD(HRESULT,SetTypeInfo)(THIS_ LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags)
     {
         HRESULT hr;
@@ -266,7 +266,7 @@ public:
         return hr;
     }
 
-	COM_METHOD(HRESULT,SetConfig)(THIS_ UINT uiJoy,LPCDIJOYCONFIG pjc,DWORD dwFlags)
+    COM_METHOD(HRESULT,SetConfig)(THIS_ UINT uiJoy,LPCDIJOYCONFIG pjc,DWORD dwFlags)
     //COM_METHOD(HRESULT,SetConfig)(THIS_ UINT uiJoy,LPDIJOYCONFIG pjc,DWORD dwFlags)
     {
         HRESULT hr;
@@ -879,6 +879,10 @@ private:
     IID m_iid;
     LPDIENUMDEVICEOBJECTSCALLBACKW m_pEnumDeviceCallback;
     LPVOID m_pEnumDeviceVoid;
+    LPDIENUMEFFECTSCALLBACK m_pEnumEffectsCallback;
+    LPVOID m_pEnumEffectsVoid;
+	LPDIENUMCREATEDEFFECTOBJECTSCALLBACK m_pEnumCreatedEffectObjectsCallback;
+	LPVOID m_pEnumCreatedEffectObjectsVoid;
 private:
     BOOL __DIEnumDeviceObjectsImpl(LPCDIDEVICEOBJECTINSTANCEW lpddoi)
     {
@@ -893,6 +897,22 @@ private:
     {
         CDirectInputDevice8WHook* pThis=(CDirectInputDevice8WHook*)pvRef;
         return pThis->__DIEnumDeviceObjectsImpl(lpddoi);
+    }
+
+    BOOL __DIEnumEffectsImpl(LPCDIEFFECTINFOW pdei)
+    {
+        BOOL bret = DIENUM_CONTINUE;
+        if(this->m_pEnumEffectsCallback)
+        {
+            bret = this->m_pEnumEffectsCallback(pdei,this->m_pEnumEffectsVoid);
+        }
+        return bret;
+    }
+
+    static BOOL FAR PASCAL DIEnumEffectsCallback(LPCDIEFFECTINFOW pdei,LPVOID pvRef)
+    {
+    	CDirectInputDevice8WHook* pThis = (CDirectInputDevice8WHook*)pvRef;
+		return pThis->__DIEnumEffectsImpl(pdei);
     }
 public:
     CDirectInputDevice8WHook(IDirectInputDevice8W* ptr,REFIID riid) : m_ptr(ptr)
@@ -1048,7 +1068,7 @@ public:
         }
         else
         {
-            DINPUT_DEBUG_INFO("<0x%p> size(0x%08x) return 0x%08x\n",this->m_ptr,cbData,hr);
+            DEBUG_BUFFER_FMT(lpvData,cbData,"<0x%p> size(0x%08x) return 0x%08x\n",this->m_ptr,cbData,hr);
         }
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
@@ -1220,7 +1240,9 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
-        hr = m_ptr->EnumEffects(lpCallback,pvRef,dwEffType);
+		this->m_pEnumEffectsCallback = lpCallback;
+		this->m_pEnumEffectsVoid = pvRef;
+        hr = m_ptr->EnumEffects(CDirectInputDevice8WHook::DIEnumEffectsCallback,this,dwEffType);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
