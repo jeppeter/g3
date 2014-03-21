@@ -881,8 +881,10 @@ private:
     LPVOID m_pEnumDeviceVoid;
     LPDIENUMEFFECTSCALLBACK m_pEnumEffectsCallback;
     LPVOID m_pEnumEffectsVoid;
-	LPDIENUMCREATEDEFFECTOBJECTSCALLBACK m_pEnumCreatedEffectObjectsCallback;
-	LPVOID m_pEnumCreatedEffectObjectsVoid;
+    LPDIENUMCREATEDEFFECTOBJECTSCALLBACK m_pEnumCreatedEffectObjectsCallback;
+    LPVOID m_pEnumCreatedEffectObjectsVoid;
+    LPDIENUMEFFECTSINFILECALLBACK m_pEnumEffectsInFileCallback;
+    LPVOID m_pEnumEffectsInFileVoid;
 private:
     BOOL __DIEnumDeviceObjectsImpl(LPCDIDEVICEOBJECTINSTANCEW lpddoi)
     {
@@ -911,8 +913,39 @@ private:
 
     static BOOL FAR PASCAL DIEnumEffectsCallback(LPCDIEFFECTINFOW pdei,LPVOID pvRef)
     {
-    	CDirectInputDevice8WHook* pThis = (CDirectInputDevice8WHook*)pvRef;
-		return pThis->__DIEnumEffectsImpl(pdei);
+        CDirectInputDevice8WHook* pThis = (CDirectInputDevice8WHook*)pvRef;
+        return pThis->__DIEnumEffectsImpl(pdei);
+    }
+
+    BOOL __DIEnumCreatedEffectObjectsImpl(LPDIRECTINPUTEFFECT peff)
+    {
+        BOOL bret=DIENUM_CONTINUE;
+        if(this->m_pEnumCreatedEffectObjectsCallback)
+        {
+            bret = this->m_pEnumCreatedEffectObjectsCallback(peff,this->m_pEnumCreatedEffectObjectsVoid);
+        }
+        return bret;
+    }
+
+    static BOOL FAR PASCAL DIEnumCreatedEffectObjectsCallback(LPDIRECTINPUTEFFECT peff,LPVOID pvRef)
+    {
+        CDirectInputDevice8WHook* pThis = (CDirectInputDevice8WHook*)pvRef;
+        return pThis->__DIEnumCreatedEffectObjectsImpl(peff);
+    }
+
+    BOOL __DIEnumEffectsInFileImpl(LPCDIFILEEFFECT lpDiFileEf)
+    {
+        BOOL bret =DIENUM_CONTINUE;
+        if(this->m_pEnumEffectsInFileCallback)
+        {
+            bret = this->m_pEnumEffectsInFileCallback(lpDiFileEf,this->m_pEnumEffectsInFileVoid);
+        }
+        return bret;
+    }
+    static BOOL FAR PASCAL DIEnumEffectsInFileCallback(LPCDIFILEEFFECT lpDiFileEf,LPVOID pvRef)
+    {
+        CDirectInputDevice8WHook* pThis=(CDirectInputDevice8WHook*)pvRef;
+        return pThis->__DIEnumEffectsInFileImpl(lpDiFileEf);
     }
 public:
     CDirectInputDevice8WHook(IDirectInputDevice8W* ptr,REFIID riid) : m_ptr(ptr)
@@ -1240,8 +1273,8 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
-		this->m_pEnumEffectsCallback = lpCallback;
-		this->m_pEnumEffectsVoid = pvRef;
+        this->m_pEnumEffectsCallback = lpCallback;
+        this->m_pEnumEffectsVoid = pvRef;
         hr = m_ptr->EnumEffects(CDirectInputDevice8WHook::DIEnumEffectsCallback,this,dwEffType);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
@@ -1279,7 +1312,9 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
-        hr = m_ptr->EnumCreatedEffectObjects(lpCallback,pvRef,fl);
+        this->m_pEnumCreatedEffectObjectsCallback = lpCallback;
+        this->m_pEnumCreatedEffectObjectsVoid = pvRef;
+        hr = m_ptr->EnumCreatedEffectObjects(CDirectInputDevice8WHook::DIEnumCreatedEffectObjectsCallback,this,fl);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -1316,7 +1351,9 @@ public:
     {
         HRESULT hr;
         DIRECT_INPUT_DEVICE_8W_IN();
-        hr = m_ptr->EnumEffectsInFile(lpszFileName,pec,pvRef,dwFlags);
+        this->m_pEnumEffectsInFileCallback = pec;
+        this->m_pEnumEffectsInFileVoid = pvRef;
+        hr = m_ptr->EnumEffectsInFile(lpszFileName,CDirectInputDevice8WHook::DIEnumEffectsInFileCallback,this,dwFlags);
         DIRECT_INPUT_DEVICE_8W_OUT();
         return hr;
     }
@@ -1599,6 +1636,11 @@ public:
             {
                 pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
                 DINPUT_DEBUG_INFO("syskeyboardem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
+            }
+            else
+            {
+                pHookA = RegisterDirectInputDevice8AHook(*lplpDirectInputDevice,rguid);
+                DINPUT_DEBUG_INFO("NotSet 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookA);
             }
 
 
@@ -1939,6 +1981,11 @@ public:
             {
                 pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
                 DINPUT_DEBUG_INFO("syskeyboardem2 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
+            }
+            else
+            {
+                pHookW = RegisterDirectInputDevice8WHook(*lplpDirectInputDevice,rguid);
+                DINPUT_DEBUG_INFO("NotSet 0x%p hook 0x%p\n",*lplpDirectInputDevice,pHookW);
             }
 
 
