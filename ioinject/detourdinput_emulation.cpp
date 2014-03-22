@@ -170,7 +170,7 @@ int __CopyDiKeyState(PVOID pData,UINT cbSize)
 
 class CDirectInputDevice8AHook;
 class CDirectInputDevice8WHook;
-
+class CDirectInputJoyConfig8Hook;
 
 
 static std::vector<IDirectInputDevice8A*> st_Key8AVecs;
@@ -187,6 +187,11 @@ static std::vector<IDirectInputDevice8W*> st_Mouse8WVecs;
 static std::vector<CDirectInputDevice8WHook*> st_Mouse8WHookVecs;
 static std::vector<IDirectInputDevice8W*> st_NotSet8WVecs;
 static std::vector<CDirectInputDevice8WHook*> st_NotSet8WHookVecs;
+
+
+static std::vector<IDirectInputJoy>;
+static std::vector<CDirectInputJoyConfig8Hook*> st_JoyStickConfigVecs;
+
 static CRITICAL_SECTION st_Dinput8DeviceCS;
 
 #define IS_IID_MOUSE(riid)  ( (riid)	== GUID_SysMouse ||(riid) == GUID_SysMouseEm ||(riid) == GUID_SysMouseEm2 )

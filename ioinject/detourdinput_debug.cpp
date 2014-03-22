@@ -1,33 +1,38 @@
 
 class CDirectInputDevice8AHook;
 class CDirectInputJoyConfig8Hook;
+class CDirectInputJoyConfigHook;
 
 static std::vector<IDirectInputDevice8A*> st_DIDevice8AVecs;
 static std::vector<CDirectInputDevice8AHook*> st_CDIDevice8AHookVecs;
 static std::vector<IDirectInputJoyConfig8*> st_DIJoyConfig8Vecs;
 static std::vector<CDirectInputJoyConfig8Hook*> st_CDIJoyConfig8HookVecs;
+static std::vector<IDirectInputJoyConfig*> st_DIJoyConfigVecs;
+static std::vector<CDirectInputJoyConfigHook*> st_CDIJoyConfigHookVecs;
+
+
 static CRITICAL_SECTION st_DIDevice8ACS;
 
 
-
-
-#define EQUAL_DI_DEVICE_8A_VECS() \
+/******************************************************
+*    joystick config class
+******************************************************/
+#define  JOY_CONFIG_ASSERT()  \
 do\
 {\
-	assert(st_DIDevice8AVecs.size() == st_CDIDevice8AHookVecs.size());\
+	assert(st_CDIJoyConfigHookVecs.size() == st_DIJoyConfigVecs.size());\
 }while(0)
 
-ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
+ULONG UnRegisterJoyConfig(CDirectInputJoyConfigHook * pHook)
 {
-    int findidx = -1;
-    ULONG uret=1;
-    unsigned int i;
-
+    ULONG uret =1;
+    int findidx=-1;
+    IDirectInputJoyConfig* pConfig=NULL;
+    UINT i;
     EnterCriticalSection(&st_DIDevice8ACS);
-    EQUAL_DI_DEVICE_8A_VECS();
-    for(i=0; i<st_DIDevice8AVecs.size() ; i++)
+    for(i=0; i<st_CDIJoyConfigHookVecs.size(); i++)
     {
-        if(st_DIDevice8AVecs[i] == ptr)
+        if(st_CDIJoyConfigHookVecs[i] == pHook)
         {
             findidx = i;
             break;
@@ -36,24 +41,32 @@ ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
 
     if(findidx >= 0)
     {
-        st_DIDevice8AVecs.erase(st_DIDevice8AVecs.begin()+findidx);
-        st_CDIDevice8AHookVecs.erase(st_CDIDevice8AHookVecs.begin() + findidx);
+        pConfig = st_DIJoyConfigVecs[findidx];
+        st_DIJoyConfigVecs.erase(st_DIJoyConfigVecs.begin() + findidx);
+        st_CDIJoyConfigHookVecs.erase(st_CDIJoyConfigHookVecs.begin() + findidx);
+        uret = pConfig->Release();
+        if(uret != 0)
+        {
+            ERROR_INFO("Release uret(%d)\n",uret);
+        }
     }
     else
     {
-        ERROR_INFO("could not find 0x%p DirectInputDevice8A\n",ptr);
+        ERROR_INFO("Can not Find(%p)\n",pHook);
     }
+
     LeaveCriticalSection(&st_DIDevice8ACS);
-
-
-    uret = 1;
-    if(findidx >= 0)
-    {
-        uret = ptr->Release();
-    }
     return uret;
 }
 
+class CDirectInputJoyConfigHook : public IDirectInputJoyConfig
+{
+};
+
+
+/******************************************************
+*    joystick config8 class
+******************************************************/
 #define  JOY_CONFIG8_ASSERT()  \
 do\
 {\
@@ -61,7 +74,7 @@ do\
 }while(0)
 
 
-ULONG UnRegisterJoyConfig(CDirectInputJoyConfig8Hook* pHook)
+ULONG UnRegisterJoyConfig8(CDirectInputJoyConfig8Hook* pHook)
 {
     ULONG uret=1;
     int findidx=-1;
@@ -169,7 +182,7 @@ public:
         uret = this->m_ptr->Release();
         if(uret == 1)
         {
-            uret = UnRegisterJoyConfig(this);
+            uret = UnRegisterJoyConfig8(this);
             if(uret == 0)
             {
                 DEBUG_INFO("Delete <0x%p>\n",this->m_ptr);
@@ -262,6 +275,10 @@ public:
         HRESULT hr;
         DINPUT_JOYCONFIG8_IN();
         hr = this->m_ptr->GetConfig(uiJoy,pjc,dwFlags);
+        if(SUCCEEDED(hr))
+        {
+            DEBUG_BUFFER_FMT(pjc,sizeof(*pjc),"GetConfig<0x%p>");
+        }
         DINPUT_JOYCONFIG8_OUT();
         return hr;
     }
@@ -362,6 +379,56 @@ CDirectInputJoyConfig8Hook* RegisterJoyConfig8Hook(IDirectInputJoyConfig8* pJoyC
 
     return pHook;
 }
+
+
+/******************************************************
+*    joystick input device8a hook class
+******************************************************/
+
+#define EQUAL_DI_DEVICE_8A_VECS() \
+do\
+{\
+	assert(st_DIDevice8AVecs.size() == st_CDIDevice8AHookVecs.size());\
+}while(0)
+
+ULONG UnRegisterDirectInputDevice8AHook(IDirectInputDevice8A* ptr)
+{
+    int findidx = -1;
+    ULONG uret=1;
+    unsigned int i;
+
+    EnterCriticalSection(&st_DIDevice8ACS);
+    EQUAL_DI_DEVICE_8A_VECS();
+    for(i=0; i<st_DIDevice8AVecs.size() ; i++)
+    {
+        if(st_DIDevice8AVecs[i] == ptr)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        st_DIDevice8AVecs.erase(st_DIDevice8AVecs.begin()+findidx);
+        st_CDIDevice8AHookVecs.erase(st_CDIDevice8AHookVecs.begin() + findidx);
+    }
+    else
+    {
+        ERROR_INFO("could not find 0x%p DirectInputDevice8A\n",ptr);
+    }
+    LeaveCriticalSection(&st_DIDevice8ACS);
+
+
+    uret = 1;
+    if(findidx >= 0)
+    {
+        uret = ptr->Release();
+    }
+    return uret;
+}
+
+
 
 #define  DIRECT_INPUT_DEVICE_8A_IN()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
 #define  DIRECT_INPUT_DEVICE_8A_OUT()  do{DINPUT_DEBUG_INFO("Device8A::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
