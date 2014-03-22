@@ -30,6 +30,7 @@ ULONG UnRegisterJoyConfig(CDirectInputJoyConfigHook * pHook)
     IDirectInputJoyConfig* pConfig=NULL;
     UINT i;
     EnterCriticalSection(&st_DIDevice8ACS);
+	JOY_CONFIG_ASSERT();
     for(i=0; i<st_CDIJoyConfigHookVecs.size(); i++)
     {
         if(st_CDIJoyConfigHookVecs[i] == pHook)
@@ -59,9 +60,271 @@ ULONG UnRegisterJoyConfig(CDirectInputJoyConfigHook * pHook)
     return uret;
 }
 
+#define  DINPUT_JOYCONFIG_IN()  do{DEBUG_INFO("DirectInputJoyConfig::%s 0x%p in\n",__FUNCTION__,this->m_ptr);}while(0)
+#define  DINPUT_JOYCONFIG_OUT() do{DEBUG_INFO("DirectInputJoyConfig::%s 0x%p out\n",__FUNCTION__,this->m_ptr);}while(0)
+
 class CDirectInputJoyConfigHook : public IDirectInputJoyConfig
 {
+private:
+    IDirectInputJoyConfig8 *m_ptr;
+    LPDIJOYTYPECALLBACK m_pEnumFunc;
+    LPVOID m_pEnumVoid;
+private:
+
+    BOOL __DIEnumJoyTypeProcImpl(LPCWSTR pwszTypeName)
+    {
+        BOOL bret;
+        if(this->m_pEnumFunc)
+        {
+            bret = this->m_pEnumFunc(pwszTypeName,this->m_pEnumVoid);
+            return bret;
+        }
+        return DIENUM_CONTINUE;
+    }
+
+    static BOOL FAR PASCAL  DIEnumJoyTypeCallback(LPCWSTR pwszTypeName, LPVOID pvRef)
+    {
+        CDirectInputJoyConfigHook *pThis=(CDirectInputJoyConfigHook*)pvRef;
+        return pThis->__DIEnumJoyTypeProcImpl(pwszTypeName);
+    }
+
+public:
+    CDirectInputJoyConfig8Hook(IDirectInputJoyConfig *ptr)
+    {
+        m_ptr = ptr;
+        this->m_pEnumFunc = NULL;
+        this->m_pEnumVoid = NULL;
+    }
+
+    ~CDirectInputJoyConfig8Hook()
+    {
+        m_ptr = NULL;
+        this->m_pEnumFunc = NULL;
+        this->m_pEnumVoid = NULL;
+    }
+
+    COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid, LPVOID * ppvObj)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG_IN();
+        hr = this->m_ptr->QueryInterface(riid,ppvObj);
+        DINPUT_JOYCONFIG_OUT();
+        return hr;
+    }
+
+    COM_METHOD(ULONG,AddRef)(THIS)
+    {
+        ULONG uret;
+        DINPUT_JOYCONFIG_IN();
+        uret = this->m_ptr->AddRef();
+        DINPUT_JOYCONFIG_OUT();
+        return uret;
+    }
+
+    COM_METHOD(ULONG,Release)(THIS)
+    {
+        ULONG uret;
+        DINPUT_JOYCONFIG8_IN();
+        uret = this->m_ptr->Release();
+        if(uret == 1)
+        {
+            uret = UnRegisterJoyConfig8(this);
+            if(uret == 0)
+            {
+                DEBUG_INFO("Delete <0x%p>\n",this->m_ptr);
+                delete this;
+            }
+        }
+
+        return uret;
+    }
+
+    COM_METHOD(HRESULT,Acquire)(THIS)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->Acquire();
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+
+    COM_METHOD(HRESULT,Unacquire)(THIS)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->Unacquire();
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetCooperativeLevel)(THIS_ HWND hwnd,DWORD level)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SetCooperativeLevel(hwnd,level);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SendNotify)(THIS)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SendNotify();
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,EnumTypes)(THIS_ LPDIJOYTYPECALLBACK lpCallback,LPVOID pvRef)
+    {
+        HRESULT hr;
+
+        DINPUT_JOYCONFIG8_IN();
+        this->m_pEnumFunc = lpCallback;
+        this->m_pEnumVoid = pvRef;
+        hr = this->m_ptr->EnumTypes(CDirectInputJoyConfig8Hook::DIEnumJoyTypeCallback,this);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetTypeInfo)(LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->GetTypeInfo(pwszTypeName,pjti,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetTypeInfo)(THIS_ LPCWSTR pwszTypeName,LPCDIJOYTYPEINFO pjti,DWORD dwFlags,LPWSTR pwszName)
+    //COM_METHOD(HRESULT,SetTypeInfo)(THIS_ LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SetTypeInfo(pwszTypeName,pjti,dwFlags,pwszName);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,DeleteType)(THIS_ LPCWSTR pwszTypeName)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->DeleteType(pwszTypeName);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,GetConfig)(THIS_ UINT uiJoy,LPDIJOYCONFIG pjc,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->GetConfig(uiJoy,pjc,dwFlags);
+        if(SUCCEEDED(hr))
+        {
+            DEBUG_BUFFER_FMT(pjc,sizeof(*pjc),"GetConfig<0x%p>");
+        }
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetConfig)(THIS_ UINT uiJoy,LPCDIJOYCONFIG pjc,DWORD dwFlags)
+    //COM_METHOD(HRESULT,SetConfig)(THIS_ UINT uiJoy,LPDIJOYCONFIG pjc,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SetConfig(uiJoy,pjc,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,DeleteConfig)(THIS_ UINT uiJoy)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->DeleteConfig(uiJoy);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+    COM_METHOD(HRESULT,GetUserValues)(THIS_ LPDIJOYUSERVALUES pjuv,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->GetUserValues(pjuv,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SetUserValues)(THIS_ LPCDIJOYUSERVALUES pjuv,DWORD dwFlags)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->SetUserValues(pjuv,dwFlags);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,AddNewHardware)(THIS_ HWND hwndOwner,REFGUID rguidClass)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->AddNewHardware(hwndOwner,rguidClass);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,OpenTypeKey)(THIS_ LPCWSTR pwszType,REGSAM regsam,PHKEY phk)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->OpenTypeKey(pwszType,regsam,phk);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,OpenAppStatusKey)(THIS_ PHKEY phKey)
+    {
+        HRESULT hr;
+        DINPUT_JOYCONFIG8_IN();
+        hr = this->m_ptr->OpenAppStatusKey(phKey);
+        DINPUT_JOYCONFIG8_OUT();
+        return hr;
+    }
 };
+
+
+CDirectInputJoyConfig8Hook* RegisterJoyConfig8Hook(IDirectInputJoyConfig8* pJoyConfig8)
+{
+    CDirectInputJoyConfig8Hook* pHook=NULL;
+    UINT i;
+    int findidx=-1;
+    EnterCriticalSection(&st_DIDevice8ACS);
+    JOY_CONFIG8_ASSERT();
+    for(i=0; i<st_DIJoyConfig8Vecs.size(); i++)
+    {
+        if(st_DIJoyConfig8Vecs[i] == pJoyConfig8)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        pHook = st_CDIJoyConfig8HookVecs[findidx];
+    }
+    else
+    {
+        pHook = new CDirectInputJoyConfig8Hook(pJoyConfig8);
+        pJoyConfig8->AddRef();
+        st_CDIJoyConfig8HookVecs.push_back(pHook);
+        st_DIJoyConfig8Vecs.push_back(pJoyConfig8);
+    }
+    LeaveCriticalSection(&st_DIDevice8ACS);
+
+    return pHook;
+}
 
 
 /******************************************************
