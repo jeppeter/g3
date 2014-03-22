@@ -1560,7 +1560,8 @@ public:
             if(riid == IID_IDirectInputJoyConfig8 && ppvObject)
             {
                 IDirectInputJoyConfig8* pJoyConfig8 = (IDirectInputJoyConfig8*)*ppvObject;
-                CDirectInputJoyConfig8Hook* pHook=NULL;
+                CDirectInputJoyConfig8Hook* pHook=RegisterJoyConfig8Hook(pJoyConfig8);
+                *ppvObject = pHook;
             }
         }
         DIRECT_INPUT_8A_OUT();
@@ -1907,6 +1908,16 @@ public:
         HRESULT hr;
         DIRECT_INPUT_8W_IN();
         hr = m_ptr->QueryInterface(riid,ppvObject);
+        if(SUCCEEDED(hr))
+        {
+            if(riid == IID_IDirectInputJoyConfig8 && ppvObject && *ppvObject)
+            {
+                CDirectInputJoyConfig8Hook* pHookW=NULL;
+                IDirectInputJoyConfig8* pConfig8 = (IDirectInputJoyConfig8*)*ppvObject;
+                pHookW = RegisterJoyConfig8Hook(pConfig8);
+                *ppvObject = pHookW;
+            }
+        }
         DIRECT_INPUT_8W_OUT();
         return hr;
     }
