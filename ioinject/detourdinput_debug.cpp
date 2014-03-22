@@ -66,7 +66,7 @@ ULONG UnRegisterJoyConfig(CDirectInputJoyConfigHook * pHook)
 class CDirectInputJoyConfigHook : public IDirectInputJoyConfig
 {
 private:
-    IDirectInputJoyConfig8 *m_ptr;
+    IDirectInputJoyConfig *m_ptr;
     LPDIJOYTYPECALLBACK m_pEnumFunc;
     LPVOID m_pEnumVoid;
 private:
@@ -89,14 +89,14 @@ private:
     }
 
 public:
-    CDirectInputJoyConfig8Hook(IDirectInputJoyConfig *ptr)
+    CDirectInputJoyConfigHook(IDirectInputJoyConfig *ptr)
     {
         m_ptr = ptr;
         this->m_pEnumFunc = NULL;
         this->m_pEnumVoid = NULL;
     }
 
-    ~CDirectInputJoyConfig8Hook()
+    ~CDirectInputJoyConfigHook()
     {
         m_ptr = NULL;
         this->m_pEnumFunc = NULL;
@@ -124,11 +124,11 @@ public:
     COM_METHOD(ULONG,Release)(THIS)
     {
         ULONG uret;
-        DINPUT_JOYCONFIG8_IN();
+        DINPUT_JOYCONFIG_IN();
         uret = this->m_ptr->Release();
         if(uret == 1)
         {
-            uret = UnRegisterJoyConfig8(this);
+            uret = UnRegisterJoyConfig(this);
             if(uret == 0)
             {
                 DEBUG_INFO("Delete <0x%p>\n",this->m_ptr);
@@ -142,9 +142,9 @@ public:
     COM_METHOD(HRESULT,Acquire)(THIS)
     {
         HRESULT hr;
-        DINPUT_JOYCONFIG8_IN();
+        DINPUT_JOYCONFIG_IN();
         hr = this->m_ptr->Acquire();
-        DINPUT_JOYCONFIG8_OUT();
+        DINPUT_JOYCONFIG_OUT();
         return hr;
     }
 
@@ -152,27 +152,27 @@ public:
     COM_METHOD(HRESULT,Unacquire)(THIS)
     {
         HRESULT hr;
-        DINPUT_JOYCONFIG8_IN();
+        DINPUT_JOYCONFIG_IN();
         hr = this->m_ptr->Unacquire();
-        DINPUT_JOYCONFIG8_OUT();
+        DINPUT_JOYCONFIG_OUT();
         return hr;
     }
 
     COM_METHOD(HRESULT,SetCooperativeLevel)(THIS_ HWND hwnd,DWORD level)
     {
         HRESULT hr;
-        DINPUT_JOYCONFIG8_IN();
+        DINPUT_JOYCONFIG_IN();
         hr = this->m_ptr->SetCooperativeLevel(hwnd,level);
-        DINPUT_JOYCONFIG8_OUT();
+        DINPUT_JOYCONFIG_OUT();
         return hr;
     }
 
     COM_METHOD(HRESULT,SendNotify)(THIS)
     {
         HRESULT hr;
-        DINPUT_JOYCONFIG8_IN();
+        DINPUT_JOYCONFIG_IN();
         hr = this->m_ptr->SendNotify();
-        DINPUT_JOYCONFIG8_OUT();
+        DINPUT_JOYCONFIG_OUT();
         return hr;
     }
 
