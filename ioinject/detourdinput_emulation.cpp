@@ -240,6 +240,21 @@ ULONG UnregisterDirectInputJoyConfig8(CDirectInputJoyConfig8Hook* pHookConfig8)
 
 
 
+class CDirectInputJoyConfig8Hook : public IDirectInputJoyConfig8
+{
+private:
+    IDirectInputJoyConfig8 *m_ptr;
+public:
+    CDirectInputJoyConfig8Hook(IDirectInputJoyConfig8* ptr) : m_ptr(ptr)
+    {
+        ;
+    }
+    ~CDirectInputJoyConfig8Hook()
+    {
+        this->m_ptr = NULL;
+    }
+};
+
 #define IS_IID_MOUSE(riid)  ( (riid)	== GUID_SysMouse ||(riid) == GUID_SysMouseEm ||(riid) == GUID_SysMouseEm2 )
 #define IS_IID_KEYBOARD(riid) ((riid) == GUID_SysKeyboard ||(riid) == GUID_SysKeyboardEm ||(riid) == GUID_SysKeyboardEm2)
 
