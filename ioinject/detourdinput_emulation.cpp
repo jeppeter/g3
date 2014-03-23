@@ -171,6 +171,7 @@ int __CopyDiKeyState(PVOID pData,UINT cbSize)
 class CDirectInputDevice8AHook;
 class CDirectInputDevice8WHook;
 class CDirectInputJoyConfig8Hook;
+class CDirectInputJoyConfigHook;
 
 
 static std::vector<IDirectInputDevice8A*> st_Key8AVecs;
@@ -189,10 +190,55 @@ static std::vector<IDirectInputDevice8W*> st_NotSet8WVecs;
 static std::vector<CDirectInputDevice8WHook*> st_NotSet8WHookVecs;
 
 
-static std::vector<IDirectInputJoy>;
-static std::vector<CDirectInputJoyConfig8Hook*> st_JoyStickConfigVecs;
+static std::vector<IDirectInputJoyConfig8*> st_DIJoyConfig8Vecs;
+static std::vector<CDirectInputJoyConfig8Hook*> st_CDIJoyConfig8HookVecs;
 
 static CRITICAL_SECTION st_Dinput8DeviceCS;
+
+#define  JOY_CONFIG8_ASSERT()  \
+do\
+{\
+	assert(st_CDIJoyConfig8HookVecs.size() == st_DIJoyConfig8Vecs.size());\
+}while(0)
+
+ULONG UnregisterDirectInputJoyConfig8(CDirectInputJoyConfig8Hook* pHookConfig8)
+{
+    ULONG uret=1;
+    int findidx = -1;
+    IDirectInputJoyConfig8* pConfig8=NULL;
+    UINT i;
+
+    EnterCriticalSection(&st_Dinput8DeviceCS);
+    JOY_CONFIG8_ASSERT();
+    for(i=0; i<st_CDIJoyConfig8HookVecs.size(); i++)
+    {
+        if(st_CDIJoyConfig8HookVecs[i] == pHookConfig8)
+        {
+            findidx = i;
+            break;
+        }
+    }
+
+    if(findidx >= 0)
+    {
+        pConfig8 = st_DIJoyConfig8Vecs[findidx];
+        st_CDIJoyConfig8HookVecs.erase(st_CDIJoyConfig8HookVecs.begin() + findidx);
+        st_DIJoyConfig8Vecs.erase(st_DIJoyConfig8Vecs.begin() + findidx);
+        uret = pConfig8->Release();
+        if(uret != 0)
+        {
+            ERROR_INFO("Hook<0x%p> (Config8:0x%p) uret(%d)\n",pHookConfig8,pConfig8,uret);
+        }
+    }
+    else
+    {
+        ERROR_INFO("HookConfig8<0x%p> not found\n",pHookConfig8);
+    }
+    LeaveCriticalSection(&st_Dinput8DeviceCS);
+    return uret;
+}
+
+
 
 #define IS_IID_MOUSE(riid)  ( (riid)	== GUID_SysMouse ||(riid) == GUID_SysMouseEm ||(riid) == GUID_SysMouseEm2 )
 #define IS_IID_KEYBOARD(riid) ((riid) == GUID_SysKeyboard ||(riid) == GUID_SysKeyboardEm ||(riid) == GUID_SysKeyboardEm2)
@@ -645,7 +691,7 @@ public:
 
                     if(pData)
                     {
-                    	DEBUG_BUFFER_FMT(rgdod,sizeof(*rgdod)*(*pdwInOut),"Mouse Data (%d)",(*pdwInOut));
+                        DEBUG_BUFFER_FMT(rgdod,sizeof(*rgdod)*(*pdwInOut),"Mouse Data (%d)",(*pdwInOut));
                         free(pData);
                     }
                     pData = NULL;
@@ -2696,8 +2742,8 @@ int __Dinput8InsertMouseEvent(LPDEVICEEVENT pDevEvent)
             data[num].dwData = pt.y;
             data[num].dwTimeStamp = GetTickCount() + 1;
             num ++;
-			origstate = st_MouseGetState;
-			st_MouseGetState = MOUSE_RESET_MOST_LEFTTOP;
+            origstate = st_MouseGetState;
+            st_MouseGetState = MOUSE_RESET_MOST_LEFTTOP;
         }
         else
         {
