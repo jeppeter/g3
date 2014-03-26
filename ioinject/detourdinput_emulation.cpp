@@ -239,13 +239,15 @@ ULONG UnregisterDirectInputJoyConfig8(CDirectInputJoyConfig8Hook* pHookConfig8)
 }
 
 
+#define
 
 class CDirectInputJoyConfig8Hook : public IDirectInputJoyConfig8
 {
 private:
     IDirectInputJoyConfig8 *m_ptr;
+    ULONG m_uret;
 public:
-    CDirectInputJoyConfig8Hook(IDirectInputJoyConfig8* ptr) : m_ptr(ptr)
+    CDirectInputJoyConfig8Hook(IDirectInputJoyConfig8* ptr) : m_ptr(ptr) , m_uret(1)
     {
         ;
     }
@@ -253,6 +255,70 @@ public:
     {
         this->m_ptr = NULL;
     }
+
+public:
+    COM_METHOD(HRESULT,QueryInterface)(THIS_ REFIID riid, LPVOID * ppvObj)
+    {
+        HRESULT hr=S_FAILED;
+        DINPUT_JOYCONFIG_IN();
+        DEBUG_INFO("riid %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
+                   riid.Data1,
+                   riid.Data2,
+                   riid.Data3,
+                   riid.Data4[0],
+                   riid.Data4[1],
+                   riid.Data4[2],
+                   riid.Data4[3],
+                   riid.Data4[4],
+                   riid.Data4[5],
+                   riid.Data4[6],
+                   riid.Data4[7]);
+        DINPUT_JOYCONFIG_OUT();
+        return hr;
+    }
+
+    COM_METHOD(ULONG,AddRef)(THIS)
+    {
+        ULONG uret;
+        DINPUT_JOYCONFIG_IN();
+        this->m_uret ++;
+        uret = this->m_uret;
+        DINPUT_JOYCONFIG_OUT();
+        return uret;
+    }
+
+    COM_METHOD(ULONG,Release)(THIS)
+    {
+        ULONG uret;
+        DINPUT_JOYCONFIG_IN();
+        this->m_uret --;
+        uret = this->m_uret;
+        if(uret == 0)
+        {
+            UnregisterDirectInputJoyConfig8(this);
+            delete this;
+        }
+        return uret;
+    }
+
+
+    COM_METHOD(HRESULT,Acquire)(THIS)
+    {
+        HRESULT hr = S_OK;
+        DINPUT_JOYCONFIG_IN();
+        DINPUT_JOYCONFIG_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,Unacquire)(THIS)
+    {
+        HRESULT hr=S_OK;
+        DINPUT_JOYCONFIG_IN();
+        DINPUT_JOYCONFIG_OUT();
+        return hr;
+    }
+
+
 };
 
 #define IS_IID_MOUSE(riid)  ( (riid)	== GUID_SysMouse ||(riid) == GUID_SysMouseEm ||(riid) == GUID_SysMouseEm2 )
