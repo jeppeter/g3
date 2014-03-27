@@ -246,10 +246,11 @@ class CDirectInputJoyConfig8Hook : public IDirectInputJoyConfig8
 private:
     IDirectInputJoyConfig8 *m_ptr;
     ULONG m_uret;
+    HWND m_CopHwnd;
 public:
     CDirectInputJoyConfig8Hook(IDirectInputJoyConfig8* ptr) : m_ptr(ptr) , m_uret(1)
     {
-        ;
+        m_CopHwnd = NULL;
     }
     ~CDirectInputJoyConfig8Hook()
     {
@@ -314,6 +315,36 @@ public:
     {
         HRESULT hr=S_OK;
         DINPUT_JOYCONFIG_IN();
+        DINPUT_JOYCONFIG_OUT();
+        return hr;
+    }
+    COM_METHOD(HRESULT,SetCooperativeLevel)(THIS_ HWND hwnd,DWORD level)
+    {
+        HRESULT hr=S_OK;
+        DINPUT_JOYCONFIG_IN();
+        this->m_CopHwnd = hwnd;
+        DINPUT_JOYCONFIG_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,SendNotify)(THIS)
+    {
+        HRESULT hr=S_OK;
+        DINPUT_JOYCONFIG_IN();
+        DINPUT_JOYCONFIG_OUT();
+        return hr;
+    }
+
+    COM_METHOD(HRESULT,EnumTypes)(THIS_ LPDIJOYTYPECALLBACK lpCallback,LPVOID pvRef)
+    {
+        HRESULT hr;
+
+        if(lpCallback == NULL)
+        {
+            return S_FAIL;
+        }
+        DINPUT_JOYCONFIG_IN();
+		
         DINPUT_JOYCONFIG_OUT();
         return hr;
     }
