@@ -21,6 +21,7 @@ public:
     virtual HRESULT GetTypeInfo(LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti,DWORD dwFlags);
     virtual HRESULT SetTypeInfo(LPCWSTR pwszTypeName,LPDIJOYTYPEINFO pjti, DWORD dwFlags);
     virtual HRESULT DeleteType(LPCWSTR pwszTypeName);
+	virtual HRESULT 
 };
 
 class JoyStickEnum
