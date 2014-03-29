@@ -337,17 +337,21 @@ public:
 
     COM_METHOD(HRESULT,EnumTypes)(THIS_ LPDIJOYTYPECALLBACK lpCallback,LPVOID pvRef)
     {
-        HRESULT hr;
+        HRESULT hr=S_OK;
 
         if(lpCallback == NULL)
         {
             return S_FAIL;
         }
         DINPUT_JOYCONFIG_IN();
-		
+	
         DINPUT_JOYCONFIG_OUT();
         return hr;
     }
+
+    
+
+    
 
 
 };
