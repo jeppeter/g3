@@ -2,14 +2,8 @@
 #ifndef __JOYSTICK_ENUM_H__
 #define __JOYSTICK_ENUM_H__
 
-class JoyStickBase
-{
-public:
-    JoyStickBase();
-    virtual ~JoyStickBase();
-    virtual int SetJoyStickConfig(const char* name,void* pConfig,int configlen);
-    virtual int
-};
+
+
 
 class JoyStickConfigBase
 {
