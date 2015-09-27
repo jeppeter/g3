@@ -166,13 +166,14 @@ int OutputMonitorWriteFile()
 {
     FILE* fp=NULL;
     int ret=0;
-    OutputMonitor* pMonitor=NULL;
-    HANDLE hEvt=NULL;
+    OutputMonitor* pMonitor=NULL,*pGlobalMonitor=NULL,*pGetMonitor=NULL;
+    HANDLE hEvt=NULL,hGlobalEvt=NULL;
     DWORD dret;
     std::vector<PDBWIN_BUFFER_t> pBuffers;
     PDBWIN_BUFFER_t pBuffer=NULL;
     UINT i;
-    HANDLE hWaits[2];
+    HANDLE hWaits[3];
+	int waitnum = 2;
 
     st_hExitEvt = GetEvent(NULL,1);
     if(st_hExitEvt == NULL)
@@ -211,11 +212,6 @@ int OutputMonitorWriteFile()
 	}
 
     pMonitor = new OutputMonitor();
-	if (st_GlobalWin32)
-	{
-		INFOOUT("Set Global\n");
-		pMonitor->SetGlobal();
-	}
     ret = pMonitor->Start();
     if(ret < 0)
     {
@@ -230,13 +226,37 @@ int OutputMonitorWriteFile()
     hWaits[0] = hEvt;
     hWaits[1] = st_hExitEvt;
 
+	if (st_GlobalWin32)
+	{
+		INFOOUT("Set Global\n");
+		pGlobalMonitor = new OutputMonitor();
+		pGlobalMonitor->SetGlobal();
+		ret = pGlobalMonitor->Start();
+		if (ret < 0)
+		{
+			ret = GETERRNO();
+			ERROROUT("Start Global Monitor Error(%d)\n", ret);
+			goto out;
+		}
+		hGlobalEvt = pGlobalMonitor->GetNotifyHandle();
+		assert(hGlobalEvt);
+		hWaits[2] = hGlobalEvt;
+		waitnum = 3;
+	}
+
     while(st_Running)
     {
-        dret = WaitForMultipleObjectsEx(2,hWaits,FALSE,INFINITE,TRUE);
-        if(dret == WAIT_OBJECT_0)
+		pGetMonitor = NULL;
+        dret = WaitForMultipleObjectsEx(waitnum,hWaits,FALSE,INFINITE,TRUE);
+        if(dret == WAIT_OBJECT_0 || dret == (WAIT_OBJECT_0+2))
         {
             assert(pBuffers.size() == 0);
-            ret = pMonitor->GetBuffer(pBuffers);
+			pGetMonitor = pMonitor;
+			if (dret == (WAIT_OBJECT_0 + 2))
+			{
+				pGetMonitor = pGlobalMonitor;
+			}
+            ret = pGetMonitor->GetBuffer(pBuffers);
             if(ret < 0)
             {
                 ret= GETERRNO();
@@ -261,9 +281,9 @@ int OutputMonitorWriteFile()
             if(pBuffers.size() > 0)
             {
                 fflush(fp);
-                pMonitor->ReleaseBuffer(pBuffers);
+                pGetMonitor->ReleaseBuffer(pBuffers);
             }
-
+			pGetMonitor = NULL;
         }
         else if(dret == (WAIT_OBJECT_0+1))
         {
@@ -283,16 +303,23 @@ int OutputMonitorWriteFile()
 out:
     if(pBuffers.size() > 0)
     {
-        assert(pMonitor);
-        pMonitor->ReleaseBuffer(pBuffers);
+        assert(pGetMonitor);
+        pGetMonitor->ReleaseBuffer(pBuffers);
     }
     assert(pBuffers.size() == 0);
-
-    if(pMonitor)
+	pGetMonitor = NULL;
+	if (pGlobalMonitor)
+	{
+		delete pGlobalMonitor;
+	}
+	pGlobalMonitor = NULL;
+	
+	if(pMonitor)
     {
         delete pMonitor;
     }
     pMonitor = NULL;
+
 
     if(fp != stdout && fp)
     {
