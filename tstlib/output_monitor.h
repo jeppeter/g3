@@ -25,7 +25,7 @@ public:
 	int GetBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers);
 	void ReleaseBuffer(std::vector<PDBWIN_BUFFER_t>& pBuffers);
 	HANDLE GetNotifyHandle();
-
+	int SetGlobal();
 private:
 	void __ClearBuffers();
 	void __UnMapBuffer();
@@ -59,6 +59,7 @@ private:
 	std::vector<PDBWIN_BUFFER_t>* m_pFreeBuffers;
 	std::vector<int>* m_pPids;
 	int m_Started;
+	int m_GlobalWin32;
 };
 
 #endif /*__OUTPUT_MONITOR_H__*/

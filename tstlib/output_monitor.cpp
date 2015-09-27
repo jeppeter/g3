@@ -26,6 +26,7 @@ OutputMonitor::OutputMonitor()
     assert(m_pFreeBuffers  == NULL);
     assert(m_pPids == NULL);
     m_Started = 0;
+	m_GlobalWin32 = 0;
 }
 
 
@@ -39,6 +40,12 @@ OutputMonitor::~OutputMonitor()
     }
     this->m_pPids = NULL;
     DeleteCriticalSection(&m_CS);
+}
+
+int OutputMonitor::SetGlobal()
+{
+	this->m_GlobalWin32 = 1;
+	return 0;
 }
 
 int OutputMonitor::__GetStarted()
@@ -334,17 +341,38 @@ int OutputMonitor::__CreateMutexEvent()
     }
 
     /*now first to make sure that the*/
-    this->m_hDBWinMutex = GetMutex("DBWinMutex",0);
+	if (this->m_GlobalWin32) 
+	{
+		this->m_hDBWinMutex = GetMutex("Global\\DBWinMutex",0);
+	}
+	else
+	{
+		this->m_hDBWinMutex = GetMutex("DBWinMutex", 0);
+	}
     if(this->m_hDBWinMutex == NULL)
     {
         ret = GETERRNO();
         goto fail;
     }
 
-    this->m_hDBWinBufferReady = GetEvent("DBWIN_BUFFER_READY",0);
+	if (this->m_GlobalWin32)
+	{
+		this->m_hDBWinBufferReady = GetEvent("Global\\DBWIN_BUFFER_READY", 0);
+	}
+	else
+	{
+		this->m_hDBWinBufferReady = GetEvent("DBWIN_BUFFER_READY", 0);
+	}
     if(this->m_hDBWinBufferReady == NULL)
     {
-        this->m_hDBWinBufferReady = GetEvent("DBWIN_BUFFER_READY",1);
+		if (this->m_GlobalWin32)
+		{
+			this->m_hDBWinBufferReady = GetEvent("Global\\DBWIN_BUFFER_READY", 1);
+		}
+		else
+		{
+			this->m_hDBWinBufferReady = GetEvent("DBWIN_BUFFER_READY", 1);
+		}
         if(this->m_hDBWinBufferReady == NULL)
         {
             ret = GETERRNO();
@@ -352,10 +380,25 @@ int OutputMonitor::__CreateMutexEvent()
         }
     }
 
-    this->m_hDBWinDataReady = GetEvent("DBWIN_DATA_READY",0);
+
+	if (this->m_GlobalWin32)
+	{
+		this->m_hDBWinDataReady = GetEvent("Global\\DBWIN_DATA_READY", 0);
+	}
+	else
+	{
+		this->m_hDBWinDataReady = GetEvent("DBWIN_DATA_READY", 0);
+	}
     if(this->m_hDBWinDataReady == NULL)
     {
-        this->m_hDBWinDataReady = GetEvent("DBWIN_DATA_READY",1);
+		if (this->m_GlobalWin32)
+		{
+			this->m_hDBWinDataReady = GetEvent("Global\\DBWIN_DATA_READY", 1);
+		}
+		else
+		{
+			this->m_hDBWinDataReady = GetEvent("DBWIN_DATA_READY", 1);
+		}
         if(this->m_hDBWinDataReady == NULL)
         {
             ret = GETERRNO();
@@ -378,10 +421,24 @@ int OutputMonitor::__MapBuffer()
     assert(this->m_hDBWinMapBuffer == NULL);
     assert(this->m_pDBWinBuffer == NULL);
 
-    this->m_hDBWinMapBuffer = CreateMapFile("DBWIN_BUFFER",sizeof(DBWIN_BUFFER_t),0);
+	if (this->m_GlobalWin32)
+	{
+		this->m_hDBWinMapBuffer = CreateMapFile("Global\\DBWIN_BUFFER", sizeof(DBWIN_BUFFER_t), 0);
+	}
+	else
+	{
+		this->m_hDBWinMapBuffer = CreateMapFile("DBWIN_BUFFER", sizeof(DBWIN_BUFFER_t), 0);
+	}
     if(this->m_hDBWinMapBuffer == NULL)
     {
-        this->m_hDBWinMapBuffer = CreateMapFile("DBWIN_BUFFER",sizeof(DBWIN_BUFFER_t),1);
+		if (this->m_GlobalWin32)
+		{
+			this->m_hDBWinMapBuffer = CreateMapFile("Global\\DBWIN_BUFFER", sizeof(DBWIN_BUFFER_t), 1);
+		}
+		else
+		{
+			this->m_hDBWinMapBuffer = CreateMapFile("DBWIN_BUFFER", sizeof(DBWIN_BUFFER_t), 1);
+		}
         if(this->m_hDBWinMapBuffer == NULL)
         {
             ret = GETERRNO();

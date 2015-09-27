@@ -16,6 +16,7 @@
 static char* st_pFile=NULL;
 static int st_FileMode=FILE_CREATE;
 static int st_Running=1;
+static int st_GlobalWin32 = 0;
 static HANDLE st_hExitEvt=NULL;
 
 BOOL WINAPI HandlerConsoleRoutine(DWORD dwCtrlType)
@@ -77,6 +78,7 @@ void Usage(int ec,const char* fmt,...)
     fprintf(fp,"\t-h|--help              to display this message\n");
     fprintf(fp,"\t-a|--append filename   to specify the file of output and append it\n");
     fprintf(fp,"\t-c|--create filename   to specify the file of output and create it\n");
+	fprintf(fp,"\t-g|--global            to specify capture global win32\n");
     fprintf(fp,"default output is stdout\n");
 
     exit(ec);
@@ -117,6 +119,11 @@ int ParseParam(int argc,char* argv[])
             st_FileMode = FILE_CREATE;
             i ++;
         }
+		else if (strcmp(argv[i],"-g")==0 ||
+				strcmp(argv[i],"--global")==0)
+		{
+			st_GlobalWin32 = 1;
+		}
         else
         {
             Usage(3,"unrecognize parameter %s",argv[i]);
@@ -124,6 +131,35 @@ int ParseParam(int argc,char* argv[])
     }
 
     return 0;
+}
+
+int SetGlobalFlag(BOOL enable)
+{
+	BOOL bret;
+	SECURITY_DESCRIPTOR secdesc;
+	int ret;
+
+	if (!enable)
+	{
+		return 0;
+	}
+	bret = InitializeSecurityDescriptor(&secdesc, SECURITY_DESCRIPTOR_REVISION);
+	if (!bret)
+	{
+		ret = GETERRNO();
+		ERROROUT("InitializeSecurityDescriptor error %d\n", ret);
+		return -ret;
+	}
+
+	bret = SetSecurityDescriptorDacl(&secdesc,TRUE,NULL,FALSE);
+	if (!bret)
+	{
+		ret = GETERRNO();
+		ERROROUT("SetSecurityDescriptorDacl error %d\n", ret);
+		return -ret;
+	}
+
+	return 0;
 }
 
 int OutputMonitorWriteFile()
@@ -169,8 +205,17 @@ int OutputMonitorWriteFile()
         goto out;
     }
 
-    pMonitor = new OutputMonitor();
+	if (st_GlobalWin32)
+	{
+		SetGlobalFlag(TRUE);
+	}
 
+    pMonitor = new OutputMonitor();
+	if (st_GlobalWin32)
+	{
+		INFOOUT("Set Global\n");
+		pMonitor->SetGlobal();
+	}
     ret = pMonitor->Start();
     if(ret < 0)
     {
