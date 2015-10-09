@@ -351,8 +351,20 @@ int OutputMonitor::__CreateMutexEvent()
 	}
     if(this->m_hDBWinMutex == NULL)
     {
-        ret = GETERRNO();
-        goto fail;
+	if (this->m_GlobalWin32) 
+	{
+		this->m_hDBWinMutex = GetMutex("Global\\DBWinMutex",1);
+	}
+	else
+	{
+		this->m_hDBWinMutex = GetMutex("DBWinMutex", 1);
+	}
+
+	if(this->m_hDBWinMutex == NULL)
+	{
+		ret = GETERRNO();
+		goto fail;
+	}
     }
 
 	if (this->m_GlobalWin32)
